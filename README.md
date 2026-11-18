@@ -12,9 +12,6 @@ A Tampermonkey userscript for [Vest](https://next.vestmarkets.com): spend and li
 
 Tampermonkey checks this repo and updates the script on its own. To pull an update right away: Tampermonkey → Dashboard → GP. Entry for Vest → **Check for updates**.
 
-## Keys
-
-- `Alt+B` long · `Alt+S` short · `Alt+X` close
 
 ---
 
