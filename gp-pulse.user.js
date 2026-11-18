@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.4.6
+// @version      1.4.7
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -1354,12 +1354,15 @@
     host.style.height = 'auto'; box.style.height = 'auto'; const n = Math.ceil(box.getBoundingClientRect().height);
     box.style.height = ''; host.style.height = h0; return n > 200 ? n : 0;
   }
+  const TKP = ['height', 'max-height', 'min-height', 'flex-grow', 'flex-shrink', 'overflow'];
   function tkFit(card, h) { // Vest's ticket under GP. takes GP.'s height, so what sits below it moves up
-    document.querySelectorAll('[data-gpz-tk]').forEach(e => { if (e !== card) e.removeAttribute('data-gpz-tk'); });
-    if (!card) return;
-    if (!document.getElementById('gpz-tk-css')) { const c = document.createElement('style'); c.id = 'gpz-tk-css'; c.textContent = '[data-gpz-tk]{height:var(--gpz-tkh)!important;max-height:var(--gpz-tkh)!important;min-height:0!important;flex-grow:0!important;flex-shrink:0!important;box-sizing:border-box!important;overflow:hidden!important}'; document.head.appendChild(c); }
-    document.documentElement.style.setProperty('--gpz-tkh', Math.round(h) + 'px'); card.setAttribute('data-gpz-tk', '');
+    document.querySelectorAll('[data-gpz-tk]').forEach(e => { if (e !== card) { e.removeAttribute('data-gpz-tk'); TKP.forEach(k => e.style.removeProperty(k)); } });
+    if (!card || !(h > 200)) return;
+    const px = Math.round(h) + 'px', st = card.style; // set on the element itself: Vest rewrites <html>'s style, so a variable there gets lost
+    if (st.getPropertyValue('height') !== px) { st.setProperty('height', px, 'important'); st.setProperty('max-height', px, 'important'); st.setProperty('min-height', px, 'important'); st.setProperty('flex-grow', '0', 'important'); st.setProperty('flex-shrink', '0', 'important'); st.setProperty('overflow', 'hidden', 'important'); }
+    card.setAttribute('data-gpz-tk', '');
   }
+
   const NM = {}, CAPOLD = {}; // names and kinds stay known after an account closes
   const capAcctOld = id => capAcct(id) || CAPOLD[id] || null;
   const acctShort = id => (L.names && L.names[id]) || (capAcct(id) ? (CAPOLD[id] = capAcct(id), NM[id] = 'Account ' + ((+capAcct(id).attempt_index || 0) + 1)) : NM[id] || '…' + String(id).slice(-4));
