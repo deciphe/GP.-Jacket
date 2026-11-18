@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Pulse for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.2.1
+// @version      1.2.3
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @homepageURL  https://github.com/deciphe/gp-pulse
@@ -1060,9 +1060,12 @@
   [hidden]{display:none!important}
   @media (prefers-reduced-motion:reduce){.dot,.moon,.bm .pd:after{animation:none}}`;
   const SL_FMT = { risk: v => trimNum(v) + '%', R: v => trimNum(v) + 'R', size: v => (v >= 100 ? 'max' : trimNum(Math.round(v * 10) / 10) + '%') };
+  // the reward dial runs on a log scale, so 0.5R and 1R get as much room as 2R to 5R
+  const RLO = 0.25, RHI = 5, LOGD = { R: { to: v => 1000 * Math.log(Math.max(RLO, Math.min(RHI, v)) / RLO) / Math.log(RHI / RLO), from: p => { const v = RLO * Math.exp(p / 1000 * Math.log(RHI / RLO)); return v < 1 ? Math.round(v * 20) / 20 : Math.round(v * 10) / 10; } } };
   // a slider with the benchmarks as tick marks under it (click one to snap to it)
   function slider(key, label, min, max, step, ticks, extra) {
-    const at = v => ((v - min) / (max - min)) * 100;
+    const lg = LOGD[key]; if (lg) { min = 0; max = 1000; step = 1; }
+    const at = v => ((lg ? lg.to(v) : v) - min) / (max - min) * 100;
     return `<div class="sr" data-sr="${key}"><label>${label}</label>
       <div class="rg"><input type="range" data-r="${key}" min="${min}" max="${max}" step="${step}" aria-label="${label}">
       <div class="tk">${ticks.map(([v, t]) => `<button data-tk="${key}" data-v="${v}" style="left:${at(v)}%">${t}</button>`).join('')}</div></div><b data-sv="${key}"></b>${extra ? `<div class="ex">${extra}</div>` : ''}</div>`;
@@ -1096,7 +1099,7 @@
   .lc{display:inline-flex;align-items:center;height:26px;border-radius:8px;border:1px solid rgba(238,234,226,.12);overflow:hidden;transition:all .25s;animation:lin .35s ease-out}
   @keyframes lin{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:none}}
   .lc button{height:100%;border:0;background:none;color:#c9c7c2;font:700 11.5px Inter,system-ui,sans-serif;cursor:pointer;padding:0 4px 0 11px}
-  .lc button small{margin-left:6px;font-size:9.5px;font-weight:700;color:#6f6f75}
+  .lc button small{margin-left:6px;font-size:9.5px;font-weight:600;color:#6f6f75;font-variant-numeric:tabular-nums}.lc.on button small{color:#9e9ea5}
   .lc button.x{padding:0 9px 0 4px;color:#55555b;font-size:13px;opacity:0;transition:opacity .2s}
   .lc:hover{border-color:rgba(238,234,226,.34)}.lc:hover button.x{opacity:1}.lc button.x:hover{color:#efb1a7}
   .lc.on{background:#e6e3dc;border-color:#e6e3dc}.lc.on button{color:#0b0b0b}.lc.on button small{color:#55524b}.lc.on button.x{color:#55524b}`;
@@ -1131,8 +1134,8 @@
         <div class="adh" data-k="adh" hidden><span data-k="adt">—</span><button data-a="addback">back</button></div>
         <div class="pl"><div class="sl"><small>STOP</small><b data-k="slv">—</b><em data-k="slp">—</em></div><div class="tp"><small>TARGET</small><b data-k="tpv">—</b><em data-k="tpp">—</em></div></div>
         <div class="bm" data-k="bm0">${BEAM}</div>
-        ${slider('risk', 'RISK', 0.2, 4, 0.1, [[0.5, '.5%'], [1, '1%'], [2, '2%'], [3, '3%']])}
-        ${slider('R', 'REWARD', 0.5, 5, 0.1, [[1, '1R'], [2, '2R'], [3, '3R']], '<button class="c pass" data-a="pass" title="Pass line">PASS</button><input class="n" data-n="usd" inputmode="decimal" placeholder="$ gain" aria-label="Dollar target">')}
+        ${slider('risk', 'RISK', 0.2, 8, 0.1, [[1, '1%'], [2, '2%'], [3, '3%'], [5, '5%'], [8, '8%']])}
+        ${slider('R', 'REWARD', RLO, RHI, 0.05, [[0.5, '.5R'], [1, '1R'], [2, '2R'], [3, '3R']], '<button class="c pass" data-a="pass" title="Pass line">PASS</button><input class="n" data-n="usd" inputmode="decimal" placeholder="$ gain" aria-label="Dollar target">')}
         ${slider('size', 'SIZE', 5, 100, 1, [[25, '25%'], [50, '50%'], [75, '75%'], [100, 'max']])}
         <div class="bal"><div class="bb"><i data-k="fb" style="width:0"></i></div><div class="bt"><span>fees <b data-k="fe">—</b><button class="sw" data-t="fees" title="Fees inside the risk" aria-label="Fees inside the risk"></button></span><span data-k="qz"></span></div></div>
         <div class="ld"><div class="ll" data-k="ll"></div><button class="ls" data-a="lsave" title="Save loadout" data-k="lsv">+</button>
@@ -1169,7 +1172,7 @@
     usd.onkeydown = e => { if (e.key === 'Enter') usd.blur(); };
     R.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { SH[b.dataset.t] = !SH[b.dataset.t]; saveSH(); redo(); });
     const setSl = (key, v) => { v = Math.round(+v * 100) / 100; if (!(v > 0)) return; SH[key] = v; if (key === 'R') SH.tmode = 'R'; redo(); };
-    R.querySelectorAll('[data-r]').forEach(i => { i.oninput = () => setSl(i.dataset.r, i.value); i.onchange = () => saveSH(); });
+    R.querySelectorAll('[data-r]').forEach(i => { i.oninput = () => setSl(i.dataset.r, LOGD[i.dataset.r] ? LOGD[i.dataset.r].from(+i.value) : i.value); i.onchange = () => saveSH(); });
     R.querySelectorAll('[data-tk]').forEach(b => b.onclick = () => { setSl(b.dataset.tk, b.dataset.v); saveSH(); });
     // loadouts: the three dials, the target mode and the fees switch, under a name
     const ln = k('ln'), lname = k('lname');
@@ -1318,13 +1321,13 @@
     } else {
       box.classList.remove('neg');
       R.querySelectorAll('[data-t]').forEach(b => b.classList.toggle('on', !!SH[b.dataset.t]));
-      R.querySelectorAll('[data-r]').forEach(i => { const key = i.dataset.r, v = +SH[key], mn = +i.min, mx = +i.max; if (R.activeElement !== i) i.value = v; i.style.setProperty('--p', Math.max(0, Math.min(100, ((v - mn) / (mx - mn)) * 100)) + '%'); });
+      R.querySelectorAll('[data-r]').forEach(i => { const key = i.dataset.r, v = LOGD[key] ? LOGD[key].to(+SH[key]) : +SH[key], mn = +i.min, mx = +i.max; if (R.activeElement !== i) i.value = v; i.style.setProperty('--p', Math.max(0, Math.min(100, ((v - mn) / (mx - mn)) * 100)) + '%'); });
       R.querySelectorAll('[data-sv]').forEach(b => { b.textContent = SL_FMT[b.dataset.sv](+SH[b.dataset.sv]); });
       R.querySelectorAll('[data-tk]').forEach(b => b.classList.toggle('on', +b.dataset.v === +SH[b.dataset.tk] && (b.dataset.tk !== 'R' || SH.tmode === 'R')));
       R.querySelector('[data-sr=R]').classList.toggle('off', SH.tmode !== 'R');
       const pb = R.querySelector('[data-a=pass]'); pb.classList.toggle('on', SH.tmode === 'pass'); pb.disabled = !(p.passNeed > 0); pb.hidden = !(p.passNeed > 0) && SH.tmode !== 'pass';
       const usd = R.querySelector('[data-n=usd]'); if (R.activeElement !== usd) { usd.value = SH.tmode === 'usd' && SH.usd > 0 ? '$' + SH.usd : ''; usd.classList.toggle('on', SH.tmode === 'usd'); }
-      { const cur = JSON.stringify(loadOf()), L0 = DB.loads || [], h = L0.map((x, i) => `<div class="lc${JSON.stringify(loadOf(x)) === cur ? ' on' : ''}" data-i="${i}"><button title="${trimNum(x.risk)}% · ${x.tmode === 'pass' ? 'pass' : x.tmode === 'usd' ? '$' + trimNum(x.usd) : trimNum(x.R) + 'R'} · ${x.size >= 100 ? 'max' : x.size + '%'}">${esc(x.n)}</button><button class="x" title="Delete">×</button></div>`).join('');
+      { const cur = JSON.stringify(loadOf()), L0 = DB.loads || [], h = L0.map((x, i) => `<div class="lc${JSON.stringify(loadOf(x)) === cur ? ' on' : ''}" data-i="${i}"><button title="${trimNum(x.risk)}% risk · ${x.tmode === 'pass' ? 'pass' : x.tmode === 'usd' ? '$' + trimNum(x.usd) : trimNum(x.R) + 'R'} · size ${x.size >= 100 ? 'max' : x.size + '%'}${x.fees ? ' · fees in' : ''}">${esc(x.n)}<small>${trimNum(x.risk)}% · ${x.tmode === 'pass' ? 'pass' : x.tmode === 'usd' ? '$' + trimNum(x.usd) : trimNum(x.R) + 'R'} · ${x.size >= 100 ? 'max' : x.size + '%'}</small></button><button class="x" title="Delete">×</button></div>`).join('');
         if (k('ll').dataset.h !== h) k('ll').innerHTML = k('ll').dataset.h = h; k('lsv').textContent = L0.length ? '+' : '+ loadout'; }
       const side = SHOT.hover || SH.side || 'long';
       if (p.qty) {
