@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Pulse for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.2.0
+// @version      1.2.1
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @homepageURL  https://github.com/deciphe/gp-pulse
@@ -1560,7 +1560,8 @@
   // Docks under the ticket (over Vest's Account Health card); drag it out to float, double-click its header to dock it back.
   // A cut on a copy follower moves its share down first, so the copier keeps the smaller size instead of topping it back up.
   // A cut on the leader is mirrored by the copier on every follower.
-  const DK = Object.assign({ open: false, dock: true, side: false, all: false, tab: 'acc', x: null, y: null }, DB.desk || {});
+  if (DB.deskV !== 2) { DB.desk = Object.assign({}, DB.desk, { open: true, side: true }); DB.deskV = 2; } // the desk loads open, at the chart's left
+  const DK = Object.assign({ open: true, dock: true, side: true, all: false, tab: 'acc', x: null, y: null }, DB.desk || {});
   DK.busy = {}; DK.msg = ''; DK.tone = ''; DK.msgAt = 0;
   const saveDK = () => { DB.desk = { open: DK.open, dock: DK.dock, side: DK.side, all: DK.all, tab: DK.tab, x: DK.x, y: DK.y }; save(); };
   let DS = null;
@@ -1698,7 +1699,7 @@
     const t = SP && SP.host.style.display !== 'none' ? SP.host.getBoundingClientRect() : null;
     let x, y, w, h; const ch = DK.side ? chartCol() : null;
     DS.R.querySelector('.d').classList.toggle('side', !!ch);
-    if (ch) { const r = ch.getBoundingClientRect(); x = r.left - DESKW; y = r.top; w = DESKW - 12; h = r.height; }
+    if (ch) { const r = ch.getBoundingClientRect(); x = r.left - DESKW; y = r.top; w = DESKW - 12; h = Math.min(r.height, innerHeight - y - 8); }
     else if (DK.dock && t && t.width > 200 && innerHeight - t.bottom - 16 >= 130) { x = t.left; y = t.bottom + 8; w = t.width; h = Math.min(want, innerHeight - y - 8); }
     else { w = 340; h = Math.min(want, innerHeight - 24); x = DK.x != null ? DK.x : t ? t.left - w - 10 : innerWidth - w - 16; y = DK.y != null ? DK.y : t ? t.top : 72; x = Math.max(0, Math.min(innerWidth - w, x)); y = Math.max(0, Math.min(innerHeight - h, y)); }
     st.left = Math.round(x) + 'px'; st.top = Math.round(y) + 'px'; st.width = Math.round(w) + 'px'; st.height = Math.round(h) + 'px';
