@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.4.7
+// @version      1.5.0
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -736,6 +736,12 @@
 
   // ---------- the plan: risk-locked size and fee-aware stop / target ----------
   const SH = Object.assign({ on: true, sl: true, risk: 2, R: 1, tmode: 'R', usd: 0, size: 100, fees: true, chart: true, side: 'long', dock: true, x: null, y: null }, DB.shot || {});
+  const CTHEMES = [
+    { id: 'massive', name: 'Massive', bg: '#0b0b0b', up: '#dedbd3', upB: '#dedbd3', dn: '#4b4b51', dnB: '#4b4b51' },
+    { id: 'paper', name: 'Paper', bg: '#d8d8d8', grid: 'rgba(55,55,57,0.08)', text: '#4a4a4d', up: '#fdfdfd', upB: '#373739', upW: '#373739', dn: '#373739', dnB: '#373739', dnW: '#373739' },
+    { id: 'pastel', name: 'Pastel', bg: '#d1d4dc', grid: 'rgba(27,30,40,0.07)', text: '#4a4d57', up: '#a5d6a7', upB: '#1b5e20', upW: '#1b5e20', dn: '#faa1a4', dnB: '#801922', dnW: '#801922' },
+    { id: 'night', name: 'Night', bg: '#000000', grid: 'rgba(255,255,255,0.05)', text: '#8b8b92', up: '#163918', upB: '#81c784', upW: '#81c784', dn: '#481015', dnB: '#f7525f', dnW: '#f7525f' }];
+  SH.keys = Object.assign({ on: false, long: 'Alt+KeyB', short: 'Alt+KeyS', close: 'Alt+KeyX' }, SH.keys || {}); // keyboard shortcuts: off until switched on
   SH.chart = true;
   const saveSH = () => { DB.shot = SH; save(); };
   const esc = v => String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -794,7 +800,9 @@
     const tr = (z.trades || []).filter(t => t.pnl != null), sum = tr.reduce((a, t) => a + t.pnl, 0);
     return { sum, lost: tr.filter(t => t.pnl < 0).length, won: tr.filter(t => t.pnl > 0).length };
   }
+  if (DB.zone) { delete DB.zone; save(); } // the zone is gone
   function zoneLocked() {
+    return false;
     const z = DB.zone, s = zoneStats(); if (!z || !s) return false;
     if (!z.locked && ((ZL.loss > 0 && s.sum <= -ZL.loss) || (ZL.n > 0 && s.lost >= ZL.n))) { z.locked = Date.now(); save(); }
     return !!z.locked;
@@ -936,6 +944,11 @@
   .sp{flex:1;min-width:4px}
   .ib{flex:none;height:24px;min-width:24px;padding:0 8px;border-radius:8px;border:1px solid rgba(238,234,226,.12);background:none;color:#9e9ea5;font:700 11px/1 Inter,system-ui,sans-serif;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:5px;transition:border-color .25s,color .25s,background .25s;font-variant-numeric:tabular-nums}
   .ib:hover{color:#f1f1f3;border-color:rgba(238,234,226,.34)}
+  .ib .cs{width:8px;height:8px;border-radius:3px;margin-right:6px;flex:none;box-shadow:inset 0 0 0 1px rgba(238,234,226,.25)}
+  .ctm{position:absolute;top:44px;right:18px;z-index:31;display:flex;flex-direction:column;gap:2px;width:190px;padding:5px;border-radius:12px;border:1px solid rgba(238,234,226,.14);background:#101010;box-shadow:0 22px 50px -16px rgba(0,0,0,.9);animation:lin .18s ease-out}.ctm[hidden]{display:none}
+  .ctm button{display:flex;align-items:center;gap:10px;height:32px;padding:0 10px;border:0;border-radius:8px;background:none;color:#c9c7c2;font:600 12px Inter,system-ui,sans-serif;cursor:pointer;text-align:left}
+  .ctm button:hover{background:rgba(238,234,226,.06);color:#f1f1f3}.ctm button.on{background:rgba(238,234,226,.08);color:#f1f1f3}
+  .sw3{display:inline-flex;gap:2px;padding:2px;border-radius:6px;background:rgba(238,234,226,.06)}.sw3 i{width:10px;height:14px;border-radius:2px}.sw3 i:first-child{width:14px}
   .ib.on{color:#0b0b0b;background:#e6e3dc;border-color:#e6e3dc}
   .ib i{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.6}
   .ib.armed{color:#0b0b0b;background:#9fd7b2;border-color:#9fd7b2}.ib.armed i{opacity:1;animation:br 4s ease-in-out infinite;background:#0b0b0b}
@@ -1023,6 +1036,11 @@
   .lvp input::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;margin-top:-5px;border-radius:50%;background:#0b0b0b;box-shadow:0 0 0 2px #e6e3dc}
   .lvp input::-moz-range-track{height:4px;border-radius:99px;background:rgba(238,234,226,.12)}.lvp input::-moz-range-progress{height:4px;border-radius:99px;background:#e6e3dc}
   .lvp input::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:#0b0b0b;border:2px solid #e6e3dc}
+  .kp{position:absolute;right:18px;bottom:96px;z-index:30;width:210px;padding:12px 14px;border-radius:12px;background:#111111;border:1px solid rgba(238,234,226,.14);box-shadow:0 22px 50px -16px rgba(0,0,0,.9);animation:lin .2s ease-out}.kp[hidden]{display:none}
+  .kh{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:10.5px;font-weight:600;letter-spacing:.14em;color:#8b8b92}
+  .kr{display:flex;justify-content:space-between;align-items:center;height:30px;font-size:12px;font-weight:600;color:#c9c7c2}.kp:not(.on) .kr{opacity:.4}
+  .kr button{min-width:76px;height:24px;padding:0 10px;border-radius:7px;border:1px solid rgba(238,234,226,.14);background:none;color:#f1f1f3;font:700 11px Inter,system-ui,sans-serif;letter-spacing:.06em;cursor:pointer}.kr button:hover{border-color:rgba(238,234,226,.34)}.kr button.rec{border-color:#e3c98e;color:#e3c98e}
+  .sdt .kb.on{color:#e3c98e}
   .lvf{display:flex;justify-content:space-between;align-items:center;font-size:10.5px;font-weight:600;color:#6f6f75}
   .lvf button{height:22px;padding:0 8px;border-radius:6px;border:1px solid rgba(238,234,226,.14);background:none;color:#9e9ea5;font:600 10.5px Inter,system-ui,sans-serif;cursor:pointer}.lvf button:hover{color:#f1f1f3}
   .bt b{color:#e3c98e;font-weight:600}.bt b.hot{color:#efb1a7}.bt span:last-child b{color:#f1f1f3}
@@ -1156,7 +1174,8 @@
     R.innerHTML = `<style>${SCSS}${SLCSS}</style><div class="s">
       <div class="mw"><canvas class="moon" width="660" height="660"></canvas></div>
       <div class="hd" data-a="drag"><i class="dot"></i><div class="brand">GP.<span>SHOT</span></div><div class="sp"></div>
-        <button class="ib" data-a="zone" title="Zone"><i></i><span data-k="zc">zone</span></button><button class="ib" data-a="copy" title="Copier"><i></i><span data-k="cp">desk</span></button><button class="ib" data-a="vest" title="Vest's ticket">Vest</button></div>
+        <button class="ib" data-a="cth" title="Chart colours"><i class="cs" data-k="cts"></i>chart</button><button class="ib" data-a="copy" title="Copier"><i></i><span data-k="cp">desk</span></button><button class="ib" data-a="vest" title="Vest's ticket">Vest</button></div>
+      <div class="ctm" data-k="ctm" hidden>${CTHEMES.map(t => `<button data-cth="${t.id}"><span class="sw3"><i style="background:${t.bg}"></i><i style="background:${t.up};box-shadow:inset 0 0 0 1px ${t.upB}"></i><i style="background:${t.dn};box-shadow:inset 0 0 0 1px ${t.dnB}"></i></span>${t.name}</button>`).join('')}</div>
       <div class="mk"><b data-k="px">—</b><span data-k="ac">—</span></div>
       <div class="lvp" data-k="lvp" hidden><div class="lvh"><span>LEVERAGE</span><b data-k="lvv">—</b></div><input type="range" data-k="lvr" min="1" max="50" step="1" aria-label="Leverage"><div class="lvf"><span>1x</span><button data-a="levmax">max <span data-k="lvm"></span></button></div></div>
       <div class="zr" data-k="zr" hidden><div class="zs" data-k="zs"></div>
@@ -1183,9 +1202,11 @@
         <div class="ar"><label>STOP</label><div class="ch"><button class="c" data-a="half">½ risk</button><button class="c" data-a="be">break even</button><button class="c rose" data-a="addstop" hidden>add stop</button></div></div>
         <div class="lgs" data-k="lgs"></div>
       </div>
-      <div class="go" data-v="go"><button class="L" data-a="long">Long<small>ALT B</small></button><button class="S" data-a="short">Short<small>ALT S</small></button><div class="sdt" title="Which side the stop, target and lines are set for"><button data-sd="long">long</button><i></i><button data-sd="short">short</button></div></div>
-      <div class="go" data-v="go2" hidden><button class="A" data-a="addmode">Add<small>MORE</small></button><button class="X" data-a="close">Close<small>ALT X</small></button></div>
-      <div class="go" data-v="go4" hidden><button class="L" data-a="addgo"><span data-k="addq">Add</span><small data-k="addk">ALT B</small></button><button class="X" data-a="close2">Close<small>ALT X</small></button></div>
+      <div class="go" data-v="go"><button class="L" data-a="long">Long<small data-kk="long"></small></button><button class="S" data-a="short">Short<small data-kk="short"></small></button><div class="sdt" title="Which side the stop, target and lines are set for"><button data-sd="long">long</button><i></i><button data-sd="short">short</button><i></i><button class="kb" data-a="keys" title="Keyboard shortcuts">keys</button></div></div>
+      <div class="go" data-v="go2" hidden><button class="A" data-a="addmode">Add</button><button class="X" data-a="close">Close<small data-kk="close"></small></button></div>
+      <div class="go" data-v="go4" hidden><button class="L" data-a="addgo"><span data-k="addq">Add</span><small data-kk="add"></small></button><button class="X" data-a="close2">Close<small data-kk="close"></small></button></div>
+      <div class="kp" data-k="kp" hidden><div class="kh"><span>KEYS</span><button class="sw" data-kt="keys" aria-label="Keyboard shortcuts on or off"></button></div>
+        <div class="kr"><span>Long</span><button data-kb="long"></button></div><div class="kr"><span>Short</span><button data-kb="short"></button></div><div class="kr"><span>Close</span><button data-kb="close"></button></div></div>
       <div class="go" data-v="go3" hidden><div class="lk"><i></i><b>LOCKED</b><span data-k="lk"></span><button data-a="zend2">end zone</button></div></div>
       <div class="ft"><div class="msg" data-k="msg"></div></div>
     </div>`;
@@ -1242,6 +1263,16 @@
       if (e.target.closest('.x')) { L0.splice(+c.dataset.i, 1); DB.loads = L0; save(); if (!L0.length) ldOpen(false); renderShot(); return; }
       ldOpen(false); SH.ldn = x.n;
       Object.assign(SH, { risk: x.risk, rmode: x.rmode === 'usd' ? 'usd' : 'pct', rusd: +x.rusd || 0, R: x.R, tmode: x.tmode, usd: x.usd, size: x.size, fees: x.fees }); saveSH(); redo(); };
+    const ctm = k('ctm');
+    on('cth', () => { ctm.hidden = !ctm.hidden; renderShot(); });
+    R.querySelectorAll('[data-cth]').forEach(b => b.onclick = () => { DB.cth = b.dataset.cth; save(true); ctm.hidden = true; skinKey = ''; applySkin(); renderShot(); });
+    R.addEventListener('pointerdown', e => { if (!ctm.hidden && !e.composedPath().some(n => n === ctm || (n.dataset && n.dataset.a === 'cth'))) { ctm.hidden = true; renderShot(); } });
+    const kp = k('kp');
+    on('keys', () => { kp.hidden = !kp.hidden; KREC = null; renderShot(); });
+    const kpOff = e => { if (!kp.hidden && !(e && e.composedPath().some(n => n === kp || (n.dataset && n.dataset.a === 'keys')))) { kp.hidden = true; KREC = null; renderShot(); } };
+    SHOT.kpOff = kpOff; document.addEventListener('pointerdown', kpOff, true); R.addEventListener('pointerdown', kpOff);
+    R.querySelector('[data-kt=keys]').onclick = () => { SH.keys.on = !SH.keys.on; KREC = null; saveSH(); renderShot(); };
+    R.querySelectorAll('[data-kb]').forEach(b => b.onclick = () => { KREC = KREC === b.dataset.kb ? null : b.dataset.kb; renderShot(); });
     on('long', () => fire('long')); on('short', () => fire('short')); on('close', closeMine); on('close2', closeMine);
     on('addmode', () => addOn(true)); on('addback', () => addOn(false)); on('addgo', addMore);
     R.querySelectorAll('[data-sd]').forEach(b => b.onclick = () => { SH.side = b.dataset.sd; saveSH(); redo(); });
@@ -1252,7 +1283,6 @@
     on('be', breakEven); on('half', halfRisk); on('addstop', addStop);
     k('lgs').onclick = e => { const b = e.target.closest('button'); if (b) dropLeg(b.dataset.id); };
     // zone: entered from the ticket with its lock, ended from it
-    on('zone', () => { SHOT.zopen = !SHOT.zopen; renderShot(); });
     R.querySelectorAll('[data-z]').forEach(i => { i.value = ZL[i.dataset.z] > 0 ? ZL[i.dataset.z] : ''; i.onchange = () => { const v = Math.abs(parseFloat(String(i.value).replace(/[^\d.]/g, ''))); ZL[i.dataset.z] = v > 0 ? (i.dataset.z === 'n' ? Math.round(v) : Math.round(v * 100) / 100) : 0; DB.zl = ZL; save(); renderShot(); }; i.onkeydown = e => { if (e.key === 'Enter') i.blur(); }; });
     on('zgo', () => { SHOT.zopen = false; if (!DB.zone) zoneStart(); renderShot(); });
     const end = () => { SHOT.zopen = false; if (DB.zone) zoneEnd(); renderShot(); };
@@ -1367,7 +1397,8 @@
   const capAcctOld = id => capAcct(id) || CAPOLD[id] || null;
   const acctShort = id => (L.names && L.names[id]) || (capAcct(id) ? (CAPOLD[id] = capAcct(id), NM[id] = 'Account ' + ((+capAcct(id).attempt_index || 0) + 1)) : NM[id] || '…' + String(id).slice(-4));
   const fit = t => (t.length > 10 ? ' x' : t.length > 8 ? ' m' : ''); // long numbers step down a size, never clip
-  function zoneBits() { // the zone chip and its line: the clock, the closed PnL, the count, the lock
+  function zoneBits() { // the zone is gone: nothing to show, never locked
+    return { locked: false, zs: null };
     if (!SP) return; const { R, k } = SP, z = DB.zone, zs = zoneStats(), locked = zoneLocked();
     const chip = R.querySelector('[data-a=zone]'); chip.classList.toggle('armed', !!z && !locked); chip.classList.toggle('lock', locked);
     k('zc').textContent = z ? fdur(Date.now() - z.t0) : 'zone';
@@ -1422,6 +1453,12 @@
         if (k('ll').dataset.h !== h) k('ll').innerHTML = k('ll').dataset.h = h; k('lsv').textContent = L0.length ? '+' : '+ save';
         const dd = k('ldd'), dh = `<span class="dt"></span><b>${lit ? esc(lit.n) : L0.length ? 'loadouts' : 'no loadouts'}</b><small>${lit ? peek(lit) : L0.length ? L0.length + ' saved' : ''}</small>${L0.length ? '<i></i>' : ''}`;
         if (dd.dataset.h !== dh) dd.innerHTML = dd.dataset.h = dh; dd.classList.toggle('on', !!lit); dd.disabled = !L0.length; }
+      { const K = SH.keys, kp = k('kp'); kp.classList.toggle('on', !!K.on); R.querySelector('[data-kt=keys]').classList.toggle('on', !!K.on); R.querySelector('[data-a=keys]').classList.toggle('on', !!K.on);
+        R.querySelectorAll('[data-kb]').forEach(b => { const n = b.dataset.kb; b.classList.toggle('rec', KREC === n); b.textContent = KREC === n ? 'press keys' : K[n] ? keyName(K[n]) : 'none'; });
+        const lg = { long: K.long, short: K.short, close: K.close, add: pos && (/^l/i.test(pos.side) ? K.long : K.short) };
+        R.querySelectorAll('[data-kk]').forEach(m => { const v = K.on && lg[m.dataset.kk] ? keyName(lg[m.dataset.kk]) : ''; m.textContent = v; m.hidden = !v; }); }
+      { const t = cTheme(); k('cts').style.background = t.id === 'massive' ? '#e6e3dc' : t.bg; R.querySelector('[data-a=cth]').classList.toggle('on', !k('ctm').hidden);
+        R.querySelectorAll('[data-cth]').forEach(b => b.classList.toggle('on', b.dataset.cth === t.id)); }
       const side = SH.side || 'long';
       R.querySelectorAll('[data-sd]').forEach(b => b.classList.toggle('on', b.dataset.sd === side));
       if (p.qty) {
@@ -1453,7 +1490,7 @@
       const sS = slP != null ? t.s(slP) - t.s(m) : null, sT = tpP != null ? t.s(tpP) - t.s(m) : null;
       setBeam(k('bm0'), { a: Math.min(sS != null ? sS : -t.d0, -t.d0 * 0.2), b: Math.max(sT != null ? sT : t.d0, t.d0 * 0.2), stop: sS, tgt: sT, price: 0, legs: [] });
       k('qz').innerHTML = aq ? `<b>+${trimNum(aq)} ${shortSym(sym)}</b> · ${trimNum(Q)} total` : '';
-      k('addq').textContent = aq ? 'Add ' + trimNum(aq) : 'Add'; k('addk').textContent = t.long ? 'ALT B' : 'ALT S';
+      k('addq').textContent = aq ? 'Add ' + trimNum(aq) : 'Add';
       const ag = R.querySelector('[data-a=addgo]'); ag.className = t.long ? 'L' : 'S'; ag.disabled = !aq || !!SHOT.busy || stale; ag.classList.toggle('busy', SHOT.busy === 'add');
       R.querySelector('[data-a=close2]').classList.toggle('busy', SHOT.busy === 'close');
     }
@@ -1916,21 +1953,27 @@
     renderDesk(); kickFast(150);
   }
 
-  // hot keys: Alt+B long, Alt+S short, Alt+X close. One press is one order: a held key does
-  // nothing more. Off while typing in any box and while the Pulse panel is open; they work with the chart focused.
+  // keyboard shortcuts: off by default; switched on and set in the keys popup. One press is one order: a held key
+  // does nothing more. Off while typing in any box and while the Pulse panel is open; they work with the chart focused.
+  const comboOf = e => [e.ctrlKey && 'Ctrl', e.altKey && 'Alt', e.shiftKey && 'Shift', e.metaKey && 'Meta', e.code].filter(Boolean).join('+');
+  const keyName = c => String(c || '').split('+').map(x => x.replace(/^Key/, '').replace(/^Digit/, '').replace(/^Arrow/, '').replace(/^Meta$/, 'Cmd')).join(' ').toUpperCase();
+  let KREC = null;
   function hotkey(e) {
-    if (!e.altKey || e.ctrlKey || e.metaKey || !SHOT.visible || OPEN || !/^Key[BSX]$/.test(e.code)) return;
+    if (KREC) { if (/^(Alt|Control|Shift|Meta)/.test(e.code || e.key)) return; e.preventDefault(); e.stopPropagation(); const k = KREC; KREC = null;
+      if (e.code !== 'Escape') { const c = comboOf(e); ['long', 'short', 'close'].forEach(n => { if (n !== k && SH.keys[n] === c) SH.keys[n] = ''; }); SH.keys[k] = c; saveSH(); }
+      renderShot(); return; }
+    const K = SH.keys; if (!K.on || !SHOT.visible || OPEN) return;
+    const c = comboOf(e), act = ['long', 'short', 'close'].find(n => K[n] && K[n] === c); if (!act) return;
     const t = (e.composedPath && e.composedPath()[0]) || e.target; if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName || ''))) return;
-    if (e.shiftKey) return;
     e.preventDefault(); if (e.repeat) return;
     const ap = SHOT.adding && curPos();
-    if (ap && e.code !== 'KeyX') { if ((e.code === 'KeyB') === /^l/i.test(ap.side)) addMore(); else shotMsg('this trade is ' + (/^l/i.test(ap.side) ? 'long' : 'short'), 'bad'); return; }
-    if (e.code === 'KeyB') fire('long'); else if (e.code === 'KeyS') fire('short'); else closeMine();
+    if (ap && act !== 'close') { if ((act === 'long') === /^l/i.test(ap.side)) addMore(); else shotMsg('this trade is ' + (/^l/i.test(ap.side) ? 'long' : 'short'), 'bad'); return; }
+    if (act === 'long') fire('long'); else if (act === 'short') fire('short'); else closeMine();
   }
   document.addEventListener('keydown', hotkey, true);
   function hookFrame(f) { // the chart is its own page: keys pressed there never reach Vest's page, so they are heard there too
     try { const d = f.contentDocument; if (!d || d.__gpzKeys) return; d.__gpzKeys = 1; d.addEventListener('keydown', hotkey, true);
-      d.addEventListener('pointerdown', () => { CHDOWN = true; }, true); ['pointerup', 'pointercancel'].forEach(t => d.addEventListener(t, () => { CHDOWN = false; }, true)); } catch (e) {}
+      d.addEventListener('pointerdown', () => { CHDOWN = true; if (SHOT.kpOff) SHOT.kpOff(); }, true); ['pointerup', 'pointercancel'].forEach(t => d.addEventListener(t, () => { CHDOWN = false; }, true)); } catch (e) {}
   }
   if (DK.open) setTimeout(() => deskToggle(true), 1200);
   let lastPath = location.pathname;
@@ -1998,12 +2041,22 @@
   function wrapChart(ch) {
     try { const proto = ch && Object.getPrototypeOf(ch); if (!proto || proto === Object.prototype || typeof proto.createOrderLine !== 'function') return; if (!proto.__gpzWrapped) { Object.defineProperty(proto, '__gpzWrapped', { value: 1 }); ['createOrderLine', 'createPositionLine'].forEach(m => { const o = proto[m]; if (typeof o === 'function') proto[m] = function () { return wrapLine(o.apply(this, arguments)); }; }); } } catch (e) {}
   }
+  // chart colours: the canvas and candles, picked from the chart chip
+  function cTheme() { return CTHEMES.find(t => t.id === DB.cth) || CTHEMES[0]; }
   function skinOverrides() {
     const o = { 'paneProperties.backgroundType': 'solid', 'paneProperties.background': MS.bg, 'paneProperties.backgroundGradientStartColor': MS.bg, 'paneProperties.backgroundGradientEndColor': MS.bg,
       'paneProperties.vertGridProperties.color': '#141414', 'paneProperties.horzGridProperties.color': '#141414', 'scalesProperties.lineColor': '#1f1f1f', 'scalesProperties.textColor': MS.muted,
       'paneProperties.crossHairProperties.color': '#6f6f75', 'mainSeriesProperties.lineStyle.color': MS.cream, 'mainSeriesProperties.areaStyle.linecolor': MS.cream, 'mainSeriesProperties.areaStyle.color1': 'rgba(230,227,220,0.22)', 'mainSeriesProperties.areaStyle.color2': 'rgba(230,227,220,0)' };
     for (const k of ['candleStyle', 'hollowCandleStyle', 'haStyle']) Object.assign(o, { [`mainSeriesProperties.${k}.upColor`]: MS.up, [`mainSeriesProperties.${k}.downColor`]: MS.down, [`mainSeriesProperties.${k}.borderUpColor`]: MS.up, [`mainSeriesProperties.${k}.borderDownColor`]: MS.down, [`mainSeriesProperties.${k}.wickUpColor`]: MS.up, [`mainSeriesProperties.${k}.wickDownColor`]: MS.down });
     o['mainSeriesProperties.barStyle.upColor'] = MS.up; o['mainSeriesProperties.barStyle.downColor'] = MS.down;
+    return Object.assign(o, themeOverrides());
+  }
+  function themeOverrides() {
+    const t = cTheme(); if (t.id === 'massive') return {};
+    const o = { 'paneProperties.backgroundType': 'solid', 'paneProperties.background': t.bg, 'paneProperties.backgroundGradientStartColor': t.bg, 'paneProperties.backgroundGradientEndColor': t.bg,
+      'paneProperties.vertGridProperties.color': t.grid, 'paneProperties.horzGridProperties.color': t.grid, 'scalesProperties.lineColor': t.grid, 'scalesProperties.textColor': t.text, 'paneProperties.crossHairProperties.color': t.text };
+    for (const k of ['candleStyle', 'hollowCandleStyle', 'haStyle']) Object.assign(o, { [`mainSeriesProperties.${k}.upColor`]: t.up, [`mainSeriesProperties.${k}.downColor`]: t.dn, [`mainSeriesProperties.${k}.borderUpColor`]: t.upB, [`mainSeriesProperties.${k}.borderDownColor`]: t.dnB, [`mainSeriesProperties.${k}.wickUpColor`]: t.upW, [`mainSeriesProperties.${k}.wickDownColor`]: t.dnW, [`mainSeriesProperties.${k}.drawBorder`]: true });
+    o['mainSeriesProperties.barStyle.upColor'] = t.upB; o['mainSeriesProperties.barStyle.downColor'] = t.dnB;
     return o;
   }
   const VEST_CHART = { 'paneProperties.background': '#0F0F0F', 'paneProperties.backgroundGradientStartColor': '#0F0F0F', 'paneProperties.backgroundGradientEndColor': '#0F0F0F', 'paneProperties.vertGridProperties.color': '#292929', 'paneProperties.horzGridProperties.color': '#292929', 'scalesProperties.lineColor': '#292929', 'scalesProperties.textColor': '#F2F2F2', 'mainSeriesProperties.candleStyle.upColor': '#00D98E', 'mainSeriesProperties.candleStyle.downColor': '#E03737', 'mainSeriesProperties.candleStyle.borderUpColor': '#00D98E', 'mainSeriesProperties.candleStyle.borderDownColor': '#E03737', 'mainSeriesProperties.candleStyle.wickUpColor': '#00D98E', 'mainSeriesProperties.candleStyle.wickDownColor': '#E03737' };
@@ -2017,7 +2070,9 @@
         if (!st) { st = doc.createElement('style'); st.id = 'gpz-skin'; (doc.head || doc.documentElement).appendChild(st); }
         st.textContent = `:root, body { --tv-color-platform-background: ${MS.bg} !important; --tv-color-pane-background: ${MS.bg} !important; --tv-color-popup-background: ${MS.card} !important; --tv-color-popup-element-background-active: ${MS.active} !important; --themed-color-drawer-backdrop: ${MS.bg} !important; --themed-color-pane-bg: ${MS.bg} !important; --themed-color-text: ${MS.text} !important; --themed-color-background: ${MS.card} !important; font-family: Inter, system-ui, sans-serif; }`;
         w.applyOverrides(skinOverrides());
-      } else { if (st) st.remove(); w.applyOverrides(VEST_CHART); }
+      } else { if (st) st.remove(); w.applyOverrides(Object.assign({}, VEST_CHART, themeOverrides())); }
+      { const t = cTheme(), bg = t.id === 'massive' ? null : t.bg; let ts = doc.getElementById('gpz-cth'); // the chart's own frame takes the canvas colour too
+        if (bg) { if (!ts) { ts = doc.createElement('style'); ts.id = 'gpz-cth'; (doc.head || doc.documentElement).appendChild(ts); } ts.textContent = `:root, body { --tv-color-platform-background: ${bg} !important; --tv-color-pane-background: ${bg} !important; --themed-color-pane-bg: ${bg} !important; }`; } else if (ts) ts.remove(); }
       try { for (const s of ch.getAllStudies() || []) if (s && s.name === 'Volume') ch.getStudyById(s.id).applyOverrides(on ? { 'volume.color.0': '#2a2a2e', 'volume.color.1': '#4a4a50' } : { 'volume.color.0': '#E03737', 'volume.color.1': '#00D98E' }); } catch (e) {}
       return true;
     } catch (e) { return false; }
@@ -2039,7 +2094,7 @@
     html.classList.toggle('gpz-skin', on);
     const f = document.querySelector('iframe[id^="tradingview_"]'); if (!f) return;
     let sym = ''; try { sym = f.contentWindow.tradingViewApi.activeChart().symbol(); } catch (e) { return; }
-    const key = [f.id, sym, on, html.classList.contains('dark')].join('|'); if (key === skinKey) return;
+    const key = [f.id, sym, on, html.classList.contains('dark'), DB.cth || ''].join('|'); if (key === skinKey) return;
     if (!html.classList.contains('dark') && on) return;
     if (!paintChart(f, on)) return; // not ready yet: tried again on the next pass
     skinKey = key; skinTimers.forEach(clearTimeout); // Vest re-applies its own colours as the chart settles: paint again after it
@@ -2066,6 +2121,6 @@
 
   // ---------- start ----------
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && OPEN) closePanel(); });
-  const boot = () => { booted = true; fonts(); applySkin(); placePill(); render(); setInterval(placePill, 1000); setInterval(() => { if (DB.zone || OPEN) render(); if (DB.zone && SHOT.visible) zoneBits(); }, 1000); loop(); fastLoop(); };
+  const boot = () => { booted = true; fonts(); applySkin(); loop(); fastLoop(); }; // the Pulse pill and its panel are gone
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();

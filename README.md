@@ -1,6 +1,6 @@
 # GP. Entry for Vest
 
-A Tampermonkey userscript for [Vest](https://next.vestmarkets.com): spend and live PnL in Vest's header, a one-click order ticket with risk and reward dials you can also type into, your daily loss floor on the chart, and a desk for all your accounts: switch, copy, and close or cut any of them.
+A Tampermonkey userscript for [Vest](https://next.vestmarkets.com): a one-click order ticket with risk and reward dials you can also type into, your daily loss floor on the chart, a desk for all your accounts (switch, copy, and close or cut any of them), chart colour sets, and keyboard shortcuts you can switch on and set yourself.
 
 ## Install
 
