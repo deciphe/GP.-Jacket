@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.4.4
+// @version      1.4.5
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -1111,25 +1111,29 @@
   .tk button{position:absolute;transform:translateX(-50%);padding:0 3px;border:0;background:none;color:#5c5c62;font:700 9.5px Inter,system-ui,sans-serif;cursor:pointer;letter-spacing:.02em;transition:color .2s}
   .tk button:before{content:"";position:absolute;left:50%;top:-6px;width:1px;height:4px;background:rgba(238,234,226,.18)}
   .tk button:hover{color:#f1f1f3}.tk button.on{color:#e6e3dc}
-  .ld{position:relative;display:flex;align-items:center;gap:5px;flex:none;z-index:4}.ld>*{flex:none}
-  .ldd{flex:1 1 auto!important;min-width:0;display:flex;align-items:center;gap:6px;height:26px;padding:0 10px 0 11px;border-radius:8px;border:1px solid rgba(238,234,226,.12);background:none;color:#c9c7c2;font:700 11.5px Inter,system-ui,sans-serif;cursor:pointer;transition:all .25s;white-space:nowrap;overflow:hidden}
-  .ldd:hover,.ldd.op{border-color:rgba(238,234,226,.34);color:#f1f1f3}.ldd.on{background:#e6e3dc;border-color:#e6e3dc;color:#0b0b0b}
-  .ldd b{font-weight:700;overflow:hidden;text-overflow:ellipsis}.ldd small{font-size:9.5px;font-weight:600;color:#6f6f75;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis}.ldd.on small{color:#55524b}
-  .ldd i{margin-left:auto;font-style:normal;font-size:9px;opacity:.6;transition:transform .2s}.ldd.op i{transform:rotate(180deg)}
-  .ls{flex:none;height:26px;padding:0 10px;border-radius:8px;border:1px solid rgba(238,234,226,.12);background:none;color:#9e9ea5;font:700 11px Inter,system-ui,sans-serif;cursor:pointer;transition:all .25s;white-space:nowrap}
-  .ls:hover{color:#f1f1f3;border-color:rgba(238,234,226,.34)}.ls.on{background:#e6e3dc;border-color:#e6e3dc;color:#0b0b0b}
-  .ln{display:flex;gap:5px;flex:1 0 100%!important}.ln[hidden]{display:none}.ld:has(.ln:not([hidden]))>:not(.ln){display:none}
-  .ln input{flex:1;min-width:0;height:26px;padding:0 12px;border-radius:8px;border:1px solid rgba(227,201,142,.55);background:#0b0b0b;color:#f1f1f3;font:700 12px Inter,system-ui,sans-serif;outline:none}
-  .ll{position:absolute;left:0;right:0;bottom:calc(100% + 6px);display:flex;flex-direction:column;gap:3px;max-height:196px;overflow-y:auto;scrollbar-width:none;padding:4px;border-radius:10px;border:1px solid rgba(238,234,226,.16);background:#0b0b0b;box-shadow:0 -12px 30px rgba(0,0,0,.6);animation:lin .18s ease-out}.ll[hidden]{display:none}.ll::-webkit-scrollbar{display:none}
-  .lc{flex:none;white-space:nowrap;display:flex;border-color:transparent!important;align-items:center;height:26px;border-radius:8px;border:1px solid rgba(238,234,226,.12);overflow:hidden;transition:all .25s;animation:lin .35s ease-out}
-  @keyframes lin{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:none}}
-  .lc button:first-child{flex:1;min-width:0;display:flex;align-items:center;justify-content:space-between;text-align:left}.lc.on{border-color:#e6e3dc!important}
-  .lc:hover{background:rgba(238,234,226,.06)}.lc.on:hover{background:#e6e3dc}
-  .lc button{height:100%;border:0;background:none;color:#c9c7c2;font:700 11.5px Inter,system-ui,sans-serif;cursor:pointer;padding:0 4px 0 11px}
-  .lc button small{margin-left:6px;font-size:9.5px;font-weight:600;color:#6f6f75;font-variant-numeric:tabular-nums}.lc.on button small{color:#9e9ea5}
-  .lc button.x{padding:0 9px 0 4px;color:#55555b;font-size:13px;opacity:0;transition:opacity .2s}
-  .lc:hover{border-color:rgba(238,234,226,.34)}.lc:hover button.x{opacity:1}.lc button.x:hover{color:#efb1a7}
-  .lc.on{background:#e6e3dc;border-color:#e6e3dc}.lc.on button{color:#0b0b0b}.lc.on button small{color:#55524b}.lc.on button.x{color:#55524b}`;
+  .ld{position:relative;display:flex;align-items:center;gap:6px;flex:none;z-index:4}.ld>*{flex:none}
+  .ldd{flex:1 1 auto!important;min-width:0;display:flex;align-items:center;gap:8px;height:30px;padding:0 10px 0 12px;border-radius:9px;border:1px solid rgba(238,234,226,.12);background:rgba(238,234,226,.025);color:#c9c7c2;font:700 12px Inter,system-ui,sans-serif;cursor:pointer;transition:border-color .2s,background .2s;white-space:nowrap;overflow:hidden}
+  .ldd:hover,.ldd.op{border-color:rgba(238,234,226,.3);background:rgba(238,234,226,.05);color:#f1f1f3}.ldd:disabled{cursor:default;opacity:.55}
+  .ldd .dt{width:6px;height:6px;border-radius:50%;background:#55555b;flex:none}.ldd.on .dt{background:#bfe6cb;box-shadow:0 0 8px rgba(159,215,178,.6)}
+  .ldd b{font-weight:700;color:#f1f1f3;overflow:hidden;text-overflow:ellipsis}.ldd:not(.on) b{color:#9e9ea5}
+  .ldd small{margin-left:auto;font-size:10px;font-weight:600;color:#7a7a80;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis}
+  .ldd i{font-style:normal;width:8px;height:8px;flex:none;border-right:1.5px solid #7a7a80;border-bottom:1.5px solid #7a7a80;transform:translateY(1px) rotate(-135deg);transition:transform .2s}.ldd.op i{transform:translateY(-2px) rotate(45deg)}
+  .ls{flex:none;height:30px;min-width:30px;padding:0 10px;border-radius:9px;border:1px solid rgba(238,234,226,.12);background:none;color:#9e9ea5;font:700 12px Inter,system-ui,sans-serif;cursor:pointer;transition:all .2s;white-space:nowrap}
+  .ls:hover{color:#f1f1f3;border-color:rgba(238,234,226,.3)}.ls.on{background:#e6e3dc;border-color:#e6e3dc;color:#0b0b0b}
+  .ln{display:flex;gap:6px;flex:1 0 100%!important}.ln[hidden]{display:none}.ld:has(.ln:not([hidden]))>:not(.ln){display:none}
+  .ln input{flex:1;min-width:0;height:30px;padding:0 12px;border-radius:9px;border:1px solid rgba(227,201,142,.55);background:#0b0b0b;color:#f1f1f3;font:700 12px Inter,system-ui,sans-serif;outline:none}
+  .ll{position:absolute;left:0;right:0;bottom:calc(100% + 6px);display:flex;flex-direction:column;gap:2px;max-height:210px;overflow-y:auto;scrollbar-width:none;padding:5px;border-radius:12px;border:1px solid rgba(238,234,226,.14);background:#101010;box-shadow:0 -18px 40px -8px rgba(0,0,0,.75);animation:lup .16s ease-out;transform-origin:bottom}.ll[hidden]{display:none}.ll::-webkit-scrollbar{display:none}
+  @keyframes lup{from{opacity:0;transform:translateY(4px) scale(.98)}to{opacity:1;transform:none}}
+  .lc{position:relative;flex:none;display:flex;align-items:center;height:32px;border-radius:8px;transition:background .15s}
+  .lc:hover{background:rgba(238,234,226,.06)}.lc.on{background:rgba(159,215,178,.08)}
+  .lc button{height:100%;border:0;background:none;color:#c9c7c2;font:700 12px Inter,system-ui,sans-serif;cursor:pointer}
+  .lc button:first-child{flex:1;min-width:0;display:flex;align-items:center;gap:8px;padding:0 6px 0 10px;text-align:left}
+  .lc button:first-child:before{content:"";width:6px;height:6px;border-radius:50%;flex:none;background:rgba(238,234,226,.14)}.lc.on button:first-child:before{background:#bfe6cb;box-shadow:0 0 8px rgba(159,215,178,.6)}
+  .lc.on button{color:#f1f1f3}
+  .lc button small{margin-left:auto;font-size:10px;font-weight:600;color:#7a7a80;font-variant-numeric:tabular-nums}.lc.on button small{color:#9fd7b2}
+  .lc button.x{width:26px;flex:none;color:#55555b;font-size:14px;opacity:0;transition:opacity .15s,color .15s}
+  .lc:hover button.x{opacity:1}.lc button.x:hover{color:#efb1a7}
+  @keyframes lin{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:none}}`;
   let SP = null;
   const BEAM = '<i class="tr"></i><i class="zl"></i><i class="zh"></i><i class="fl"></i><span data-g></span><i class="bk ks"></i><i class="bk ke"></i><i class="bk kt"></i><i class="pd"></i>';
   // the beam: stop on the left, target on the right, entry between, the price riding along it. o is in points from entry.
@@ -1231,12 +1235,12 @@
     const ldOpen = v => { k('ll').hidden = !v; k('ldd').classList.toggle('op', !!v); };
     on('ldd', () => ldOpen(k('ll').hidden && (DB.loads || []).length > 0));
     R.addEventListener('pointerdown', e => { if (!k('ll').hidden && !e.composedPath().some(n => n === k('ll') || n === k('ldd'))) ldOpen(false); });
-    const keep = () => { const n = lname.value.trim().slice(0, 18); if (!n) return lname.focus(); const L0 = (DB.loads || []).filter(x => x.n.toLowerCase() !== n.toLowerCase()); L0.push(Object.assign({ n }, loadOf())); DB.loads = L0.slice(-12); save(); openName(false); renderShot(); };
+    const keep = () => { const n = lname.value.trim().slice(0, 18); if (!n) return lname.focus(); const L0 = (DB.loads || []).filter(x => x.n.toLowerCase() !== n.toLowerCase()); L0.push(Object.assign({ n }, loadOf())); SH.ldn = n; saveSH(); DB.loads = L0.slice(-12); save(); openName(false); renderShot(); };
     on('lok', keep);
     lname.onkeydown = e => { if (e.key === 'Enter') keep(); else if (e.key === 'Escape') openName(false); };
     k('ll').onclick = e => { const c = e.target.closest('.lc'); if (!c) return; const L0 = DB.loads || [], x = L0[+c.dataset.i]; if (!x) return;
       if (e.target.closest('.x')) { L0.splice(+c.dataset.i, 1); DB.loads = L0; save(); if (!L0.length) ldOpen(false); renderShot(); return; }
-      ldOpen(false);
+      ldOpen(false); SH.ldn = x.n;
       Object.assign(SH, { risk: x.risk, rmode: x.rmode === 'usd' ? 'usd' : 'pct', rusd: +x.rusd || 0, R: x.R, tmode: x.tmode, usd: x.usd, size: x.size, fees: x.fees }); saveSH(); redo(); };
     on('long', () => fire('long')); on('short', () => fire('short')); on('close', closeMine); on('close2', closeMine);
     on('addmode', () => addOn(true)); on('addback', () => addOn(false)); on('addgo', addMore);
@@ -1392,9 +1396,11 @@
       { const ru = R.querySelector('[data-n=rusd]'); if (R.activeElement !== ru) { ru.value = SH.rmode === 'usd' && SH.rusd > 0 ? '$' + SH.rusd : ''; ru.classList.toggle('on', SH.rmode === 'usd' && SH.rusd > 0); } }
       const pb = R.querySelector('[data-a=pass]'); pb.classList.toggle('on', SH.tmode === 'pass'); pb.disabled = !(p.passNeed > 0); pb.hidden = !(p.passNeed > 0) && SH.tmode !== 'pass';
       const usd = R.querySelector('[data-n=usd]'); if (R.activeElement !== usd) { usd.value = SH.tmode === 'usd' && SH.usd > 0 ? '$' + SH.usd : ''; usd.classList.toggle('on', SH.tmode === 'usd'); }
-      { const cur = JSON.stringify(loadOf()), L0 = DB.loads || [], h = L0.map((x, i) => `<div class="lc${JSON.stringify(loadOf(x)) === cur ? ' on' : ''}" data-i="${i}"><button title="${trimNum(x.risk)}% risk · ${x.tmode === 'pass' ? 'pass' : x.tmode === 'usd' ? '$' + trimNum(x.usd) : trimNum(x.R) + 'R'} · size ${x.size >= 100 ? 'max' : x.size + '%'}${x.fees ? ' · fees in' : ''}">${esc(x.n)}<small>${x.rmode === 'usd' && x.rusd > 0 ? '$' + trimNum(x.rusd) + ' stop' : trimNum(x.risk) + '%'} · ${x.tmode === 'pass' ? 'pass' : x.tmode === 'usd' ? '$' + trimNum(x.usd) : trimNum(x.R) + 'R'} · ${x.size >= 100 ? 'max' : x.size + '%'}</small></button><button class="x" title="Delete">×</button></div>`).join('');
-        if (k('ll').dataset.h !== h) k('ll').innerHTML = k('ll').dataset.h = h; k('lsv').textContent = L0.length ? '+' : '+ loadout';
-        const lit = L0.find(x => JSON.stringify(loadOf(x)) === cur), dd = k('ldd'), dh = lit ? `<b>${esc(lit.n)}</b><small>${lit.rmode === 'usd' && lit.rusd > 0 ? '$' + trimNum(lit.rusd) + ' stop' : trimNum(lit.risk) + '%'} · ${lit.tmode === 'pass' ? 'pass' : lit.tmode === 'usd' ? '$' + trimNum(lit.usd) : trimNum(lit.R) + 'R'} · ${lit.size >= 100 ? 'max' : lit.size + '%'}</small><i>▾</i>` : `<b>${L0.length ? 'loadouts' : 'no loadouts'}</b>${L0.length ? '<small>' + L0.length + '</small><i>▾</i>' : ''}`;
+      { const cur = JSON.stringify(loadOf()), L0 = DB.loads || [], same = x => JSON.stringify(loadOf(x)) === cur, lit = L0.find(x => x.n === SH.ldn && same(x)) || L0.find(same),
+          peek = x => `${x.rmode === 'usd' && x.rusd > 0 ? '$' + trimNum(x.rusd) + ' stop' : trimNum(x.risk) + '%'} · ${x.tmode === 'pass' ? 'pass' : x.tmode === 'usd' ? '$' + trimNum(x.usd) : trimNum(x.R) + 'R'} · ${x.size >= 100 ? 'max' : x.size + '%'}`,
+          h = L0.map((x, i) => `<div class="lc${x === lit ? ' on' : ''}" data-i="${i}"><button title="${esc(x.n)}${x.fees ? ' · fees in' : ''}">${esc(x.n)}<small>${peek(x)}</small></button><button class="x" title="Delete">×</button></div>`).join('');
+        if (k('ll').dataset.h !== h) k('ll').innerHTML = k('ll').dataset.h = h; k('lsv').textContent = L0.length ? '+' : '+ save';
+        const dd = k('ldd'), dh = `<span class="dt"></span><b>${lit ? esc(lit.n) : L0.length ? 'loadouts' : 'no loadouts'}</b><small>${lit ? peek(lit) : L0.length ? L0.length + ' saved' : ''}</small>${L0.length ? '<i></i>' : ''}`;
         if (dd.dataset.h !== dh) dd.innerHTML = dd.dataset.h = dh; dd.classList.toggle('on', !!lit); dd.disabled = !L0.length; }
       const side = SH.side || 'long';
       R.querySelectorAll('[data-sd]').forEach(b => b.classList.toggle('on', b.dataset.sd === side));
