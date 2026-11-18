@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.4.3
+// @version      1.4.4
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -1111,14 +1111,20 @@
   .tk button{position:absolute;transform:translateX(-50%);padding:0 3px;border:0;background:none;color:#5c5c62;font:700 9.5px Inter,system-ui,sans-serif;cursor:pointer;letter-spacing:.02em;transition:color .2s}
   .tk button:before{content:"";position:absolute;left:50%;top:-6px;width:1px;height:4px;background:rgba(238,234,226,.18)}
   .tk button:hover{color:#f1f1f3}.tk button.on{color:#e6e3dc}
-  .ld{display:flex;align-items:center;gap:5px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;flex:none;-webkit-mask-image:linear-gradient(90deg,#000 88%,transparent);mask-image:linear-gradient(90deg,#000 88%,transparent)}.ld::-webkit-scrollbar{display:none}.ld>*{flex:none}
+  .ld{position:relative;display:flex;align-items:center;gap:5px;flex:none;z-index:4}.ld>*{flex:none}
+  .ldd{flex:1 1 auto!important;min-width:0;display:flex;align-items:center;gap:6px;height:26px;padding:0 10px 0 11px;border-radius:8px;border:1px solid rgba(238,234,226,.12);background:none;color:#c9c7c2;font:700 11.5px Inter,system-ui,sans-serif;cursor:pointer;transition:all .25s;white-space:nowrap;overflow:hidden}
+  .ldd:hover,.ldd.op{border-color:rgba(238,234,226,.34);color:#f1f1f3}.ldd.on{background:#e6e3dc;border-color:#e6e3dc;color:#0b0b0b}
+  .ldd b{font-weight:700;overflow:hidden;text-overflow:ellipsis}.ldd small{font-size:9.5px;font-weight:600;color:#6f6f75;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis}.ldd.on small{color:#55524b}
+  .ldd i{margin-left:auto;font-style:normal;font-size:9px;opacity:.6;transition:transform .2s}.ldd.op i{transform:rotate(180deg)}
   .ls{flex:none;height:26px;padding:0 10px;border-radius:8px;border:1px solid rgba(238,234,226,.12);background:none;color:#9e9ea5;font:700 11px Inter,system-ui,sans-serif;cursor:pointer;transition:all .25s;white-space:nowrap}
   .ls:hover{color:#f1f1f3;border-color:rgba(238,234,226,.34)}.ls.on{background:#e6e3dc;border-color:#e6e3dc;color:#0b0b0b}
-  .ln{display:flex;gap:5px;flex:1 0 100%!important}.ld:has(.ln:not([hidden]))>:not(.ln){display:none}.ld:has(.ln:not([hidden])){-webkit-mask-image:none;mask-image:none}
+  .ln{display:flex;gap:5px;flex:1 0 100%!important}.ln[hidden]{display:none}.ld:has(.ln:not([hidden]))>:not(.ln){display:none}
   .ln input{flex:1;min-width:0;height:26px;padding:0 12px;border-radius:8px;border:1px solid rgba(227,201,142,.55);background:#0b0b0b;color:#f1f1f3;font:700 12px Inter,system-ui,sans-serif;outline:none}
-  .ll{display:contents}
-  .lc{flex:none;white-space:nowrap;display:inline-flex;align-items:center;height:26px;border-radius:8px;border:1px solid rgba(238,234,226,.12);overflow:hidden;transition:all .25s;animation:lin .35s ease-out}
+  .ll{position:absolute;left:0;right:0;bottom:calc(100% + 6px);display:flex;flex-direction:column;gap:3px;max-height:196px;overflow-y:auto;scrollbar-width:none;padding:4px;border-radius:10px;border:1px solid rgba(238,234,226,.16);background:#0b0b0b;box-shadow:0 -12px 30px rgba(0,0,0,.6);animation:lin .18s ease-out}.ll[hidden]{display:none}.ll::-webkit-scrollbar{display:none}
+  .lc{flex:none;white-space:nowrap;display:flex;border-color:transparent!important;align-items:center;height:26px;border-radius:8px;border:1px solid rgba(238,234,226,.12);overflow:hidden;transition:all .25s;animation:lin .35s ease-out}
   @keyframes lin{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:none}}
+  .lc button:first-child{flex:1;min-width:0;display:flex;align-items:center;justify-content:space-between;text-align:left}.lc.on{border-color:#e6e3dc!important}
+  .lc:hover{background:rgba(238,234,226,.06)}.lc.on:hover{background:#e6e3dc}
   .lc button{height:100%;border:0;background:none;color:#c9c7c2;font:700 11.5px Inter,system-ui,sans-serif;cursor:pointer;padding:0 4px 0 11px}
   .lc button small{margin-left:6px;font-size:9.5px;font-weight:600;color:#6f6f75;font-variant-numeric:tabular-nums}.lc.on button small{color:#9e9ea5}
   .lc button.x{padding:0 9px 0 4px;color:#55555b;font-size:13px;opacity:0;transition:opacity .2s}
@@ -1160,7 +1166,7 @@
         ${slider('R', 'REWARD', RLO, RHI, 0.05, [[0.5, '.5R'], [1, '1R'], [2, '2R'], [3, '3R']])}
         ${slider('size', 'SIZE', 5, 100, 1, [[25, '25%'], [50, '50%'], [75, '75%'], [100, 'max']])}
         <div class="bal"><div class="bb"><i data-k="fb" style="width:0"></i></div><div class="bt"><span>fees <b data-k="fe">—</b><button class="sw" data-t="fees" title="Fees inside the risk" aria-label="Fees inside the risk"></button></span><span data-k="qz"></span></div></div>
-        <div class="ld"><div class="ll" data-k="ll"></div><button class="ls" data-a="lsave" title="Save loadout" data-k="lsv">+</button>
+        <div class="ld"><button class="ldd" data-a="ldd" data-k="ldd" title="Loadouts"></button><div class="ll" data-k="ll" hidden></div><button class="ls" data-a="lsave" title="Save loadout" data-k="lsv">+</button>
           <div class="ln" data-k="ln" hidden><input data-k="lname" maxlength="18" placeholder="name it" aria-label="Loadout name"><button class="ls on" data-a="lok">save</button><button class="ls" data-a="lno">×</button></div></div>
       </div>
       <div class="tv" data-v="pos" hidden>
@@ -1222,12 +1228,15 @@
     const ln = k('ln'), lname = k('lname');
     const openName = v => { ln.hidden = !v; R.querySelector('[data-a=lsave]').hidden = v; if (v) { lname.value = ''; lname.focus(); } };
     on('lsave', () => openName(true)); on('lno', () => openName(false));
-    R.querySelector('.ld').addEventListener('wheel', e => { const el = e.currentTarget; if (el.scrollWidth > el.clientWidth && Math.abs(e.deltaY) > Math.abs(e.deltaX)) { el.scrollLeft += e.deltaY; e.preventDefault(); } }, { passive: false });
+    const ldOpen = v => { k('ll').hidden = !v; k('ldd').classList.toggle('op', !!v); };
+    on('ldd', () => ldOpen(k('ll').hidden && (DB.loads || []).length > 0));
+    R.addEventListener('pointerdown', e => { if (!k('ll').hidden && !e.composedPath().some(n => n === k('ll') || n === k('ldd'))) ldOpen(false); });
     const keep = () => { const n = lname.value.trim().slice(0, 18); if (!n) return lname.focus(); const L0 = (DB.loads || []).filter(x => x.n.toLowerCase() !== n.toLowerCase()); L0.push(Object.assign({ n }, loadOf())); DB.loads = L0.slice(-12); save(); openName(false); renderShot(); };
     on('lok', keep);
     lname.onkeydown = e => { if (e.key === 'Enter') keep(); else if (e.key === 'Escape') openName(false); };
     k('ll').onclick = e => { const c = e.target.closest('.lc'); if (!c) return; const L0 = DB.loads || [], x = L0[+c.dataset.i]; if (!x) return;
-      if (e.target.closest('.x')) { L0.splice(+c.dataset.i, 1); DB.loads = L0; save(); renderShot(); return; }
+      if (e.target.closest('.x')) { L0.splice(+c.dataset.i, 1); DB.loads = L0; save(); if (!L0.length) ldOpen(false); renderShot(); return; }
+      ldOpen(false);
       Object.assign(SH, { risk: x.risk, rmode: x.rmode === 'usd' ? 'usd' : 'pct', rusd: +x.rusd || 0, R: x.R, tmode: x.tmode, usd: x.usd, size: x.size, fees: x.fees }); saveSH(); redo(); };
     on('long', () => fire('long')); on('short', () => fire('short')); on('close', closeMine); on('close2', closeMine);
     on('addmode', () => addOn(true)); on('addback', () => addOn(false)); on('addgo', addMore);
@@ -1384,7 +1393,9 @@
       const pb = R.querySelector('[data-a=pass]'); pb.classList.toggle('on', SH.tmode === 'pass'); pb.disabled = !(p.passNeed > 0); pb.hidden = !(p.passNeed > 0) && SH.tmode !== 'pass';
       const usd = R.querySelector('[data-n=usd]'); if (R.activeElement !== usd) { usd.value = SH.tmode === 'usd' && SH.usd > 0 ? '$' + SH.usd : ''; usd.classList.toggle('on', SH.tmode === 'usd'); }
       { const cur = JSON.stringify(loadOf()), L0 = DB.loads || [], h = L0.map((x, i) => `<div class="lc${JSON.stringify(loadOf(x)) === cur ? ' on' : ''}" data-i="${i}"><button title="${trimNum(x.risk)}% risk · ${x.tmode === 'pass' ? 'pass' : x.tmode === 'usd' ? '$' + trimNum(x.usd) : trimNum(x.R) + 'R'} · size ${x.size >= 100 ? 'max' : x.size + '%'}${x.fees ? ' · fees in' : ''}">${esc(x.n)}<small>${x.rmode === 'usd' && x.rusd > 0 ? '$' + trimNum(x.rusd) + ' stop' : trimNum(x.risk) + '%'} · ${x.tmode === 'pass' ? 'pass' : x.tmode === 'usd' ? '$' + trimNum(x.usd) : trimNum(x.R) + 'R'} · ${x.size >= 100 ? 'max' : x.size + '%'}</small></button><button class="x" title="Delete">×</button></div>`).join('');
-        if (k('ll').dataset.h !== h) k('ll').innerHTML = k('ll').dataset.h = h; k('lsv').textContent = L0.length ? '+' : '+ loadout'; }
+        if (k('ll').dataset.h !== h) k('ll').innerHTML = k('ll').dataset.h = h; k('lsv').textContent = L0.length ? '+' : '+ loadout';
+        const lit = L0.find(x => JSON.stringify(loadOf(x)) === cur), dd = k('ldd'), dh = lit ? `<b>${esc(lit.n)}</b><small>${lit.rmode === 'usd' && lit.rusd > 0 ? '$' + trimNum(lit.rusd) + ' stop' : trimNum(lit.risk) + '%'} · ${lit.tmode === 'pass' ? 'pass' : lit.tmode === 'usd' ? '$' + trimNum(lit.usd) : trimNum(lit.R) + 'R'} · ${lit.size >= 100 ? 'max' : lit.size + '%'}</small><i>▾</i>` : `<b>${L0.length ? 'loadouts' : 'no loadouts'}</b>${L0.length ? '<small>' + L0.length + '</small><i>▾</i>' : ''}`;
+        if (dd.dataset.h !== dh) dd.innerHTML = dd.dataset.h = dh; dd.classList.toggle('on', !!lit); dd.disabled = !L0.length; }
       const side = SH.side || 'long';
       R.querySelectorAll('[data-sd]').forEach(b => b.classList.toggle('on', b.dataset.sd === side));
       if (p.qty) {
