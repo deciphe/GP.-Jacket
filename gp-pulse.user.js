@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.5.2
+// @version      1.5.3
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -2059,7 +2059,7 @@
   function themeOverrides() {
     const t = cTheme(); if (t.id === 'massive') return {};
     const o = { 'paneProperties.backgroundType': 'solid', 'paneProperties.background': t.bg, 'paneProperties.backgroundGradientStartColor': t.bg, 'paneProperties.backgroundGradientEndColor': t.bg,
-      'paneProperties.vertGridProperties.color': t.grid, 'paneProperties.horzGridProperties.color': t.grid, 'scalesProperties.lineColor': t.grid, 'scalesProperties.textColor': t.text, 'paneProperties.crossHairProperties.color': t.text };
+ }; // canvas and candles only
     for (const k of ['candleStyle', 'hollowCandleStyle', 'haStyle']) Object.assign(o, { [`mainSeriesProperties.${k}.upColor`]: t.up, [`mainSeriesProperties.${k}.downColor`]: t.dn, [`mainSeriesProperties.${k}.borderUpColor`]: t.upB, [`mainSeriesProperties.${k}.borderDownColor`]: t.dnB, [`mainSeriesProperties.${k}.wickUpColor`]: t.upW, [`mainSeriesProperties.${k}.wickDownColor`]: t.dnW, [`mainSeriesProperties.${k}.drawBorder`]: true });
     o['mainSeriesProperties.barStyle.upColor'] = t.upB; o['mainSeriesProperties.barStyle.downColor'] = t.dnB;
     return o;
@@ -2076,8 +2076,7 @@
         st.textContent = `:root, body { --tv-color-platform-background: ${MS.bg} !important; --tv-color-pane-background: ${MS.bg} !important; --tv-color-popup-background: ${MS.card} !important; --tv-color-popup-element-background-active: ${MS.active} !important; --themed-color-drawer-backdrop: ${MS.bg} !important; --themed-color-pane-bg: ${MS.bg} !important; --themed-color-text: ${MS.text} !important; --themed-color-background: ${MS.card} !important; font-family: Inter, system-ui, sans-serif; }`;
         w.applyOverrides(skinOverrides());
       } else { if (st) st.remove(); w.applyOverrides(Object.assign({}, VEST_CHART, themeOverrides())); }
-      { const t = cTheme(), bg = t.id === 'massive' ? null : t.bg; let ts = doc.getElementById('gpz-cth'); // the chart's own frame takes the canvas colour too
-        if (bg) { if (!ts) { ts = doc.createElement('style'); ts.id = 'gpz-cth'; (doc.head || doc.documentElement).appendChild(ts); } ts.textContent = `:root, body { --tv-color-platform-background: ${bg} !important; --tv-color-pane-background: ${bg} !important; --themed-color-pane-bg: ${bg} !important; }`; } else if (ts) ts.remove(); }
+      { const ts = doc.getElementById('gpz-cth'); if (ts) ts.remove(); } // the canvas colour comes from the overrides alone: Vest's toolbars keep their own dark
       try { for (const s of ch.getAllStudies() || []) if (s && s.name === 'Volume') ch.getStudyById(s.id).applyOverrides(on ? { 'volume.color.0': '#2a2a2e', 'volume.color.1': '#4a4a50' } : { 'volume.color.0': '#E03737', 'volume.color.1': '#00D98E' }); } catch (e) {}
       return true;
     } catch (e) { return false; }
