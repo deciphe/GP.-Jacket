@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.4.5
+// @version      1.4.6
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -1336,12 +1336,29 @@
     if (r && r.width > 200 && r.height > 300) SHOT.lastH = r.height;
     else if (IS_TRADE()) { const oc = orderCol(); if (oc) { const q = oc.getBoundingClientRect(); if (q.width > 200) r = { left: q.left, top: q.top, right: q.right, width: q.width, height: Math.min(q.height, SHOT.lastH || 640) }; } } // Vest swapped its ticket out: stay where it was
     SHOT.visible = on;
-    if (!on) { S.host.style.display = 'none'; const pk = S.peek; if (IS_TRADE() && r && r.width > 150) { pk.style.display = ''; pk.style.left = (r.right - 160) + 'px'; pk.style.top = (r.top + 4) + 'px'; } else pk.style.display = 'none'; return; }
+    if (!on) { tkFit(null); S.host.style.display = 'none'; const pk = S.peek; if (IS_TRADE() && r && r.width > 150) { pk.style.display = ''; pk.style.left = (r.right - 160) + 'px'; pk.style.top = (r.top + 4) + 'px'; } else pk.style.display = 'none'; return; }
     S.peek.style.display = 'none';
     let x, y, w, h;
-    if (SH.dock && r && r.width > 200 && r.height > 300) { x = r.left; y = r.top; w = r.width; h = r.height; }
-    else { w = 320; h = Math.min(640, innerHeight - 24); x = SH.x != null ? SH.x : innerWidth - w - 16; y = SH.y != null ? SH.y : Math.max(12, innerHeight - h - 16); }
-    const st = S.host.style; st.display = ''; st.left = Math.round(x) + 'px'; st.top = Math.round(y) + 'px'; st.width = Math.round(w) + 'px'; st.height = Math.round(h) + 'px';
+    const st = S.host.style, docked = SH.dock && r && r.width > 200 && r.height > 300;
+    if (docked) { x = r.left; y = r.top; w = r.width; } else { w = 320; x = SH.x != null ? SH.x : innerWidth - w - 16; }
+    st.display = ''; st.width = Math.round(w) + 'px';
+    // as tall as what's in it, on any screen: no dead space under Long / Short, no scroll
+    const room = Math.max(320, innerHeight - (docked ? Math.max(0, y) : 24) - 8), nat = shotNat(S);
+    h = Math.min(room, nat || room);
+    if (!docked) y = SH.y != null ? SH.y : Math.max(12, innerHeight - h - 16);
+    st.left = Math.round(x) + 'px'; st.top = Math.round(y) + 'px'; st.height = Math.round(h) + 'px';
+    tkFit(docked && card && card.isConnected ? card : null, h);
+  }
+  function shotNat(S) { // the ticket's own height with nothing stretched
+    const host = S.host, box = S.R.querySelector('.s'), h0 = host.style.height;
+    host.style.height = 'auto'; box.style.height = 'auto'; const n = Math.ceil(box.getBoundingClientRect().height);
+    box.style.height = ''; host.style.height = h0; return n > 200 ? n : 0;
+  }
+  function tkFit(card, h) { // Vest's ticket under GP. takes GP.'s height, so what sits below it moves up
+    document.querySelectorAll('[data-gpz-tk]').forEach(e => { if (e !== card) e.removeAttribute('data-gpz-tk'); });
+    if (!card) return;
+    if (!document.getElementById('gpz-tk-css')) { const c = document.createElement('style'); c.id = 'gpz-tk-css'; c.textContent = '[data-gpz-tk]{height:var(--gpz-tkh)!important;max-height:var(--gpz-tkh)!important;min-height:0!important;flex-grow:0!important;flex-shrink:0!important;box-sizing:border-box!important;overflow:hidden!important}'; document.head.appendChild(c); }
+    document.documentElement.style.setProperty('--gpz-tkh', Math.round(h) + 'px'); card.setAttribute('data-gpz-tk', '');
   }
   const NM = {}, CAPOLD = {}; // names and kinds stay known after an account closes
   const capAcctOld = id => capAcct(id) || CAPOLD[id] || null;
