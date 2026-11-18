@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.4.0
+// @version      1.4.1
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @homepageURL  https://github.com/deciphe/gp-pulse
@@ -735,7 +735,7 @@
   document.addEventListener('visibilitychange', () => { if (!document.hidden) kickFast(0); });
 
   // ---------- the plan: risk-locked size and fee-aware stop / target ----------
-  const SH = Object.assign({ on: true, risk: 2, R: 1, tmode: 'R', usd: 0, size: 100, fees: true, chart: true, side: 'long', dock: true, x: null, y: null }, DB.shot || {});
+  const SH = Object.assign({ on: true, sl: true, risk: 2, R: 1, tmode: 'R', usd: 0, size: 100, fees: true, chart: true, side: 'long', dock: true, x: null, y: null }, DB.shot || {});
   SH.chart = true;
   const saveSH = () => { DB.shot = SH; save(); };
   const esc = v => String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -748,12 +748,12 @@
     if (L.cap && L.capAt && L.balAt && !capAcct(id) && L.bal[id] == null) return { ok: false, why: acctShort(id) + ' is closed · pick another', sym, id, closed: true };
     const px = L.mark[sym], bal = balOf(id);
     if (!px || !(bal > 0)) return { ok: false, why: 'reading your account', sym, id };
-    const lev = maxLev(sym, id) || 1, f = +x.takerFee || 0;
+    const levMax = maxLev(sym, id) || 1, lev = Math.max(1, Math.min(levMax, Math.round((SH.levs && SH.levs[sym]) || levMax))), f = +x.takerFee || 0;
     const mine = L.pos.filter(p => accOf(p) === id);
     const used = mine.reduce((a, p) => a + Math.abs(+p.quantity) * (+p.openPrice) / (+p.leverage || lev), 0);
     const free = L.bal[id] != null ? Math.max(0, L.bal[id]) : Math.max(0, bal - used), maxN = free * lev * 0.985, notional = maxN * (SH.size / 100);
     const d = dec(sym), qty = Math.floor(notional / px * Math.pow(10, d) + 1e-7) / Math.pow(10, d);
-    const base = { sym, id, x, px, bal, lev, f, maxN };
+    const base = { sym, id, x, px, bal, lev, levMax, f, maxN };
     if (!(qty > 0)) return { ...base, ok: false, why: 'no free margin' };
     // the pass line: an evaluation's target equity, less what the account holds now (open trades included)
     const ca = capAcct(id), tgtEq = ca && ca.account_type === 2 ? +ca.target_equity : 0;
@@ -816,9 +816,9 @@
       p = plan(); if (!p.ok) throw new Error(p.why);
       if (myPos(p)) throw new Error('already in ' + shortSym(p.sym));
       const g = p[side];
-      const body = { orderType: 'market', leverage: String(p.lev), side, symbol: p.sym, quantity: p.qtyS, timeInForce: 'IOC', takeProfits: [{ executionType: 'market', triggerPrice: fmtP(g.tp, p.sym) }], stopLosses: [{ executionType: 'market', triggerPrice: fmtP(g.sl, p.sym) }] };
+      const body = { orderType: 'market', leverage: String(p.lev), side, symbol: p.sym, quantity: p.qtyS, timeInForce: 'IOC', takeProfits: [{ executionType: 'market', triggerPrice: fmtP(g.tp, p.sym) }], stopLosses: SH.sl === false ? [] : [{ executionType: 'market', triggerPrice: fmtP(g.sl, p.sym) }] };
       sent = true; await send(p.id, 'POST', '/v3/positions/open', body);
-      shotMsg((side === 'long' ? 'Long ' : 'Short ') + p.qtyS + ' ' + shortSym(p.sym) + ' · stop ' + fmtPx(g.sl, p.sym), 'ok');
+      shotMsg((side === 'long' ? 'Long ' : 'Short ') + p.qtyS + ' ' + shortSym(p.sym) + (SH.sl === false ? ' · no stop' : ' · stop ' + fmtPx(g.sl, p.sym)), 'ok');
     } catch (e) { if (e.status && e.status < 500 && e.status !== 429) sent = false; shotMsg(e.message, 'bad'); }
     SHOT.cool = Date.now() + (sent ? 2500 : 600); // no second shot until the position list has caught up
     SHOT.busy = false; saveSH(); kickFast(150); setTimeout(renderShot, 2600);
@@ -1010,6 +1010,19 @@
   .bb i{display:block;height:100%;border-radius:3px;background:#e3c98e;transition:width .7s cubic-bezier(.16,1,.3,1),background .3s}
   .bb i.hot{background:#e8988c}
   .bt{display:flex;justify-content:space-between;gap:8px;font-size:11px;font-weight:600;color:#8b8b92;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .sw.sm{transform:scale(.78);transform-origin:left center;vertical-align:-3px;margin-left:5px}
+  .s.nosl .sr[data-sr=risk]>b{color:#4f4f55}.s.nosl .pl .sl b{color:#4f4f55}
+  .lvb{border:0;background:none;padding:0 2px;margin:0 -2px;border-radius:5px;color:#f1f1f3;font:inherit;font-weight:700;cursor:pointer;border-bottom:1px dashed rgba(238,234,226,.35)}
+  .lvb:hover{background:rgba(238,234,226,.08)}.lvb.set{color:#e3c98e;border-bottom-color:rgba(227,201,142,.6)}
+  .lvp{position:absolute;right:14px;top:84px;z-index:30;width:230px;padding:12px 14px 10px;border-radius:12px;background:#111111;border:1px solid rgba(238,234,226,.14);box-shadow:0 22px 50px -16px rgba(0,0,0,.9);animation:lin .2s ease-out}
+  .lvh{display:flex;justify-content:space-between;align-items:baseline;font-size:10.5px;font-weight:600;letter-spacing:.14em;color:#8b8b92}.lvh b{font-size:20px;letter-spacing:-.03em;color:#f1f1f3;font-variant-numeric:tabular-nums}
+  .lvp input{-webkit-appearance:none;appearance:none;width:100%;height:18px;margin:8px 0 4px;background:none;cursor:pointer}
+  .lvp input::-webkit-slider-runnable-track{height:4px;border-radius:99px;background:linear-gradient(90deg,#e6e3dc 0,#e6e3dc var(--p,100%),rgba(238,234,226,.12) var(--p,100%))}
+  .lvp input::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;margin-top:-5px;border-radius:50%;background:#0b0b0b;box-shadow:0 0 0 2px #e6e3dc}
+  .lvp input::-moz-range-track{height:4px;border-radius:99px;background:rgba(238,234,226,.12)}.lvp input::-moz-range-progress{height:4px;border-radius:99px;background:#e6e3dc}
+  .lvp input::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:#0b0b0b;border:2px solid #e6e3dc}
+  .lvf{display:flex;justify-content:space-between;align-items:center;font-size:10.5px;font-weight:600;color:#6f6f75}
+  .lvf button{height:22px;padding:0 8px;border-radius:6px;border:1px solid rgba(238,234,226,.14);background:none;color:#9e9ea5;font:600 10.5px Inter,system-ui,sans-serif;cursor:pointer}.lvf button:hover{color:#f1f1f3}
   .bt b{color:#e3c98e;font-weight:600}.bt b.hot{color:#efb1a7}.bt span:last-child b{color:#f1f1f3}
   .sw{position:relative;width:26px;height:15px;border-radius:99px;border:0;background:rgba(238,234,226,.14);cursor:pointer;flex:none;vertical-align:-3px;margin-left:6px}
   .sw:after{content:"";position:absolute;left:2px;top:2px;width:11px;height:11px;border-radius:50%;background:#8b8b92;transition:transform .25s}
@@ -1130,12 +1143,13 @@
       <div class="hd" data-a="drag"><i class="dot"></i><div class="brand">GP.<span>SHOT</span></div><div class="sp"></div>
         <button class="ib" data-a="zone" title="Zone"><i></i><span data-k="zc">zone</span></button><button class="ib" data-a="copy" title="Copier"><i></i><span data-k="cp">desk</span></button><button class="ib" data-a="vest" title="Vest's ticket">Vest</button></div>
       <div class="mk"><b data-k="px">—</b><span data-k="ac">—</span></div>
+      <div class="lvp" data-k="lvp" hidden><div class="lvh"><span>LEVERAGE</span><b data-k="lvv">—</b></div><input type="range" data-k="lvr" min="1" max="50" step="1" aria-label="Leverage"><div class="lvf"><span>1x</span><button data-a="levmax">max <span data-k="lvm"></span></button></div></div>
       <div class="zr" data-k="zr" hidden><div class="zs" data-k="zs"></div>
         <div class="zi" data-k="zi"><label>LOCK</label><input class="n" data-z="loss" inputmode="decimal" placeholder="−$ loss" aria-label="Lock after this loss"><input class="n" data-z="n" inputmode="numeric" placeholder="losers" aria-label="Lock after this many losers"><button class="ls on" data-a="zgo">enter</button></div>
         <button class="ls" data-a="zend" hidden>end</button></div>
       <div class="pv" data-v="plan">
         <div class="adh" data-k="adh" hidden><span data-k="adt">—</span><button data-a="addback">back</button></div>
-        <div class="pl"><div class="sl"><small>STOP</small><b data-k="slv">—</b><em data-k="slp">—</em></div><div class="tp"><small>TARGET</small><b data-k="tpv">—</b><em data-k="tpp">—</em></div></div>
+        <div class="pl"><div class="sl"><small>STOP<button class="sw sm" data-t="sl" title="Stop loss on or off" aria-label="Stop loss on or off"></button></small><b data-k="slv">—</b><em data-k="slp">—</em></div><div class="tp"><small>TARGET</small><b data-k="tpv">—</b><em data-k="tpp">—</em></div></div>
         <div class="bm" data-k="bm0">${BEAM}</div>
         ${slider('risk', 'RISK', 0.1, 6, 0.05, [[0.25, '.25'], [0.5, '.5%'], [1, '1%'], [2, '2%'], [3, '3%'], [6, '6%']])}
         ${slider('R', 'REWARD', RLO, RHI, 0.05, [[0.5, '.5R'], [1, '1R'], [2, '2R'], [3, '3R']], '<button class="c pass" data-a="pass" title="Pass line">PASS</button><input class="n" data-n="usd" inputmode="decimal" placeholder="$ gain" aria-label="Dollar target">')}
@@ -1177,6 +1191,16 @@
     const setSl = (key, v) => { v = Math.round(+v * 100) / 100; if (!(v > 0)) return; SH[key] = v; if (key === 'R') SH.tmode = 'R'; redo(); };
     R.querySelectorAll('[data-r]').forEach(i => { i.oninput = () => setSl(i.dataset.r, LOGD[i.dataset.r] ? LOGD[i.dataset.r].from(+i.value) : i.value); i.onchange = () => saveSH(); });
     R.querySelectorAll('[data-tk]').forEach(b => b.onclick = () => { setSl(b.dataset.tk, b.dataset.v); saveSH(); });
+    // leverage: tap the "25x" for a slider from 1x to the market's max; it closes on release
+    const lvp = k('lvp'), lvr = k('lvr');
+    const lvShow = () => { const p = plan(); if (!p.sym || !p.levMax) return; lvr.max = p.levMax; lvr.value = p.lev; k('lvm').textContent = p.levMax + 'x'; lvPaint(); lvp.hidden = false; };
+    const lvPaint = () => { const mx = +lvr.max || 1; k('lvv').textContent = lvr.value + 'x'; lvr.style.setProperty('--p', (mx > 1 ? (lvr.value - 1) / (mx - 1) * 100 : 100) + '%'); };
+    const lvSet = v => { const p = plan(); if (!p.sym) return; SH.levs = SH.levs || {}; if (v >= (p.levMax || v)) delete SH.levs[p.sym]; else SH.levs[p.sym] = v; saveSH(); redo(); };
+    k('ac').addEventListener('click', e => { if (e.target.closest('[data-a=lev]')) { e.stopPropagation(); lvp.hidden ? lvShow() : (lvp.hidden = true); } });
+    lvr.oninput = () => { lvPaint(); lvSet(+lvr.value); };
+    lvr.onchange = () => { lvSet(+lvr.value); lvp.hidden = true; };
+    on('levmax', () => { lvSet(1e9); lvp.hidden = true; });
+    R.querySelector('.s').addEventListener('pointerdown', e => { if (!lvp.hidden && !e.composedPath().includes(lvp) && !e.target.closest('[data-a=lev]')) lvp.hidden = true; });
     const TYPED = { risk: [0.01, 20], R: [0.1, 20], size: [1, 100] };
     R.querySelectorAll('[data-sv]').forEach(b => {
       const key = b.dataset.sv, done = keep => { if (keep) { const t = b.textContent.trim().toLowerCase(), v = key === 'size' && /max/.test(t) ? 100 : parseFloat(t.replace(/[^0-9.]/g, ''));
@@ -1318,11 +1342,11 @@
     const zb = zoneBits(), locked = zb.locked && !pos;
     const stale = !(Date.now() - (L.markAt || 0) < FRESH);
     k('px').textContent = p.sym && L.mark[p.sym] ? shortSym(p.sym) + '  ' + fmtPx(L.mark[p.sym], p.sym) : '—'; k('px').classList.toggle('old', stale);
-    k('ac').innerHTML = p.id && p.bal ? `${esc(acctShort(p.id))} · <em>${p.lev || '—'}x</em> · ${fm(p.bal, { short: true }).replace(/\.00$/, '')}` : '';
+    k('ac').innerHTML = p.id && p.bal ? `${esc(acctShort(p.id))} · <button class="lvb${p.lev && p.levMax && p.lev < p.levMax ? ' set' : ''}" data-a="lev" title="Leverage">${p.lev || '—'}x</button> · ${fm(p.bal, { short: true }).replace(/\.00$/, '')}` : '';
     if (!pos) SHOT.adding = false; const adding = !!pos && !!SHOT.adding;
     R.querySelector('[data-v=plan]').hidden = !!pos && !adding; R.querySelector('[data-v=pos]').hidden = !pos || adding;
     R.querySelector('[data-v=go]').hidden = !!pos || locked; R.querySelector('[data-v=go2]').hidden = !pos || adding; R.querySelector('[data-v=go3]').hidden = !locked; R.querySelector('[data-v=go4]').hidden = !adding;
-    box.classList.toggle('in', !!pos && !adding); box.classList.toggle('add', adding); k('adh').hidden = !adding;
+    box.classList.toggle('in', !!pos && !adding); box.classList.toggle('nosl', SH.sl === false && !(pos && !adding)); box.classList.toggle('add', adding); k('adh').hidden = !adding;
     if (pos && !adding) {
       const t = tradeOf(pos), sym = pos.symbol, slP = t.sl ? +t.sl.triggerPrice : null, tpP = t.tp ? +t.tp.triggerPrice : null;
       box.classList.toggle('neg', t.u < 0);
@@ -1356,6 +1380,7 @@
         k('tpv').textContent = '+' + fm(SH.fees ? p.reward : p.tpG);
         k('slv').className = fit(k('slv').textContent); k('tpv').className = fit(k('tpv').textContent);
         k('slp').innerHTML = p.dSL ? pts(p.dSL) + ' pts <i>· ' + fmtPx(p[side].sl, p.sym) + '</i>' : '—';
+        if (SH.sl === false) { k('slv').textContent = 'NO STOP'; k('slp').textContent = 'risk is the size'; }
         k('tpp').innerHTML = p.dTP ? pts(p.dTP) + ' pts <i>· ' + fmtPx(p[side].tp, p.sym) + '</i>' : '—';
         if (p.dSL) setBeam(k('bm0'), { a: -p.dSL, b: p.dTP, stop: -p.dSL, tgt: p.dTP, price: 0, legs: p.dPass && SH.tmode !== 'pass' && p.dPass < p.dTP ? [p.dPass] : [] });
         const share = p.risk > 0 ? p.fees / p.risk : 0, hot = share >= 0.4;
@@ -1468,9 +1493,9 @@
     if (!p.qty || !p.dSL) return clearLines();
     const side = SHOT.hover || SH.side || 'long', g = p[side];
     chLine('tp', g.tp, (SH.tmode === 'pass' ? 'PASS  +' : 'TP  +') + fm(p.reward) + '  ·  ' + pts(p.dTP) + ' pts', MINT, 2, { move: targetFromLine });
-    chLine('sl', g.sl, 'SL  −' + fm(p.risk).replace('−', '') + '  ·  ' + pts(p.dSL) + ' pts', ROSE, 2, { move: sizeFromStop });
+    if (SH.sl !== false) chLine('sl', g.sl, 'SL  −' + fm(p.risk).replace('−', '') + '  ·  ' + pts(p.dSL) + ' pts', ROSE, 2, { move: sizeFromStop });
     chLine('en', p.px, (side === 'long' ? 'long ' : 'short ') + p.qtyS + '  ·  ' + p.lev + 'x', 'rgba(230,227,220,0.32)', 1);
-    const keep = ['tp', 'sl', 'en', ...dllKeys(p, side)];
+    const keep = ['tp', 'en', ...(SH.sl !== false ? ['sl'] : []), ...dllKeys(p, side)];
     if (p.passNeed > 0 && SH.tmode !== 'pass') { chLine('pass', g.pass, 'PASS  +' + fm(p.passNeed) + '  ·  ' + pts(p.dPass) + ' pts', 'rgba(227,201,142,0.6)', 2); keep.push('pass'); }
     clearLines(keep);
   }
