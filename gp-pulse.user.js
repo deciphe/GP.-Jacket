@@ -1,17 +1,17 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.4.2
+// @version      1.4.3
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
-// @homepageURL  https://github.com/deciphe/gp-pulse
-// @updateURL    https://raw.githubusercontent.com/deciphe/gp-pulse/main/gp-pulse.user.js
-// @downloadURL  https://raw.githubusercontent.com/deciphe/gp-pulse/main/gp-pulse.user.js
 // @match        https://next.vestmarkets.com/*
 // @run-at       document-start
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        unsafeWindow
+// @homepageURL  https://github.com/deciphe/gp-pulse
+// @updateURL    https://raw.githubusercontent.com/deciphe/gp-pulse/main/gp-pulse.user.js
+// @downloadURL  https://raw.githubusercontent.com/deciphe/gp-pulse/main/gp-pulse.user.js
 // ==/UserScript==
 
 (function () {
@@ -722,7 +722,7 @@
         if (!L.cap || Date.now() - (L.capAt || 0) > 30000) T.push(api('/v3/capital/accounts/active').then(j => { L.cap = j.accounts || []; L.capAt = Date.now(); }));
         if (!L.levs || Date.now() - (L.levAt || 0) > 60000) T.push(api('/v3/user-state').then(j => { const o = {}, n = {}; (j.accounts || []).forEach(a => { o[a.accountId] = {}; (a.leverages || []).forEach(l => { o[a.accountId][l.symbol] = +l.leverage; }); if (a.name) n[a.accountId] = a.name; }); L.levs = o; L.names = n; L.levAt = Date.now(); }).catch(() => { L.levAt = Date.now(); }));
         await Promise.all(T); if (balNow) snapCash(); await loadSeries();
-        { const act = activeAcct(); if (balNow && act && L.bal[act] == null && capAcct(act)) L.capAt = 0; } // the active account dropped out: re-read the list now
+        { const act = activeAcct(); if (act && L.balAt > (L.capAt || 0) && L.bal[act] == null && capAcct(act)) L.capAt = 0; } // the active account dropped out: re-read the list now
         L.ok = true; L.at = Date.now(); L.err = '';
         if (C.on && ownCopier()) await copierSync();
       } catch (e) { L.err = String(e.message || e); }
@@ -741,6 +741,7 @@
   const esc = v => String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const loadOf = (x = SH) => ({ risk: +x.risk, rmode: x.rmode === 'usd' ? 'usd' : 'pct', rusd: +x.rusd || 0, R: +x.R, tmode: x.tmode || 'R', usd: +x.usd || 0, size: +x.size, fees: !!x.fees });
   const FRESH = 3500; // a price older than this never sizes or sends an order
+  W.__gpzPlan = () => { const p = plan(); return { why: p.why, id: p.id, closed: !!p.closed, ok: p.ok }; };
   function plan() {
     const sym = curSymbol(), id = activeAcct(), x = sym && SPEC[sym];
     if (!sym || !x) return { ok: false, why: 'reading the market' };
@@ -992,6 +993,7 @@
   .pl b.m{font-size:24px}.pl b.x{font-size:20px}.pu b.m{font-size:36px}.pu b.x{font-size:29px}
   .pl em{display:block;margin-top:5px;font-style:normal;font-size:11px;font-weight:600;color:#8b8b92;font-variant-numeric:tabular-nums;white-space:nowrap}
   .pl em i{font-style:normal;color:#5f5f66}
+  .pe{display:flex;gap:4px;margin-top:6px}.pl .tp .pe{justify-content:flex-end}.pe .n{width:64px;height:22px;font-size:11px}.pe .c.pass{height:22px;width:46px}
   .bm{position:relative;height:22px;margin:0 5px}
   .bm i{position:absolute;display:block}
   .bm .tr{left:-5px;right:-5px;top:10px;height:2px;border-radius:2px;background:rgba(238,234,226,.09)}
@@ -1079,7 +1081,7 @@
   @media (prefers-reduced-motion:reduce){.dot,.moon,.bm .pd:after{animation:none}}`;
   const SL_FMT = { risk: v => trimNum(v) + '%', R: v => trimNum(v) + 'R', size: v => (v >= 100 ? 'max' : trimNum(Math.round(v * 10) / 10) + '%') };
   // the reward dial runs on a log scale, so 0.5R and 1R get as much room as 2R to 5R
-  const RLO = 0.25, RHI = 5, LOGD = { risk: { to: v => (v = Math.max(0.1, Math.min(6, v)), v <= 1 ? (v - 0.1) / 0.9 * 500 : 500 + (v - 1) / 5 * 500), from: p => p <= 500 ? Math.round((0.1 + p / 500 * 0.9) * 20) / 20 : Math.round((1 + (p - 500) / 500 * 5) * 10) / 10 }, R: { to: v => 1000 * Math.log(Math.max(RLO, Math.min(RHI, v)) / RLO) / Math.log(RHI / RLO), from: p => { const v = RLO * Math.exp(p / 1000 * Math.log(RHI / RLO)); return v < 1 ? Math.round(v * 20) / 20 : Math.round(v * 10) / 10; } } };
+  const RLO = 0.25, RHI = 5, LOGD = { risk: { to: v => (v = Math.max(0.25, Math.min(3, v)), v <= 1 ? (v - 0.25) / 0.75 * 500 : 500 + (v - 1) / 2 * 500), from: p => p <= 500 ? Math.round((0.25 + p / 500 * 0.75) * 20) / 20 : Math.round((1 + (p - 500) / 500 * 2) * 10) / 10 }, R: { to: v => 1000 * Math.log(Math.max(RLO, Math.min(RHI, v)) / RLO) / Math.log(RHI / RLO), from: p => { const v = RLO * Math.exp(p / 1000 * Math.log(RHI / RLO)); return v < 1 ? Math.round(v * 20) / 20 : Math.round(v * 10) / 10; } } };
   // a slider with the benchmarks as tick marks under it (click one to snap to it)
   function slider(key, label, min, max, step, ticks, extra) {
     const lg = LOGD[key]; if (lg) { min = 0; max = 1000; step = 1; }
@@ -1109,13 +1111,13 @@
   .tk button{position:absolute;transform:translateX(-50%);padding:0 3px;border:0;background:none;color:#5c5c62;font:700 9.5px Inter,system-ui,sans-serif;cursor:pointer;letter-spacing:.02em;transition:color .2s}
   .tk button:before{content:"";position:absolute;left:50%;top:-6px;width:1px;height:4px;background:rgba(238,234,226,.18)}
   .tk button:hover{color:#f1f1f3}.tk button.on{color:#e6e3dc}
-  .ld{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+  .ld{display:flex;align-items:center;gap:5px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;flex:none;-webkit-mask-image:linear-gradient(90deg,#000 88%,transparent);mask-image:linear-gradient(90deg,#000 88%,transparent)}.ld::-webkit-scrollbar{display:none}.ld>*{flex:none}
   .ls{flex:none;height:26px;padding:0 10px;border-radius:8px;border:1px solid rgba(238,234,226,.12);background:none;color:#9e9ea5;font:700 11px Inter,system-ui,sans-serif;cursor:pointer;transition:all .25s;white-space:nowrap}
   .ls:hover{color:#f1f1f3;border-color:rgba(238,234,226,.34)}.ls.on{background:#e6e3dc;border-color:#e6e3dc;color:#0b0b0b}
-  .ln{display:flex;gap:5px;flex:1 1 100%}
+  .ln{display:flex;gap:5px;flex:1 0 100%!important}.ld:has(.ln:not([hidden]))>:not(.ln){display:none}.ld:has(.ln:not([hidden])){-webkit-mask-image:none;mask-image:none}
   .ln input{flex:1;min-width:0;height:26px;padding:0 12px;border-radius:8px;border:1px solid rgba(227,201,142,.55);background:#0b0b0b;color:#f1f1f3;font:700 12px Inter,system-ui,sans-serif;outline:none}
   .ll{display:contents}
-  .lc{display:inline-flex;align-items:center;height:26px;border-radius:8px;border:1px solid rgba(238,234,226,.12);overflow:hidden;transition:all .25s;animation:lin .35s ease-out}
+  .lc{flex:none;white-space:nowrap;display:inline-flex;align-items:center;height:26px;border-radius:8px;border:1px solid rgba(238,234,226,.12);overflow:hidden;transition:all .25s;animation:lin .35s ease-out}
   @keyframes lin{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:none}}
   .lc button{height:100%;border:0;background:none;color:#c9c7c2;font:700 11.5px Inter,system-ui,sans-serif;cursor:pointer;padding:0 4px 0 11px}
   .lc button small{margin-left:6px;font-size:9.5px;font-weight:600;color:#6f6f75;font-variant-numeric:tabular-nums}.lc.on button small{color:#9e9ea5}
@@ -1152,10 +1154,10 @@
         <button class="ls" data-a="zend" hidden>end</button></div>
       <div class="pv" data-v="plan">
         <div class="adh" data-k="adh" hidden><span data-k="adt">—</span><button data-a="addback">back</button></div>
-        <div class="pl"><div class="sl"><small>STOP<button class="sw sm" data-t="sl" title="Stop loss on or off" aria-label="Stop loss on or off"></button></small><b data-k="slv">—</b><em data-k="slp">—</em></div><div class="tp"><small>TARGET</small><b data-k="tpv">—</b><em data-k="tpp">—</em></div></div>
+        <div class="pl"><div class="sl"><small>STOP<button class="sw sm" data-t="sl" title="Stop loss on or off" aria-label="Stop loss on or off"></button></small><b data-k="slv">—</b><em data-k="slp">—</em><div class="pe"><input class="n" data-n="rusd" inputmode="decimal" placeholder="$ stop" aria-label="Dollar stop"></div></div><div class="tp"><small>TARGET</small><b data-k="tpv">—</b><em data-k="tpp">—</em><div class="pe"><button class="c pass" data-a="pass" title="Pass line">PASS</button><input class="n" data-n="usd" inputmode="decimal" placeholder="$ gain" aria-label="Dollar target"></div></div></div>
         <div class="bm" data-k="bm0">${BEAM}</div>
-        ${slider('risk', 'RISK', 0.1, 6, 0.05, [[0.25, '.25'], [0.5, '.5%'], [1, '1%'], [3, '3%'], [6, '6%']], '<input class="n" data-n="rusd" inputmode="decimal" placeholder="$ stop" aria-label="Dollar stop">')}
-        ${slider('R', 'REWARD', RLO, RHI, 0.05, [[0.5, '.5R'], [1, '1R'], [2, '2R'], [3, '3R']], '<button class="c pass" data-a="pass" title="Pass line">PASS</button><input class="n" data-n="usd" inputmode="decimal" placeholder="$ gain" aria-label="Dollar target">')}
+        ${slider('risk', 'RISK', 0.25, 3, 0.05, [[0.25, '.25'], [0.5, '.5%'], [1, '1%'], [2, '2%'], [3, '3%']])}
+        ${slider('R', 'REWARD', RLO, RHI, 0.05, [[0.5, '.5R'], [1, '1R'], [2, '2R'], [3, '3R']])}
         ${slider('size', 'SIZE', 5, 100, 1, [[25, '25%'], [50, '50%'], [75, '75%'], [100, 'max']])}
         <div class="bal"><div class="bb"><i data-k="fb" style="width:0"></i></div><div class="bt"><span>fees <b data-k="fe">—</b><button class="sw" data-t="fees" title="Fees inside the risk" aria-label="Fees inside the risk"></button></span><span data-k="qz"></span></div></div>
         <div class="ld"><div class="ll" data-k="ll"></div><button class="ls" data-a="lsave" title="Save loadout" data-k="lsv">+</button>
@@ -1220,6 +1222,7 @@
     const ln = k('ln'), lname = k('lname');
     const openName = v => { ln.hidden = !v; R.querySelector('[data-a=lsave]').hidden = v; if (v) { lname.value = ''; lname.focus(); } };
     on('lsave', () => openName(true)); on('lno', () => openName(false));
+    R.querySelector('.ld').addEventListener('wheel', e => { const el = e.currentTarget; if (el.scrollWidth > el.clientWidth && Math.abs(e.deltaY) > Math.abs(e.deltaX)) { el.scrollLeft += e.deltaY; e.preventDefault(); } }, { passive: false });
     const keep = () => { const n = lname.value.trim().slice(0, 18); if (!n) return lname.focus(); const L0 = (DB.loads || []).filter(x => x.n.toLowerCase() !== n.toLowerCase()); L0.push(Object.assign({ n }, loadOf())); DB.loads = L0.slice(-12); save(); openName(false); renderShot(); };
     on('lok', keep);
     lname.onkeydown = e => { if (e.key === 'Enter') keep(); else if (e.key === 'Escape') openName(false); };
