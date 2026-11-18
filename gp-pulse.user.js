@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.5.0
+// @version      1.5.1
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -1795,7 +1795,7 @@
   @media (prefers-reduced-motion:reduce){.dot,.moon,.d{animation:none}}`;
   function deskHost() {
     if (DS) return DS;
-    const host = document.createElement('div'); host.id = 'gpz-desk'; host.style.cssText = 'position:fixed;z-index:2147483638;display:none';
+    const host = document.createElement('div'); host.id = 'gpz-desk'; host.style.cssText = 'position:fixed;z-index:2147483640;display:none'; // above GP. if they ever meet
     ['keydown', 'keyup', 'keypress'].forEach(t => host.addEventListener(t, e => e.stopPropagation()));
     const R = host.attachShadow({ mode: 'open' });
     R.innerHTML = `<style>${DCSS}</style><div class="d">
@@ -1816,7 +1816,7 @@
     R.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { DK.tab = b.dataset.t; saveDK(); renderDesk(); });
     R.querySelector('[data-a=arm]').onclick = () => arm(!C.on);
     R.querySelectorAll('[data-cm]').forEach(b => b.onclick = () => { C.mode = b.dataset.cm; saveC(); renderDesk(); });
-    R.querySelector('[data-a=side]').onclick = () => { DK.side = !DK.side; saveDK(); renderDesk(); layoutCols(); placeShot(); placeDesk(); };
+    R.querySelector('[data-a=side]').onclick = () => { DK.side = !DK.side; DK.x = DK.y = null; DK.dock = true; saveDK(); renderDesk(); layoutCols(); placeShot(); placeDesk(); };
     R.querySelector('[data-a=all]').onclick = () => { DK.all = !DK.all; saveDK(); renderDesk(); placeDesk(); };
     k('rows').onclick = e => {
       const b = e.target.closest('[data-cut]'); if (b) return deskCut(b.closest('.r').dataset.id, +b.dataset.cut);
@@ -1857,7 +1857,9 @@
     DS.R.querySelector('.d').classList.toggle('side', !!ch);
     if (ch) { const r = ch.getBoundingClientRect(); x = r.left - DESKW; y = r.top; w = DESKW - 12; h = Math.min(r.height, innerHeight - y - 8); }
     else if (DK.dock && t && t.width > 200 && innerHeight - t.bottom - 16 >= 130) { x = t.left; y = t.bottom + 8; w = t.width; h = Math.min(want, innerHeight - y - 8); }
-    else { w = 340; h = Math.min(want, innerHeight - 24); x = DK.x != null ? DK.x : t ? t.left - w - 10 : innerWidth - w - 16; y = DK.y != null ? DK.y : t ? t.top : 72; x = Math.max(0, Math.min(innerWidth - w, x)); y = Math.max(0, Math.min(innerHeight - h, y)); }
+    else { w = 340; h = Math.min(want, innerHeight - 24); x = DK.x != null ? DK.x : t ? t.left - w - 10 : innerWidth - w - 16; y = DK.y != null ? DK.y : t ? t.top : 72;
+      if (DK.x == null && t && x < 8) { x = 8; w = Math.max(240, t.left - 18); } // beside GP., never under it
+      x = Math.max(0, Math.min(innerWidth - w, x)); y = Math.max(0, Math.min(innerHeight - h, y)); }
     st.left = Math.round(x) + 'px'; st.top = Math.round(y) + 'px'; st.width = Math.round(w) + 'px'; st.height = Math.round(h) + 'px';
   }
   function deskToggle(v) {
