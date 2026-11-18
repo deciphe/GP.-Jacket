@@ -15,3 +15,11 @@ Tampermonkey checks this repo and updates the script on its own. To pull an upda
 ## Keys
 
 - `Alt+B` long · `Alt+S` short · `Alt+X` close
+
+---
+
+# GP. Dashboard for Vest
+
+Your whole Vest profile in one screen: every account, every trade, what you spent and what you got paid, plus affiliate earnings. Press the GP. button on Vest.
+
+Install: open **[gp-dashboard.user.js](https://raw.githubusercontent.com/deciphe/gp-pulse/main/gp-dashboard.user.js)** and press **Install**. It updates from this repo the same way.
