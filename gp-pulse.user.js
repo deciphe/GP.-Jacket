@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         GP. Pulse for Vest
+// @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.2.3
+// @version      1.4.0
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @homepageURL  https://github.com/deciphe/gp-pulse
@@ -287,7 +287,7 @@
     if (PILL) return PILL;
     const host = document.createElement('div'); host.id = 'gpz-home';
     const R = host.attachShadow({ mode: 'open' });
-    R.innerHTML = `<style>${PCSS}</style><button class="p wait" aria-label="Open GP. Pulse"><i class="dot"></i><b>GP.</b><span class="v" data-k="a">—</span><span class="l" data-k="al">spent today</span><i class="s" data-k="sep" hidden></i><span class="v" data-k="b" hidden></span><span class="l" data-k="bl" hidden>live</span></button>`;
+    R.innerHTML = `<style>${PCSS}</style><button class="p wait" aria-label="Open GP. Entry"><i class="dot"></i><b>GP.</b><span class="v" data-k="a">—</span><span class="l" data-k="al">spent today</span><i class="s" data-k="sep" hidden></i><span class="v" data-k="b" hidden></span><span class="l" data-k="bl" hidden>live</span></button>`;
     R.querySelector('.p').onclick = e => { e.stopPropagation(); OPEN ? closePanel() : openPanel(); };
     PILL = { host, R, btn: R.querySelector('.p'), k: n => R.querySelector(`[data-k="${n}"]`) };
     return PILL;
@@ -722,6 +722,7 @@
         if (!L.cap || Date.now() - (L.capAt || 0) > 30000) T.push(api('/v3/capital/accounts/active').then(j => { L.cap = j.accounts || []; L.capAt = Date.now(); }));
         if (!L.levs || Date.now() - (L.levAt || 0) > 60000) T.push(api('/v3/user-state').then(j => { const o = {}, n = {}; (j.accounts || []).forEach(a => { o[a.accountId] = {}; (a.leverages || []).forEach(l => { o[a.accountId][l.symbol] = +l.leverage; }); if (a.name) n[a.accountId] = a.name; }); L.levs = o; L.names = n; L.levAt = Date.now(); }).catch(() => { L.levAt = Date.now(); }));
         await Promise.all(T); if (balNow) snapCash(); await loadSeries();
+        { const act = activeAcct(); if (balNow && act && L.bal[act] == null && capAcct(act)) L.capAt = 0; } // the active account dropped out: re-read the list now
         L.ok = true; L.at = Date.now(); L.err = '';
         if (C.on && ownCopier()) await copierSync();
       } catch (e) { L.err = String(e.message || e); }
@@ -744,6 +745,7 @@
     const sym = curSymbol(), id = activeAcct(), x = sym && SPEC[sym];
     if (!sym || !x) return { ok: false, why: 'reading the market' };
     if (!id) return { ok: false, why: 'pick an account on Vest', sym };
+    if (L.cap && L.capAt && L.balAt && !capAcct(id) && L.bal[id] == null) return { ok: false, why: acctShort(id) + ' is closed · pick another', sym, id, closed: true };
     const px = L.mark[sym], bal = balOf(id);
     if (!px || !(bal > 0)) return { ok: false, why: 'reading your account', sym, id };
     const lev = maxLev(sym, id) || 1, f = +x.takerFee || 0;
@@ -1061,19 +1063,20 @@
   @media (prefers-reduced-motion:reduce){.dot,.moon,.bm .pd:after{animation:none}}`;
   const SL_FMT = { risk: v => trimNum(v) + '%', R: v => trimNum(v) + 'R', size: v => (v >= 100 ? 'max' : trimNum(Math.round(v * 10) / 10) + '%') };
   // the reward dial runs on a log scale, so 0.5R and 1R get as much room as 2R to 5R
-  const RLO = 0.25, RHI = 5, LOGD = { R: { to: v => 1000 * Math.log(Math.max(RLO, Math.min(RHI, v)) / RLO) / Math.log(RHI / RLO), from: p => { const v = RLO * Math.exp(p / 1000 * Math.log(RHI / RLO)); return v < 1 ? Math.round(v * 20) / 20 : Math.round(v * 10) / 10; } } };
+  const RLO = 0.25, RHI = 5, LOGD = { risk: { to: v => (v = Math.max(0.1, Math.min(6, v)), v <= 1 ? (v - 0.1) / 0.9 * 500 : 500 + (v - 1) / 5 * 500), from: p => p <= 500 ? Math.round((0.1 + p / 500 * 0.9) * 20) / 20 : Math.round((1 + (p - 500) / 500 * 5) * 10) / 10 }, R: { to: v => 1000 * Math.log(Math.max(RLO, Math.min(RHI, v)) / RLO) / Math.log(RHI / RLO), from: p => { const v = RLO * Math.exp(p / 1000 * Math.log(RHI / RLO)); return v < 1 ? Math.round(v * 20) / 20 : Math.round(v * 10) / 10; } } };
   // a slider with the benchmarks as tick marks under it (click one to snap to it)
   function slider(key, label, min, max, step, ticks, extra) {
     const lg = LOGD[key]; if (lg) { min = 0; max = 1000; step = 1; }
     const at = v => ((lg ? lg.to(v) : v) - min) / (max - min) * 100;
     return `<div class="sr" data-sr="${key}"><label>${label}</label>
       <div class="rg"><input type="range" data-r="${key}" min="${min}" max="${max}" step="${step}" aria-label="${label}">
-      <div class="tk">${ticks.map(([v, t]) => `<button data-tk="${key}" data-v="${v}" style="left:${at(v)}%">${t}</button>`).join('')}</div></div><b data-sv="${key}"></b>${extra ? `<div class="ex">${extra}</div>` : ''}</div>`;
+      <div class="tk">${ticks.map(([v, t]) => `<button data-tk="${key}" data-v="${v}" style="left:${at(v)}%">${t}</button>`).join('')}</div></div><b data-sv="${key}" contenteditable="plaintext-only" spellcheck="false" title="Type a value"></b>${extra ? `<div class="ex">${extra}</div>` : ''}</div>`;
   }
   const SLCSS = `
   .sr{display:grid;grid-template-columns:50px 1fr 44px;align-items:start;column-gap:4px}
   .sr>label{font-size:10.5px;font-weight:700;color:#6f6f75;letter-spacing:.06em;line-height:18px}
-  .sr>b{font-size:14px;font-weight:600;letter-spacing:-.03em;font-variant-numeric:tabular-nums;color:#f1f1f3;text-align:right;line-height:18px;transition:color .25s}
+  .sr>b{font-size:14px;font-weight:600;letter-spacing:-.03em;font-variant-numeric:tabular-nums;color:#f1f1f3;text-align:right;line-height:18px;transition:color .25s;outline:none;border-radius:5px;cursor:text;padding:0 2px;margin-right:-2px}
+  .sr>b:hover{background:rgba(238,234,226,.06)}.sr>b:focus{background:#151515;box-shadow:inset 0 0 0 1px rgba(238,234,226,.3)}
   .sr.off>b{color:#4f4f55}
   .ex{grid-column:1/-1;display:flex;justify-content:flex-end;gap:5px;margin-top:2px}
   .rg{position:relative;padding:0 4px 14px}
@@ -1134,7 +1137,7 @@
         <div class="adh" data-k="adh" hidden><span data-k="adt">—</span><button data-a="addback">back</button></div>
         <div class="pl"><div class="sl"><small>STOP</small><b data-k="slv">—</b><em data-k="slp">—</em></div><div class="tp"><small>TARGET</small><b data-k="tpv">—</b><em data-k="tpp">—</em></div></div>
         <div class="bm" data-k="bm0">${BEAM}</div>
-        ${slider('risk', 'RISK', 0.2, 8, 0.1, [[1, '1%'], [2, '2%'], [3, '3%'], [5, '5%'], [8, '8%']])}
+        ${slider('risk', 'RISK', 0.1, 6, 0.05, [[0.25, '.25'], [0.5, '.5%'], [1, '1%'], [2, '2%'], [3, '3%'], [6, '6%']])}
         ${slider('R', 'REWARD', RLO, RHI, 0.05, [[0.5, '.5R'], [1, '1R'], [2, '2R'], [3, '3R']], '<button class="c pass" data-a="pass" title="Pass line">PASS</button><input class="n" data-n="usd" inputmode="decimal" placeholder="$ gain" aria-label="Dollar target">')}
         ${slider('size', 'SIZE', 5, 100, 1, [[25, '25%'], [50, '50%'], [75, '75%'], [100, 'max']])}
         <div class="bal"><div class="bb"><i data-k="fb" style="width:0"></i></div><div class="bt"><span>fees <b data-k="fe">—</b><button class="sw" data-t="fees" title="Fees inside the risk" aria-label="Fees inside the risk"></button></span><span data-k="qz"></span></div></div>
@@ -1174,6 +1177,14 @@
     const setSl = (key, v) => { v = Math.round(+v * 100) / 100; if (!(v > 0)) return; SH[key] = v; if (key === 'R') SH.tmode = 'R'; redo(); };
     R.querySelectorAll('[data-r]').forEach(i => { i.oninput = () => setSl(i.dataset.r, LOGD[i.dataset.r] ? LOGD[i.dataset.r].from(+i.value) : i.value); i.onchange = () => saveSH(); });
     R.querySelectorAll('[data-tk]').forEach(b => b.onclick = () => { setSl(b.dataset.tk, b.dataset.v); saveSH(); });
+    const TYPED = { risk: [0.01, 20], R: [0.1, 20], size: [1, 100] };
+    R.querySelectorAll('[data-sv]').forEach(b => {
+      const key = b.dataset.sv, done = keep => { if (keep) { const t = b.textContent.trim().toLowerCase(), v = key === 'size' && /max/.test(t) ? 100 : parseFloat(t.replace(/[^0-9.]/g, ''));
+        if (v > 0) { setSl(key, Math.max(TYPED[key][0], Math.min(TYPED[key][1], v))); saveSH(); } } b.blur(); redo(); };
+      b.onfocus = () => { b.textContent = trimNum(+SH[key]); const r = document.createRange(); r.selectNodeContents(b); const sel = R.getSelection ? R.getSelection() : getSelection(); sel.removeAllRanges(); sel.addRange(r); };
+      b.onkeydown = e => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); done(true); } else if (e.key === 'Escape') done(false); };
+      b.onblur = () => { if (b.textContent.trim() !== trimNum(+SH[key])) done(true); else redo(); };
+    });
     // loadouts: the three dials, the target mode and the fees switch, under a name
     const ln = k('ln'), lname = k('lname');
     const openName = v => { ln.hidden = !v; R.querySelector('[data-a=lsave]').hidden = v; if (v) { lname.value = ''; lname.focus(); } };
@@ -1222,10 +1233,12 @@
   // ---------- layout: the order side gets as much room as the chart (drag the seam; double-click it for 50/50) ----------
   let SPL = null;
   if (DB.colV !== 3) { DB.colF = null; DB.colV = 3; save(); } // Vest's own width until the seam is dragged
+  let OCOL = null;
   function orderCol() { // the column that holds Vest's ticket: the child of the row that also holds the chart
-    const card = vestTicket(), fr = document.querySelector('iframe[id^=tradingview_]'); if (!card || !fr) return null;
+    const card = vestTicket(), fr = document.querySelector('iframe[id^=tradingview_]');
+    if (!card || !fr) return OCOL && OCOL.isConnected && fr && OCOL.parentElement && OCOL.parentElement.contains(fr) ? OCOL : null;
     let c = card; while (c.parentElement && c.parentElement !== document.body && !c.parentElement.contains(fr)) c = c.parentElement;
-    return c.parentElement && c.parentElement.contains(fr) && !c.contains(fr) ? c : null;
+    return (OCOL = c.parentElement && c.parentElement.contains(fr) && !c.contains(fr) ? c : null);
   }
   function splitTotal(col) { // chart column + order column: the two that share the room
     const fr = document.querySelector('iframe[id^=tradingview_]'), ch = [...col.parentElement.children].find(e => e.contains(fr));
@@ -1272,7 +1285,9 @@
   W.__gpzCols = () => { const c = document.querySelector('[data-gpz-col]'); return c ? { col: Math.round(c.getBoundingClientRect().width), row: Math.round(splitTotal(c)) } : null; };
   function placeShot() {
     const S = shotHost(), on = SH.on && IS_TRADE() && !!AUTH;
-    const card = IS_TRADE() ? vestTicket() : null, r = card && card.getBoundingClientRect();
+    const card = IS_TRADE() ? vestTicket() : null; let r = card && card.getBoundingClientRect();
+    if (r && r.width > 200 && r.height > 300) SHOT.lastH = r.height;
+    else if (IS_TRADE()) { const oc = orderCol(); if (oc) { const q = oc.getBoundingClientRect(); if (q.width > 200) r = { left: q.left, top: q.top, right: q.right, width: q.width, height: Math.min(q.height, SHOT.lastH || 640) }; } } // Vest swapped its ticket out: stay where it was
     SHOT.visible = on;
     if (!on) { S.host.style.display = 'none'; const pk = S.peek; if (IS_TRADE() && r && r.width > 150) { pk.style.display = ''; pk.style.left = (r.right - 160) + 'px'; pk.style.top = (r.top + 4) + 'px'; } else pk.style.display = 'none'; return; }
     S.peek.style.display = 'none';
@@ -1281,7 +1296,9 @@
     else { w = 320; h = Math.min(640, innerHeight - 24); x = SH.x != null ? SH.x : innerWidth - w - 16; y = SH.y != null ? SH.y : Math.max(12, innerHeight - h - 16); }
     const st = S.host.style; st.display = ''; st.left = Math.round(x) + 'px'; st.top = Math.round(y) + 'px'; st.width = Math.round(w) + 'px'; st.height = Math.round(h) + 'px';
   }
-  const acctShort = id => (L.names && L.names[id]) || (capAcct(id) ? 'Account ' + ((+capAcct(id).attempt_index || 0) + 1) : '…' + String(id).slice(-4));
+  const NM = {}, CAPOLD = {}; // names and kinds stay known after an account closes
+  const capAcctOld = id => capAcct(id) || CAPOLD[id] || null;
+  const acctShort = id => (L.names && L.names[id]) || (capAcct(id) ? (CAPOLD[id] = capAcct(id), NM[id] = 'Account ' + ((+capAcct(id).attempt_index || 0) + 1)) : NM[id] || '…' + String(id).slice(-4));
   const fit = t => (t.length > 10 ? ' x' : t.length > 8 ? ' m' : ''); // long numbers step down a size, never clip
   function zoneBits() { // the zone chip and its line: the clock, the closed PnL, the count, the lock
     if (!SP) return; const { R, k } = SP, z = DB.zone, zs = zoneStats(), locked = zoneLocked();
@@ -1293,6 +1310,10 @@
   }
   function renderShot() {
     if (!SP) return; const { R, k } = SP, p = plan(), pos = myPos(p), box = R.querySelector('.s');
+    if (p.closed && SHOT.closedFor !== p.id) { SHOT.closedFor = p.id; DK.tab = 'acc'; saveDK();
+      const was = capAcctOld(p.id), pool = (L.cap || []).filter(c => c.status === 2 && L.bal[c.id] != null && c.id !== p.id);
+      const next = pool.filter(c => !was || c.account_type === was.account_type).sort((a, b) => (cashOf(b.id) || 0) - (cashOf(a.id) || 0))[0] || pool[0];
+      setTimeout(() => { if (!DK.open) deskToggle(true); else renderDesk(); if (next) { shotMsg(acctShort(p.id) + ' closed · on ' + acctShort(next.id), 'bad'); switchAcct(next.id); } }, 0); }
     renderCopy(p);
     const zb = zoneBits(), locked = zb.locked && !pos;
     const stale = !(Date.now() - (L.markAt || 0) < FRESH);
@@ -1322,7 +1343,7 @@
       box.classList.remove('neg');
       R.querySelectorAll('[data-t]').forEach(b => b.classList.toggle('on', !!SH[b.dataset.t]));
       R.querySelectorAll('[data-r]').forEach(i => { const key = i.dataset.r, v = LOGD[key] ? LOGD[key].to(+SH[key]) : +SH[key], mn = +i.min, mx = +i.max; if (R.activeElement !== i) i.value = v; i.style.setProperty('--p', Math.max(0, Math.min(100, ((v - mn) / (mx - mn)) * 100)) + '%'); });
-      R.querySelectorAll('[data-sv]').forEach(b => { b.textContent = SL_FMT[b.dataset.sv](+SH[b.dataset.sv]); });
+      R.querySelectorAll('[data-sv]').forEach(b => { if (R.activeElement !== b) b.textContent = SL_FMT[b.dataset.sv](+SH[b.dataset.sv]); });
       R.querySelectorAll('[data-tk]').forEach(b => b.classList.toggle('on', +b.dataset.v === +SH[b.dataset.tk] && (b.dataset.tk !== 'R' || SH.tmode === 'R')));
       R.querySelector('[data-sr=R]').classList.toggle('off', SH.tmode !== 'R');
       const pb = R.querySelector('[data-a=pass]'); pb.classList.toggle('on', SH.tmode === 'pass'); pb.disabled = !(p.passNeed > 0); pb.hidden = !(p.passNeed > 0) && SH.tmode !== 'pass';
@@ -1410,18 +1431,38 @@
     return n;
   }
   const ROSE = 'rgba(232,152,140,0.7)', MINT = 'rgba(159,215,178,0.7)', GOLD = 'rgba(227,201,142,0.75)';
+  // the account's real floor today: Vest's daily_loss_floor already carries the buffer from withdrawn profit,
+  // but the max drawdown floor still binds when it is higher; the line sits where equity would touch it
+  function floorOf(id) {
+    const ca = capAcct(id); if (!ca) return null;
+    const dlf = +ca.daily_loss_floor || 0, mdl = +ca.max_drawdown_limit || 0, F = Math.max(dlf, mdl); if (!(F > 0)) return null;
+    return { F, which: dlf >= mdl ? 'DLL' : 'MLL', dlf, mdl };
+  }
+  W.__gpzFloor = id => floorOf(id || activeAcct());
+  function dllKeys(p, side) {
+    const id = p && p.id, sym = p && p.sym, m = sym && L.mark[sym], fl = id && floorOf(id), cash = id != null ? cashOf(id) : null;
+    if (!fl || !m || cash == null) return [];
+    let E = cash, Q = 0;
+    L.pos.filter(x => accOf(x) === id).forEach(x => { const q = Math.abs(+x.quantity) * (/^s/i.test(x.side || '') ? -1 : 1), mk = L.mark[x.symbol]; if (mk) E += (mk - +x.openPrice) * q; if (x.symbol === sym) Q += q; });
+    if (!Q && side && p.qty > 0) Q = side === 'long' ? p.qty : -p.qty;
+    const room = E - fl.F; if (!Q || !(room > 0)) return [];
+    const px = m - room / Q; if (!(px > 0)) return [];
+    chLine('dll', px, fl.which + '  −' + fm(room).replace('−', '') + '  ·  ' + pts(Math.abs(m - px)) + ' pts', 'rgba(239,177,167,0.55)', 2);
+    return ['dll'];
+  }
   function drawChart() {
     const ch0 = chartApi(); if (ch0) wrapChart(ch0);
     if (!SHOT.visible) { vestSuffix(null); return clearLines(); }
     const p = plan(); if (!p.sym || !ch0) return clearLines();
     const pos = myPos(p), m = L.mark[p.sym];
-    if (pos && vestSuffix(m)) return clearLines(); // Vest's labels now read "TP +$107.36   199.2 pts"
+    if (pos && vestSuffix(m)) return clearLines(dllKeys(p)); // Vest's labels now read "TP +$107.36   199.2 pts"
     if (!pos) vestSuffix(null);
     if (pos) {
       const t = tradeOf(pos), keys = [], usd = v => fm(v, { sign: true });
       if (t.sl) { const px = +t.sl.triggerPrice, id = t.sl.id; chLine('psl', px, 'SL  ' + usd(t.at(px)) + (m ? '  ·  ' + pts(m - px) + ' pts' : ''), ROSE, 2, { move: v => moveLeg('sl', id, v) }); keys.push('psl'); }
       if (t.tp) { const px = +t.tp.triggerPrice, id = t.tp.id; chLine('ptp', px, 'TP  ' + usd(t.at(px)) + (m ? '  ·  ' + pts(px - m) + ' pts' : ''), MINT, 2, { move: v => moveLeg('tp', id, v), cancel: () => dropLeg(id) }); keys.push('ptp'); }
       t.scales.forEach(l => { const px = +l.triggerPrice, id = l.id, key = 'pl' + id, part = legFixed(l) ? Math.round(Math.abs(+l.quantity) / t.q * 100) + '%' : 'TP'; chLine(key, px, part + (m ? '  ·  ' + pts(px - m) + ' pts' : ''), GOLD, 2, { move: v => moveLeg('tp', id, v), cancel: () => dropLeg(id) }); keys.push(key); });
+      keys.push(...dllKeys(p));
       return clearLines(keys);
     }
     if (!p.qty || !p.dSL) return clearLines();
@@ -1429,7 +1470,7 @@
     chLine('tp', g.tp, (SH.tmode === 'pass' ? 'PASS  +' : 'TP  +') + fm(p.reward) + '  ·  ' + pts(p.dTP) + ' pts', MINT, 2, { move: targetFromLine });
     chLine('sl', g.sl, 'SL  −' + fm(p.risk).replace('−', '') + '  ·  ' + pts(p.dSL) + ' pts', ROSE, 2, { move: sizeFromStop });
     chLine('en', p.px, (side === 'long' ? 'long ' : 'short ') + p.qtyS + '  ·  ' + p.lev + 'x', 'rgba(230,227,220,0.32)', 1);
-    const keep = ['tp', 'sl', 'en'];
+    const keep = ['tp', 'sl', 'en', ...dllKeys(p, side)];
     if (p.passNeed > 0 && SH.tmode !== 'pass') { chLine('pass', g.pass, 'PASS  +' + fm(p.passNeed) + '  ·  ' + pts(p.dPass) + ' pts', 'rgba(227,201,142,0.6)', 2); keep.push('pass'); }
     clearLines(keep);
   }

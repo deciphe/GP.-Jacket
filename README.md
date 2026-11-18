@@ -1,6 +1,6 @@
-# GP. Pulse for Vest
+# GP. Entry for Vest
 
-A Tampermonkey userscript for [Vest](https://next.vestmarkets.com): spend and live PnL in Vest's header, a one-click order ticket with risk sliders, and a desk for all your accounts: switch, copy, and close or cut any of them.
+A Tampermonkey userscript for [Vest](https://next.vestmarkets.com): spend and live PnL in Vest's header, a one-click order ticket with risk and reward dials you can also type into, your daily loss floor on the chart, and a desk for all your accounts: switch, copy, and close or cut any of them.
 
 ## Install
 
@@ -10,7 +10,7 @@ A Tampermonkey userscript for [Vest](https://next.vestmarkets.com): spend and li
 
 ## Updates
 
-Tampermonkey checks this repo and updates the script on its own. To pull an update right away: Tampermonkey → Dashboard → GP. Pulse for Vest → **Check for updates**.
+Tampermonkey checks this repo and updates the script on its own. To pull an update right away: Tampermonkey → Dashboard → GP. Entry for Vest → **Check for updates**.
 
 ## Keys
 
