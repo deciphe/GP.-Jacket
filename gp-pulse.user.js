@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.5.1
+// @version      1.5.2
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -738,8 +738,8 @@
   const SH = Object.assign({ on: true, sl: true, risk: 2, R: 1, tmode: 'R', usd: 0, size: 100, fees: true, chart: true, side: 'long', dock: true, x: null, y: null }, DB.shot || {});
   const CTHEMES = [
     { id: 'massive', name: 'Massive', bg: '#0b0b0b', up: '#dedbd3', upB: '#dedbd3', dn: '#4b4b51', dnB: '#4b4b51' },
-    { id: 'paper', name: 'Paper', bg: '#d8d8d8', grid: 'rgba(55,55,57,0.08)', text: '#4a4a4d', up: '#fdfdfd', upB: '#373739', upW: '#373739', dn: '#373739', dnB: '#373739', dnW: '#373739' },
-    { id: 'pastel', name: 'Pastel', bg: '#d1d4dc', grid: 'rgba(27,30,40,0.07)', text: '#4a4d57', up: '#a5d6a7', upB: '#1b5e20', upW: '#1b5e20', dn: '#faa1a4', dnB: '#801922', dnW: '#801922' },
+    { id: 'paper', name: 'Paper', light: true, bg: '#d8d8d8', grid: 'rgba(55,55,57,0.08)', text: '#4a4a4d', up: '#fdfdfd', upB: '#373739', upW: '#373739', dn: '#373739', dnB: '#373739', dnW: '#373739' },
+    { id: 'pastel', name: 'Pastel', light: true, bg: '#d1d4dc', grid: 'rgba(27,30,40,0.07)', text: '#4a4d57', up: '#a5d6a7', upB: '#1b5e20', upW: '#1b5e20', dn: '#faa1a4', dnB: '#801922', dnW: '#801922' },
     { id: 'night', name: 'Night', bg: '#000000', grid: 'rgba(255,255,255,0.05)', text: '#8b8b92', up: '#163918', upB: '#81c784', upW: '#81c784', dn: '#481015', dnB: '#f7525f', dnW: '#f7525f' }];
   SH.keys = Object.assign({ on: false, long: 'Alt+KeyB', short: 'Alt+KeyS', close: 'Alt+KeyX' }, SH.keys || {}); // keyboard shortcuts: off until switched on
   SH.chart = true;
@@ -1514,11 +1514,9 @@
     try {
       if (!l) {
         l = CHL[key] = ch.createOrderLine({ disableUndo: true }); l.__gpzOwn = 1; VL.delete(l);
-        set('setExtendLeft', true); set('setLineLength', 22, 'percentage'); set('setLineWidth', 1);
+        set('setExtendLeft', true); set('setLineLength', 38, 'percentage'); set('setLineWidth', 1);
         set('setBodyFont', '600 11px Inter, system-ui, sans-serif'); set('setQuantityFont', '700 11px Inter, system-ui, sans-serif');
-        set('setBodyBackgroundColor', 'rgba(11,11,11,0.78)'); set('setBodyBorderColor', 'rgba(0,0,0,0)');
-        set('setQuantityBackgroundColor', 'rgba(11,11,11,0.78)'); set('setQuantityBorderColor', 'rgba(0,0,0,0)');
-        set('setCancelButtonBackgroundColor', 'rgba(11,11,11,0.78)'); set('setCancelButtonBorderColor', 'rgba(0,0,0,0)');
+        set('setBodyBorderColor', 'rgba(0,0,0,0)'); set('setQuantityBorderColor', 'rgba(0,0,0,0)'); set('setCancelButtonBorderColor', 'rgba(0,0,0,0)');
         const line = l, k0 = key;
         set('onMove', () => { let px = null; try { px = line.getPrice(); } catch (e) {} if (px == null || !isFinite(px) || !line.__gpzMove) return; HOLD[k0] = { px, until: Date.now() + 2500 }; line.__gpzMove(px); });
         set('onCancel', () => { if (line.__gpzCancel) line.__gpzCancel(); });
@@ -1527,9 +1525,14 @@
       set('setEditable', !!o.move); set('setCancellable', !!o.cancel); set('setCancelButtonIconColor', o.cancel ? color : 'rgba(0,0,0,0)');
       const h = HOLD[key]; if (h && Date.now() > h.until) delete HOLD[key];
       if (!CHDOWN) set('setPrice', HOLD[key] ? HOLD[key].px : price); // never fight a line that is being dragged
-      set('setText', text); set('setQuantity', ''); set('setLineColor', color); set('setBodyTextColor', color); set('setQuantityTextColor', color); set('setLineStyle', style);
+      const lt = cTheme().light, bg = lt ? 'rgba(22,22,24,0.94)' : 'rgba(11,11,11,0.78)', tx = lt ? toneOf(color, 0, 1) : color, ln = lt ? toneOf(color, 0.42, 0.95) : color;
+      if (l.__gpzBg !== bg) { l.__gpzBg = bg; set('setBodyBackgroundColor', bg); set('setQuantityBackgroundColor', bg); set('setCancelButtonBackgroundColor', bg); }
+      set('setText', text); set('setQuantity', ''); set('setLineColor', ln); set('setBodyTextColor', tx); set('setQuantityTextColor', tx); set('setLineStyle', style);
     } catch (e) { CHL[key] = null; }
   }
+  // on a light chart the lines go dark and the labels stay dark boxes with bright text
+  function toneOf(c, dark, a) { const m = String(c).match(/(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/) || (/^#([0-9a-f]{6})$/i.test(c) ? [0, ...[1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16))] : null); if (!m) return c;
+    const [r, g, b] = [m[1], m[2], m[3]].map(v => Math.round(+v * (1 - dark))); return `rgba(${r},${g},${b},${a})`; }
   function clearLines(keep) { for (const key in CHL) if (!keep || keep.indexOf(key) < 0) { try { CHL[key] && CHL[key].remove(); } catch (e) {} delete CHL[key]; delete HOLD[key]; } }
   function vestSuffix(m) { // returns how many of Vest's TP / SL labels now carry the distance
     let n = 0;
