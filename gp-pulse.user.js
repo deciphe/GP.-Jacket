@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.4.1
+// @version      1.4.2
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @homepageURL  https://github.com/deciphe/gp-pulse
@@ -739,7 +739,7 @@
   SH.chart = true;
   const saveSH = () => { DB.shot = SH; save(); };
   const esc = v => String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const loadOf = (x = SH) => ({ risk: +x.risk, R: +x.R, tmode: x.tmode || 'R', usd: +x.usd || 0, size: +x.size, fees: !!x.fees });
+  const loadOf = (x = SH) => ({ risk: +x.risk, rmode: x.rmode === 'usd' ? 'usd' : 'pct', rusd: +x.rusd || 0, R: +x.R, tmode: x.tmode || 'R', usd: +x.usd || 0, size: +x.size, fees: !!x.fees });
   const FRESH = 3500; // a price older than this never sizes or sends an order
   function plan() {
     const sym = curSymbol(), id = activeAcct(), x = sym && SPEC[sym];
@@ -759,7 +759,7 @@
     const ca = capAcct(id), tgtEq = ca && ca.account_type === 2 ? +ca.target_equity : 0;
     const openU = mine.reduce((a, p) => { const m = L.mark[p.symbol]; return m ? a + (m - +p.openPrice) * Math.abs(+p.quantity) * (/^s/i.test(p.side || '') ? -1 : 1) : a; }, 0);
     const passNeed = tgtEq > 0 ? Math.max(0, tgtEq - bal - openU) : 0;
-    const N = qty * px, fees = 2 * N * f, risk = bal * SH.risk / 100;
+    const N = qty * px, fees = 2 * N * f, risk = SH.rmode === 'usd' && SH.rusd > 0 ? SH.rusd : bal * SH.risk / 100;
     const reward = SH.tmode === 'pass' && passNeed > 0 ? passNeed : SH.tmode === 'usd' && SH.usd > 0 ? SH.usd : risk * SH.R;
     const slG = SH.fees ? risk - fees : risk, tpG = SH.fees ? reward + fees : reward;
     const passG = passNeed > 0 ? passNeed + (SH.fees ? fees : 0) : 0;
@@ -808,7 +808,7 @@
     if (zoneLocked()) return shotMsg('zone locked', 'bad');
     let p = plan(); if (!p.ok) return shotMsg(p.why, 'bad');
     if (myPos(p)) return shotMsg('already in ' + shortSym(p.sym), 'bad');
-    SHOT.busy = side; SH.side = side; renderShot();
+    SHOT.busy = side; renderShot();
     let sent = false;
     try {
       await ensureLev(p.id, p.sym, p.lev).catch(() => {});
@@ -1051,6 +1051,9 @@
   .busy:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent);animation:sweep 1s linear infinite}
   @keyframes sweep{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
   /* the triggers */
+  .sdt{grid-column:1/-1;display:flex;justify-content:center;align-items:center;gap:8px;margin-top:-2px;height:16px}
+  .sdt button{border:0;background:none;padding:0 4px;color:#4f4f55;font:600 10px Inter,system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;transition:color .2s}
+  .sdt button:hover{color:#9e9ea5}.sdt button.on{color:#e6e3dc}.sdt i{width:1px;height:9px;background:rgba(238,234,226,.14)}
   .s>.go{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:auto;position:sticky;bottom:32px;z-index:3;padding:8px 0 0;background:linear-gradient(180deg,rgba(11,11,11,0),#0b0b0b 10px)}
   .L,.S,.X{position:relative;height:50px;border-radius:10px;font:600 16px Inter,system-ui,sans-serif;letter-spacing:-.03em;cursor:pointer;transition:transform .12s,background .25s,border-color .25s,opacity .25s,box-shadow .3s;overflow:hidden}
   .L{border:0;background:#e6e3dc;color:#0b0b0b}.L:hover{background:#fff;box-shadow:0 0 26px -6px rgba(230,227,220,.55)}
@@ -1086,9 +1089,9 @@
       <div class="tk">${ticks.map(([v, t]) => `<button data-tk="${key}" data-v="${v}" style="left:${at(v)}%">${t}</button>`).join('')}</div></div><b data-sv="${key}" contenteditable="plaintext-only" spellcheck="false" title="Type a value"></b>${extra ? `<div class="ex">${extra}</div>` : ''}</div>`;
   }
   const SLCSS = `
-  .sr{display:grid;grid-template-columns:50px 1fr 44px;align-items:start;column-gap:4px}
+  .sr{display:grid;grid-template-columns:50px 1fr 50px;align-items:start;column-gap:4px}
   .sr>label{font-size:10.5px;font-weight:700;color:#6f6f75;letter-spacing:.06em;line-height:18px}
-  .sr>b{font-size:14px;font-weight:600;letter-spacing:-.03em;font-variant-numeric:tabular-nums;color:#f1f1f3;text-align:right;line-height:18px;transition:color .25s;outline:none;border-radius:5px;cursor:text;padding:0 2px;margin-right:-2px}
+  .sr>b{font-size:14px;font-weight:600;letter-spacing:-.03em;font-variant-numeric:tabular-nums;color:#f1f1f3;text-align:right;line-height:18px;transition:color .25s;outline:none;white-space:nowrap;justify-self:end;border-radius:5px;cursor:text;padding:0 2px;margin-right:-2px}
   .sr>b:hover{background:rgba(238,234,226,.06)}.sr>b:focus{background:#151515;box-shadow:inset 0 0 0 1px rgba(238,234,226,.3)}
   .sr.off>b{color:#4f4f55}
   .ex{grid-column:1/-1;display:flex;justify-content:flex-end;gap:5px;margin-top:2px}
@@ -1151,7 +1154,7 @@
         <div class="adh" data-k="adh" hidden><span data-k="adt">—</span><button data-a="addback">back</button></div>
         <div class="pl"><div class="sl"><small>STOP<button class="sw sm" data-t="sl" title="Stop loss on or off" aria-label="Stop loss on or off"></button></small><b data-k="slv">—</b><em data-k="slp">—</em></div><div class="tp"><small>TARGET</small><b data-k="tpv">—</b><em data-k="tpp">—</em></div></div>
         <div class="bm" data-k="bm0">${BEAM}</div>
-        ${slider('risk', 'RISK', 0.1, 6, 0.05, [[0.25, '.25'], [0.5, '.5%'], [1, '1%'], [2, '2%'], [3, '3%'], [6, '6%']])}
+        ${slider('risk', 'RISK', 0.1, 6, 0.05, [[0.25, '.25'], [0.5, '.5%'], [1, '1%'], [3, '3%'], [6, '6%']], '<input class="n" data-n="rusd" inputmode="decimal" placeholder="$ stop" aria-label="Dollar stop">')}
         ${slider('R', 'REWARD', RLO, RHI, 0.05, [[0.5, '.5R'], [1, '1R'], [2, '2R'], [3, '3R']], '<button class="c pass" data-a="pass" title="Pass line">PASS</button><input class="n" data-n="usd" inputmode="decimal" placeholder="$ gain" aria-label="Dollar target">')}
         ${slider('size', 'SIZE', 5, 100, 1, [[25, '25%'], [50, '50%'], [75, '75%'], [100, 'max']])}
         <div class="bal"><div class="bb"><i data-k="fb" style="width:0"></i></div><div class="bt"><span>fees <b data-k="fe">—</b><button class="sw" data-t="fees" title="Fees inside the risk" aria-label="Fees inside the risk"></button></span><span data-k="qz"></span></div></div>
@@ -1168,7 +1171,7 @@
         <div class="ar"><label>STOP</label><div class="ch"><button class="c" data-a="half">½ risk</button><button class="c" data-a="be">break even</button><button class="c rose" data-a="addstop" hidden>add stop</button></div></div>
         <div class="lgs" data-k="lgs"></div>
       </div>
-      <div class="go" data-v="go"><button class="L" data-a="long">Long<small>ALT B</small></button><button class="S" data-a="short">Short<small>ALT S</small></button></div>
+      <div class="go" data-v="go"><button class="L" data-a="long">Long<small>ALT B</small></button><button class="S" data-a="short">Short<small>ALT S</small></button><div class="sdt" title="Which side the stop, target and lines are set for"><button data-sd="long">long</button><i></i><button data-sd="short">short</button></div></div>
       <div class="go" data-v="go2" hidden><button class="A" data-a="addmode">Add<small>MORE</small></button><button class="X" data-a="close">Close<small>ALT X</small></button></div>
       <div class="go" data-v="go4" hidden><button class="L" data-a="addgo"><span data-k="addq">Add</span><small data-k="addk">ALT B</small></button><button class="X" data-a="close2">Close<small>ALT X</small></button></div>
       <div class="go" data-v="go3" hidden><div class="lk"><i></i><b>LOCKED</b><span data-k="lk"></span><button data-a="zend2">end zone</button></div></div>
@@ -1187,8 +1190,12 @@
     const usd = R.querySelector('[data-n=usd]');
     usd.onchange = () => { const v = parseFloat(String(usd.value).replace(/[$,\s]/g, '')); if (v > 0) { SH.usd = Math.round(v * 100) / 100; SH.tmode = 'usd'; } else if (SH.tmode === 'usd') SH.tmode = 'R'; saveSH(); redo(); };
     usd.onkeydown = e => { if (e.key === 'Enter') usd.blur(); };
+    // a dollar stop: the risk in dollars instead of a share of the balance
+    const rusd = R.querySelector('[data-n=rusd]');
+    rusd.onchange = () => { const v = parseFloat(String(rusd.value).replace(/[$,\s]/g, '')); if (v > 0) { SH.rusd = Math.round(v * 100) / 100; SH.rmode = 'usd'; } else SH.rmode = 'pct'; saveSH(); redo(); };
+    rusd.onkeydown = e => { e.stopPropagation(); if (e.key === 'Enter') rusd.blur(); };
     R.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { SH[b.dataset.t] = !SH[b.dataset.t]; saveSH(); redo(); });
-    const setSl = (key, v) => { v = Math.round(+v * 100) / 100; if (!(v > 0)) return; SH[key] = v; if (key === 'R') SH.tmode = 'R'; redo(); };
+    const setSl = (key, v) => { v = Math.round(+v * 100) / 100; if (!(v > 0)) return; SH[key] = v; if (key === 'R') SH.tmode = 'R'; if (key === 'risk') SH.rmode = 'pct'; redo(); };
     R.querySelectorAll('[data-r]').forEach(i => { i.oninput = () => setSl(i.dataset.r, LOGD[i.dataset.r] ? LOGD[i.dataset.r].from(+i.value) : i.value); i.onchange = () => saveSH(); });
     R.querySelectorAll('[data-tk]').forEach(b => b.onclick = () => { setSl(b.dataset.tk, b.dataset.v); saveSH(); });
     // leverage: tap the "25x" for a slider from 1x to the market's max; it closes on release
@@ -1218,10 +1225,10 @@
     lname.onkeydown = e => { if (e.key === 'Enter') keep(); else if (e.key === 'Escape') openName(false); };
     k('ll').onclick = e => { const c = e.target.closest('.lc'); if (!c) return; const L0 = DB.loads || [], x = L0[+c.dataset.i]; if (!x) return;
       if (e.target.closest('.x')) { L0.splice(+c.dataset.i, 1); DB.loads = L0; save(); renderShot(); return; }
-      Object.assign(SH, { risk: x.risk, R: x.R, tmode: x.tmode, usd: x.usd, size: x.size, fees: x.fees }); saveSH(); redo(); };
+      Object.assign(SH, { risk: x.risk, rmode: x.rmode === 'usd' ? 'usd' : 'pct', rusd: +x.rusd || 0, R: x.R, tmode: x.tmode, usd: x.usd, size: x.size, fees: x.fees }); saveSH(); redo(); };
     on('long', () => fire('long')); on('short', () => fire('short')); on('close', closeMine); on('close2', closeMine);
     on('addmode', () => addOn(true)); on('addback', () => addOn(false)); on('addgo', addMore);
-    ['long', 'short'].forEach(sd => { const b = R.querySelector(`[data-a=${sd}]`); b.onmouseenter = () => { SHOT.hover = sd; redo(); }; b.onmouseleave = () => { SHOT.hover = null; redo(); }; });
+    R.querySelectorAll('[data-sd]').forEach(b => b.onclick = () => { SH.side = b.dataset.sd; saveSH(); redo(); });
     on('vest', () => { SH.on = false; saveSH(); placeShot(); clearLines(); });
     // in the trade
     R.querySelectorAll('[data-cut]').forEach(b => b.onclick = () => cut(+b.dataset.cut));
@@ -1369,12 +1376,14 @@
       R.querySelectorAll('[data-r]').forEach(i => { const key = i.dataset.r, v = LOGD[key] ? LOGD[key].to(+SH[key]) : +SH[key], mn = +i.min, mx = +i.max; if (R.activeElement !== i) i.value = v; i.style.setProperty('--p', Math.max(0, Math.min(100, ((v - mn) / (mx - mn)) * 100)) + '%'); });
       R.querySelectorAll('[data-sv]').forEach(b => { if (R.activeElement !== b) b.textContent = SL_FMT[b.dataset.sv](+SH[b.dataset.sv]); });
       R.querySelectorAll('[data-tk]').forEach(b => b.classList.toggle('on', +b.dataset.v === +SH[b.dataset.tk] && (b.dataset.tk !== 'R' || SH.tmode === 'R')));
-      R.querySelector('[data-sr=R]').classList.toggle('off', SH.tmode !== 'R');
+      R.querySelector('[data-sr=R]').classList.toggle('off', SH.tmode !== 'R'); R.querySelector('[data-sr=risk]').classList.toggle('off', SH.rmode === 'usd' && SH.rusd > 0);
+      { const ru = R.querySelector('[data-n=rusd]'); if (R.activeElement !== ru) { ru.value = SH.rmode === 'usd' && SH.rusd > 0 ? '$' + SH.rusd : ''; ru.classList.toggle('on', SH.rmode === 'usd' && SH.rusd > 0); } }
       const pb = R.querySelector('[data-a=pass]'); pb.classList.toggle('on', SH.tmode === 'pass'); pb.disabled = !(p.passNeed > 0); pb.hidden = !(p.passNeed > 0) && SH.tmode !== 'pass';
       const usd = R.querySelector('[data-n=usd]'); if (R.activeElement !== usd) { usd.value = SH.tmode === 'usd' && SH.usd > 0 ? '$' + SH.usd : ''; usd.classList.toggle('on', SH.tmode === 'usd'); }
-      { const cur = JSON.stringify(loadOf()), L0 = DB.loads || [], h = L0.map((x, i) => `<div class="lc${JSON.stringify(loadOf(x)) === cur ? ' on' : ''}" data-i="${i}"><button title="${trimNum(x.risk)}% risk · ${x.tmode === 'pass' ? 'pass' : x.tmode === 'usd' ? '$' + trimNum(x.usd) : trimNum(x.R) + 'R'} · size ${x.size >= 100 ? 'max' : x.size + '%'}${x.fees ? ' · fees in' : ''}">${esc(x.n)}<small>${trimNum(x.risk)}% · ${x.tmode === 'pass' ? 'pass' : x.tmode === 'usd' ? '$' + trimNum(x.usd) : trimNum(x.R) + 'R'} · ${x.size >= 100 ? 'max' : x.size + '%'}</small></button><button class="x" title="Delete">×</button></div>`).join('');
+      { const cur = JSON.stringify(loadOf()), L0 = DB.loads || [], h = L0.map((x, i) => `<div class="lc${JSON.stringify(loadOf(x)) === cur ? ' on' : ''}" data-i="${i}"><button title="${trimNum(x.risk)}% risk · ${x.tmode === 'pass' ? 'pass' : x.tmode === 'usd' ? '$' + trimNum(x.usd) : trimNum(x.R) + 'R'} · size ${x.size >= 100 ? 'max' : x.size + '%'}${x.fees ? ' · fees in' : ''}">${esc(x.n)}<small>${x.rmode === 'usd' && x.rusd > 0 ? '$' + trimNum(x.rusd) + ' stop' : trimNum(x.risk) + '%'} · ${x.tmode === 'pass' ? 'pass' : x.tmode === 'usd' ? '$' + trimNum(x.usd) : trimNum(x.R) + 'R'} · ${x.size >= 100 ? 'max' : x.size + '%'}</small></button><button class="x" title="Delete">×</button></div>`).join('');
         if (k('ll').dataset.h !== h) k('ll').innerHTML = k('ll').dataset.h = h; k('lsv').textContent = L0.length ? '+' : '+ loadout'; }
-      const side = SHOT.hover || SH.side || 'long';
+      const side = SH.side || 'long';
+      R.querySelectorAll('[data-sd]').forEach(b => b.classList.toggle('on', b.dataset.sd === side));
       if (p.qty) {
         k('slv').textContent = '−' + fm(SH.fees ? p.risk : p.slG).replace('−', '');
         k('tpv').textContent = '+' + fm(SH.fees ? p.reward : p.tpG);
@@ -1491,7 +1500,7 @@
       return clearLines(keys);
     }
     if (!p.qty || !p.dSL) return clearLines();
-    const side = SHOT.hover || SH.side || 'long', g = p[side];
+    const side = SH.side || 'long', g = p[side];
     chLine('tp', g.tp, (SH.tmode === 'pass' ? 'PASS  +' : 'TP  +') + fm(p.reward) + '  ·  ' + pts(p.dTP) + ' pts', MINT, 2, { move: targetFromLine });
     if (SH.sl !== false) chLine('sl', g.sl, 'SL  −' + fm(p.risk).replace('−', '') + '  ·  ' + pts(p.dSL) + ' pts', ROSE, 2, { move: sizeFromStop });
     chLine('en', p.px, (side === 'long' ? 'long ' : 'short ') + p.qtyS + '  ·  ' + p.lev + 'x', 'rgba(230,227,220,0.32)', 1);
@@ -1678,6 +1687,7 @@
   .cm{display:flex;gap:2px}.cm button{height:20px;padding:0 7px;white-space:nowrap;border-radius:6px;border:1px solid rgba(238,234,226,.1);background:none;color:#8b8b92;font:600 10px Inter,system-ui,sans-serif;cursor:pointer}.cm button.on{color:#f1f1f3;border-color:rgba(238,234,226,.35)}
   .ld{margin-left:auto;font-size:10.5px;color:#6f6f75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}.ld b{color:#c9c7c2;font-weight:600}
   .r.a{grid-template-columns:minmax(0,1fr) 66px 62px 34px;cursor:pointer}
+  .r.fd{background:linear-gradient(90deg,rgba(159,215,178,.075),rgba(159,215,178,.02) 55%,rgba(159,215,178,0))}.r.fd:hover{background:linear-gradient(90deg,rgba(159,215,178,.11),rgba(159,215,178,.03) 55%,rgba(159,215,178,0))}
   .r.a.cur{background:rgba(238,234,226,.045)}.r.a.cur .nm b:before{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;background:#e6e3dc;margin-right:6px;vertical-align:2px}
   .r.a .v.b{color:#c9c7c2}
   .fo{justify-self:end;width:18px;height:18px;border-radius:5px;border:1px solid rgba(238,234,226,.22);background:none;cursor:pointer;display:grid;place-items:center;padding:0;color:#0b0b0b;font:700 11px/1 Inter,system-ui,sans-serif}
@@ -1812,7 +1822,7 @@
     k('ld').innerHTML = C.elsewhere ? 'on in another tab' : lead ? (C.on ? 'from ' : 'leader ') + '<b>' + acctShort(lead) + '</b>' : '';
     const accHtml = () => rows.map(r => {
       const isL = r.id === lead, on = !!C.followers[r.id], e = on && C.err[r.id];
-      return `<div class="r a${r.id === cur ? ' cur' : ''}" data-id="${r.id}"><div class="nm"><b>${acctShort(r.id).replace(/^Account /, '')}</b><em>${r.kind}${e ? '' : ''}</em>${e ? `<i class="er">${e}</i>` : ''}</div>
+      return `<div class="r a${r.id === cur ? ' cur' : ''}${r.kind !== 'Eval' ? ' fd' : ''}" data-id="${r.id}"><div class="nm"><b>${acctShort(r.id).replace(/^Account /, '')}</b><em>${r.kind}${e ? '' : ''}</em>${e ? `<i class="er">${e}</i>` : ''}</div>
         <div class="v vb b">${fk(r.bal)}</div>
         <div class="v vt ${tone(r.today)}">${fm(r.today, { sign: true })}</div>
         ${isL ? '<span class="fo lead" title="Leader">LEAD</span>' : `<button class="fo${on ? ' on' : ''}" data-fo="${r.id}" title="${on ? 'Stop copying to it' : 'Copy to it'}"></button>`}</div>`;
@@ -1820,7 +1830,7 @@
     const html = tab === 'acc' ? accHtml() : shown.map(r => {
       const b = DK.busy[r.id] || DK.busy.all, dis = !r.n || b ? ' disabled' : '';
       const btn = (p, lbl, cls) => `<button class="k${cls || ''}${DK.busy[r.id] === p ? ' busy' : ''}" data-cut="${p}" title="${p >= 100 ? 'Close' : 'Cut ' + p + '%'}"${dis}>${lbl}</button>`;
-      return `<div class="r" data-id="${r.id}"><div class="nm"><b>${acctShort(r.id).replace(/^Account /, '')}</b>${r.role ? `<i class="tg ${r.role}">${r.role === 'lead' ? 'LEAD' : 'COPY'}</i>` : `<em>${r.kind}</em>`}</div>
+      return `<div class="r${r.kind !== 'Eval' ? ' fd' : ''}" data-id="${r.id}"><div class="nm"><b>${acctShort(r.id).replace(/^Account /, '')}</b>${r.role ? `<i class="tg ${r.role}">${r.role === 'lead' ? 'LEAD' : 'COPY'}</i>` : `<em>${r.kind}</em>`}</div>
         <div class="v vo ${r.n ? tone(r.u) : 'dim'}">${r.n ? fm(r.u, { sign: true }) : '—'}</div>
         <div class="v vt ${tone(r.today)}">${fm(r.today, { sign: true })}</div>
         <div class="ac">${btn(25, '25')}${btn(50, '50')}${btn(100, '×', ' cl')}</div></div>`;
