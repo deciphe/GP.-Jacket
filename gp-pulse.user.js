@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.5.3
+// @version      1.5.4
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -747,6 +747,7 @@
   const esc = v => String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const loadOf = (x = SH) => ({ risk: +x.risk, rmode: x.rmode === 'usd' ? 'usd' : 'pct', rusd: +x.rusd || 0, R: +x.R, tmode: x.tmode || 'R', usd: +x.usd || 0, size: +x.size, fees: !!x.fees });
   const FRESH = 3500; // a price older than this never sizes or sends an order
+  W.__gpzVest = m => vestSuffix(m);
   W.__gpzPlan = () => { const p = plan(); return { why: p.why, id: p.id, closed: !!p.closed, ok: p.ok }; };
   function plan() {
     const sym = curSymbol(), id = activeAcct(), x = sym && SPEC[sym];
@@ -1536,14 +1537,24 @@
   function clearLines(keep) { for (const key in CHL) if (!keep || keep.indexOf(key) < 0) { try { CHL[key] && CHL[key].remove(); } catch (e) {} delete CHL[key]; delete HOLD[key]; } }
   function vestSuffix(m) { // returns how many of Vest's TP / SL labels now carry the distance
     let n = 0;
-    VL.forEach(l => {
-      if (l.__gpzOwn) return; const b = String(l.__gpzBase || ''); const tp = /^\s*TP\b|take profit/i.test(b), sl = /^\s*SL\b|stop loss/i.test(b);
+    const pxOf = l => { try { const v = l.getPrice(); return v != null && isFinite(v) ? +v : null; } catch (e) { return null; } };
+    const all = [...VL].filter(l => !l.__gpzOwn).map(l => ({ l, px: pxOf(l) })), near = nearGap(m);
+    all.forEach(({ l, px }) => {
+      const b = String(l.__gpzBase || ''); const tp = /^\s*TP\b|take profit/i.test(b), sl = /^\s*SL\b|stop loss/i.test(b);
       let suf = '';
-      if ((tp || sl) && m != null) { let px = null; try { px = l.getPrice(); } catch (e) {} if (px != null && isFinite(px)) { suf = '   ' + pts(m - px) + ' pts'; n++; } }
+      if ((tp || sl) && m != null && px != null) { suf = '   ' + pts(m - px) + ' pts'; n++; }
       if (l.__gpzSuf !== suf) { l.__gpzSuf = suf; try { l.__gpzSetText.call(l, b + suf); } catch (e) {} }
+      // a stop at entry (or a target on the pass price) sits on another of Vest's labels: slide it left, clear of it
+      const nudge = !!((tp || sl) && px != null && near > 0 && all.some(o => o.l !== l && o.px != null && Math.abs(o.px - px) < near));
+      if (l.__gpzNudge !== nudge) { l.__gpzNudge = nudge; if (l.__gpzLen) try { l.__gpzSetLen.apply(l, lenOf(l)); } catch (e) {} }
     });
     return n;
   }
+  function nearGap(m) { // about one label's height in price
+    try { const r = chartApi().getPanes()[0].getMainSourcePriceScale().getVisiblePriceRange(); if (r && isFinite(r.to - r.from) && r.to !== r.from) return Math.abs(r.to - r.from) * 0.035; } catch (e) {}
+    return m ? Math.abs(m) * 0.0006 : 0;
+  }
+  const lenOf = l => { const [v, u] = l.__gpzLen; return l.__gpzNudge ? [u === 'pixel' ? v + 230 : Math.min(90, v + 16), u] : [v, u]; };
   const ROSE = 'rgba(232,152,140,0.7)', MINT = 'rgba(159,215,178,0.7)', GOLD = 'rgba(227,201,142,0.75)';
   // the account's real floor today: Vest's daily_loss_floor already carries the buffer from withdrawn profit,
   // but the max drawdown floor still binds when it is higher; the line sits where equity would touch it
@@ -2037,7 +2048,8 @@
     if (!l || l.__gpz) return l; l.__gpz = 1; VL.add(l);
     LINE_SETTERS.forEach(m => { const o = l[m]; if (typeof o === 'function') l[m] = function (c) { return o.call(this, DB.skin !== false && !this.__gpzOwn ? skinColor(c, ROLE(m)) : c); }; });
     ['setBodyFont', 'setQuantityFont'].forEach(m => { const o = l[m]; if (typeof o === 'function') { l[m] = function (f) { return o.call(this, DB.skin !== false && !this.__gpzOwn ? LINE_FONT : f); }; } });
-    const oText = l.setText, oRemove = l.remove;
+    const oText = l.setText, oRemove = l.remove, oLen = l.setLineLength;
+    if (typeof oLen === 'function') { l.__gpzSetLen = oLen; l.setLineLength = function (v, u) { this.__gpzLen = [v, u]; return oLen.apply(this, this.__gpzOwn ? [v, u] : lenOf(this)); }; }
     if (typeof oText === 'function') { l.__gpzSetText = oText; l.setText = function (t) { this.__gpzBase = t; return oText.call(this, String(t) + (this.__gpzSuf || '')); }; }
     if (typeof oRemove === 'function') l.remove = function () { VL.delete(this); return oRemove.apply(this, arguments); };
     if (DB.skin !== false) setTimeout(() => { if (!l.__gpzOwn) { try { l.setBodyFont && l.setBodyFont(LINE_FONT); l.setQuantityFont && l.setQuantityFont(LINE_FONT); } catch (e) {} } }, 0);
