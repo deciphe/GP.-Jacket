@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.6.0
+// @version      1.6.1
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -35,13 +35,12 @@
   const XO = W.XMLHttpRequest.prototype.open, XH = W.XMLHttpRequest.prototype.setRequestHeader, XS = W.XMLHttpRequest.prototype.send;
   W.XMLHttpRequest.prototype.open = function (m, u) { this.__gpzu = String(u); this.__gpzm = String(m || 'GET').toUpperCase(); return XO.apply(this, arguments); };
   W.XMLHttpRequest.prototype.setRequestHeader = function (k, v) { try { if (/^authorization$/i.test(k) && GATE.test(this.__gpzu || '')) offer(v); } catch (e) {} return XH.apply(this, arguments); };
-  // code GIGA at checkout: when you buy an account and type no code of your own, GIGA goes on the price quote.
-  // Switched in the chart menu. If Vest won't take it on a purchase, it steps aside for six hours so checkout is never blocked.
+  // code GIGA at checkout: when you buy an account, GIGA goes on the price quote.
+  // Switched in the chart menu; while on, it replaces any code typed at checkout.
   const QUOTE_RE = /\/v3\/payments\/purchases\/quotes/;
-  const gigaOn = () => { try { return DB.giga !== false && !(Date.now() - (DB.gigaSkip || 0) < 6 * 36e5); } catch (e) { return false; } };
-  const gigaBody = b => { if (typeof b !== 'string' || !gigaOn()) return null; const j = JSON.parse(b); if (j.promotionCodeText) return null; j.promotionCodeText = 'GIGA'; return JSON.stringify(j); };
-  const gigaCheck = (st, txt) => { try { const j = JSON.parse(txt || 'null'), qs = (j && j.quotes) || [];
-    if (st >= 400 || qs.some(q => q && q.promotion && !q.promotion.promotionCodeId)) { DB.gigaSkip = Date.now(); save(); } } catch (e) {} };
+  const gigaOn = () => { try { return DB.giga !== false; } catch (e) { return false; } };
+  const gigaBody = b => { if (typeof b !== 'string' || !gigaOn()) return null; const j = JSON.parse(b); if (j.promotionCodeText === 'GIGA') return null; j.promotionCodeText = 'GIGA'; return JSON.stringify(j); }; // on means GIGA, whatever code was typed
+  const gigaCheck = () => {};
   W.XMLHttpRequest.prototype.send = function () { try { if (this.__gpzm !== 'GET' && TRADE_RE.test(this.__gpzu || '')) this.addEventListener('loadend', () => kickFast(250));
     if (this.__gpzm === 'POST' && QUOTE_RE.test(this.__gpzu || '')) { const nb = gigaBody(arguments[0]); if (nb) { arguments[0] = nb; this.addEventListener('loadend', () => gigaCheck(this.status, this.responseText)); } } } catch (e) {} return XS.apply(this, arguments); };
   const F0 = W.fetch;
@@ -636,7 +635,7 @@
     const draw = () => { el.querySelectorAll('.seg').forEach(s => s.querySelectorAll('button').forEach(b => b.classList.toggle('on', o[s.dataset.s] === b.dataset.v))); drawCert(cv, z, o); };
     const inp = el.querySelector('[data-i=name]'); inp.value = o.name; inp.oninput = () => { o.name = DB.name = inp.value; save(); draw(); };
     el.querySelectorAll('.seg').forEach(s => s.onclick = e => { const b = e.target.closest('button'); if (!b) return; o[s.dataset.s] = b.dataset.v; DB[s.dataset.s] = b.dataset.v; save(); draw(); });
-    el.querySelector('[data-a=x]').onclick = () => { el.classList.remove('on'); setTimeout(() => el.remove(), 500); closePanel(); }; // the Pulse panel is gone: the certificate is all it shows
+    el.querySelector('[data-a=x]').onclick = () => { el.classList.remove('on'); setTimeout(() => el.remove(), 500); };
     el.onclick = e => { if (e.target === el) el.querySelector('[data-a=x]').click(); };
     const name = () => 'gp-zone-' + new Date(z.t0).toISOString().slice(0, 16).replace(/[:T]/g, '-') + '.png';
     el.querySelector('[data-a=dl]').onclick = () => cv.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = name(); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 3000); msg.textContent = 'Saved'; });
@@ -1217,7 +1216,7 @@
       <div class="mw"><canvas class="moon" width="660" height="660"></canvas></div>
       <div class="hd" data-a="drag"><i class="dot"></i><div class="brand">GP.<span>SHOT</span></div><div class="sp"></div>
         <button class="ib" data-a="zone" title="Zone"><i></i><span data-k="zc">zone</span></button><button class="ib" data-a="cth" title="Chart colours"><i class="cs" data-k="cts"></i></button><button class="ib" data-a="copy" title="Copier"><i></i><span data-k="cp">desk</span></button><button class="ib" data-a="vest" title="Vest's ticket">Vest</button></div>
-      <div class="ctm" data-k="ctm" hidden><span class="cth">LOOK</span><div class="ctr"><button data-look="vest">Vest</button><button data-look="gp">GP.</button></div><span class="cth">CHART</span>${CTHEMES.map(t => `<button data-cth="${t.id}"><span class="sw3"><i style="background:${t.bg}"></i><i style="background:${t.up};box-shadow:inset 0 0 0 1px ${t.upB}"></i><i style="background:${t.dn};box-shadow:inset 0 0 0 1px ${t.dnB}"></i></span>${t.name}</button>`).join('')}<span class="cth">LINES</span><div class="ctr"><button data-lst="0">solid</button><button data-lst="2">dashed</button><button data-lst="1">dotted</button></div><span class="cth">CHECKOUT</span><div class="ctr"><button data-giga="1" title="GIGA goes on when you buy an account and type no code of your own">code GIGA</button><button data-giga="0">no code</button></div></div>
+      <div class="ctm" data-k="ctm" hidden><span class="cth">LOOK</span><div class="ctr"><button data-look="vest">Vest</button><button data-look="gp">GP.</button></div><span class="cth">CHART</span>${CTHEMES.map(t => `<button data-cth="${t.id}"><span class="sw3"><i style="background:${t.bg}"></i><i style="background:${t.up};box-shadow:inset 0 0 0 1px ${t.upB}"></i><i style="background:${t.dn};box-shadow:inset 0 0 0 1px ${t.dnB}"></i></span>${t.name}</button>`).join('')}<span class="cth">LINES</span><div class="ctr"><button data-lst="0">solid</button><button data-lst="2">dashed</button><button data-lst="1">dotted</button></div><span class="cth">CHECKOUT</span><div class="ctr"><button data-giga="1" title="GIGA goes on every account you buy, in place of any other code">code GIGA</button><button data-giga="0">no code</button></div></div>
       <div class="mk"><b data-k="px">—</b><span data-k="ac">—</span></div>
       <div class="lvp" data-k="lvp" hidden><div class="lvh"><span>LEVERAGE</span><b data-k="lvv">—</b></div><input type="range" data-k="lvr" min="1" max="50" step="1" aria-label="Leverage"><div class="lvf"><span>1x</span><button data-a="levmax">max <span data-k="lvm"></span></button></div></div>
       <div class="zr" data-k="zr" hidden><div class="zs" data-k="zs"></div>
@@ -1410,8 +1409,11 @@
     Object.assign(SPL.style, { display: '', left: Math.round(cr.left - gap / 2 - 5) + 'px', top: Math.round(cr.top) + 'px', height: Math.round(cr.height) + 'px' });
   }
   W.__gpzCols = () => { const c = document.querySelector('[data-gpz-col]'); return c ? { col: Math.round(c.getBoundingClientRect().width), row: Math.round(splitTotal(c)) } : null; };
+  // one of Vest's own windows is up (checkout, settings, a confirm): GP. steps out of its way and comes back docked when it closes
+  function vestModal() { for (const d of document.querySelectorAll('[role=dialog],[role=alertdialog]')) { if (d.closest('[id^=gpz-]') || d.getAttribute('data-state') === 'closed') continue; const r = d.getBoundingClientRect(); if (r.width > 120 && r.height > 120) return true; } return false; }
   function placeShot() {
     const S = shotHost(), on = SH.on && IS_TRADE() && !!AUTH;
+    if (on && vestModal()) { SHOT.visible = false; S.host.style.display = 'none'; S.peek.style.display = 'none'; if (DS) DS.host.style.display = 'none'; return; }
     const card = IS_TRADE() ? vestTicket() : null; let r = card && card.getBoundingClientRect();
     if (r && r.width > 200 && r.height > 300) SHOT.lastH = r.height;
     else if (IS_TRADE()) { const oc = orderCol(); if (oc) { const q = oc.getBoundingClientRect(); if (q.width > 200) r = { left: q.left, top: q.top, right: q.right, width: q.width, height: Math.min(q.height, SHOT.lastH || 640) }; } } // Vest swapped its ticket out: stay where it was
@@ -1929,7 +1931,7 @@
   }
   function placeDesk() {
     if (!DS) return; const st = DS.host.style;
-    if (!DK.open || !IS_TRADE()) { st.display = 'none'; chartCol(); return; } // off the trade page it waits, still open
+    if (!DK.open || !IS_TRADE() || vestModal()) { st.display = 'none'; chartCol(); return; } // off the trade page it waits, still open
     st.display = '';
     if (!DK.side) document.querySelectorAll('[data-gpz-chartcol]').forEach(e => e.removeAttribute('data-gpz-chartcol'));
     const q = c => DS.R.querySelector(c), hh = [...DS.R.querySelectorAll('.rh,.cpy')].reduce((a, e) => a + e.offsetHeight, 0), want = q('.hd').offsetHeight + q('.top').offsetHeight + hh + q('.rows').scrollHeight + q('.ft').offsetHeight + 2;
@@ -2257,6 +2259,6 @@
 
   // ---------- start ----------
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && OPEN) closePanel(); });
-  const boot = () => { booted = true; fonts(); applySkin(); loop(); fastLoop(); setInterval(() => { if (DB.zone && SHOT.visible) zoneBits(); }, 1000); }; // the Pulse pill and its panel are gone
+  const boot = () => { booted = true; fonts(); applySkin(); placePill(); render(); setInterval(placePill, 1000); setInterval(() => { if (DB.zone || OPEN) render(); if (DB.zone && SHOT.visible) zoneBits(); }, 1000); loop(); fastLoop(); };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
