@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.5.10
+// @version      1.5.11
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -735,7 +735,7 @@
   document.addEventListener('visibilitychange', () => { if (!document.hidden) kickFast(0); });
 
   // ---------- the plan: risk-locked size and fee-aware stop / target ----------
-  const SH = Object.assign({ on: true, sl: true, risk: 2, R: 1, tmode: 'R', usd: 0, size: 100, fees: true, chart: true, side: 'long', dock: true, x: null, y: null }, DB.shot || {});
+  const SH = Object.assign({ on: true, sl: true, risk: 2, R: 1, tmode: 'R', usd: 0, size: 100, fees: true, chart: true, side: 'long', dock: true, x: null, y: null, addp: 50 }, DB.shot || {});
   const CTHEMES = [
     { id: 'vest', name: 'Vest', bg: '#121714', up: '#00D98E', upB: '#00D98E', dn: '#E03737', dnB: '#E03737' }, // Vest's own colours, the whole page
     { id: 'massive', name: 'Massive', bg: '#0b0b0b', up: '#dedbd3', upB: '#dedbd3', dn: '#4b4b51', dnB: '#4b4b51' },
@@ -905,6 +905,27 @@
       SHOT.adding = false; return 'Added ' + qs + ' ' + shortSym(sym);
     });
   }
+  // add to the open trade: a share of the margin still free on the account, at the trade's own leverage
+  function firstSize(pos) { // the size the trade opened with, remembered per position
+    const id = pos.positionId, q = Math.abs(+pos.quantity) || 0, I = DB.init || (DB.init = {});
+    if (!(I[id] > 0) && q > 0) { I[id] = q; const ks = Object.keys(I); if (ks.length > 60) ks.slice(0, ks.length - 60).forEach(k => delete I[k]); save(); }
+    return I[id] || q;
+  }
+  function addPlan(pct) { // how much one click adds: a share of the first size, no more than the free margin carries
+    const pos = curPos(); if (!pos) return null; const id = accOf(pos), sym = pos.symbol, lev = +pos.leverage || maxLev(sym, id) || 1, m = L.mark[sym];
+    const free = L.bal[id] != null ? Math.max(0, L.bal[id]) : 0, cap = m ? free * lev * 0.985 / m : 0, want = firstSize(pos) * pct / 100;
+    return { pos, id, sym, lev, m, qs: fmtQ(Math.min(want, cap), sym), capped: want > cap };
+  }
+  function addPct(pct) {
+    const a = addPlan(pct); if (!a) return; if (zoneLocked()) return shotMsg('zone locked', 'bad');
+    const { pos, id, sym, lev, m, qs } = a;
+    if (!m || !(Date.now() - (L.markAt || 0) < FRESH)) return shotMsg('price stale', 'bad');
+    if (!(+qs > 0)) return shotMsg(a.capped ? 'no free margin' : 'too small to add', 'bad');
+    act('addx', async () => {
+      await send(id, 'POST', '/v3/positions/append', { symbol: sym, positionId: pos.positionId, orderType: 'market', quantity: qs, leverage: trimNum(lev), isBuy: /^l/i.test(pos.side), timeInForce: 'IOC' });
+      return 'Added ' + qs + ' ' + shortSym(sym);
+    });
+  }
   // a partial close resting at a price: lands halfway to the target, then it is dragged on the chart
   function scaleOut(pct) {
     const pos = curPos(); if (!pos) return; const t = tradeOf(pos), sym = pos.symbol; if (!t.m) return;
@@ -996,7 +1017,7 @@
   .c.on{background:#e6e3dc;border-color:#e6e3dc;color:#0b0b0b}
   .c[disabled]{opacity:.3;cursor:not-allowed}
   .c.pass{flex:none;width:54px;height:24px;font-size:10.5px;letter-spacing:.06em;color:#9e9ea5}.c.pass.on{background:#e3c98e;border-color:#e3c98e;color:#0b0b0b}
-  .c.gold{color:#e3c98e;border-color:rgba(227,201,142,.3)}.c.gold:hover{border-color:#e3c98e}
+  .c.gold{color:#e3c98e;border-color:rgba(227,201,142,.3)}.c.grn{color:#bfe6cb;border-color:rgba(159,215,178,.3)}[data-a=addx]{flex:1;font-weight:700}.c.gold:hover{border-color:#e3c98e}
   .c.rose{color:#efb1a7;border-color:rgba(232,152,140,.45)}
   .c.mint{color:#9fd7b2;border-color:rgba(159,215,178,.32)}.c.mint:hover{border-color:#9fd7b2}
   .pv,.tv{display:flex;flex-direction:column;gap:10px}
@@ -1101,9 +1122,9 @@
   .msg.ok{color:#9fd7b2}.msg.bad{color:#efb1a7}
   [hidden]{display:none!important}
   @media (prefers-reduced-motion:reduce){.dot,.moon,.bm .pd:after{animation:none}}`;
-  const SL_FMT = { risk: v => trimNum(v) + '%', R: v => trimNum(v) + 'R', size: v => (v >= 100 ? 'max' : trimNum(Math.round(v * 10) / 10) + '%') };
+  const SL_FMT = { addp: v => (v >= 200 && v % 100 === 0 ? v / 100 + 'x' : trimNum(v) + '%'), risk: v => trimNum(v) + '%', R: v => trimNum(v) + 'R', size: v => (v >= 100 ? 'max' : trimNum(Math.round(v * 10) / 10) + '%') };
   // the reward dial runs on a log scale, so 0.5R and 1R get as much room as 2R to 5R
-  const RLO = 0.25, RHI = 5, LOGD = { risk: { to: v => (v = Math.max(0.25, Math.min(3, v)), v <= 1 ? (v - 0.25) / 0.75 * 500 : 500 + (v - 1) / 2 * 500), from: p => p <= 500 ? Math.round((0.25 + p / 500 * 0.75) * 20) / 20 : Math.round((1 + (p - 500) / 500 * 2) * 10) / 10 }, R: { to: v => 1000 * Math.log(Math.max(RLO, Math.min(RHI, v)) / RLO) / Math.log(RHI / RLO), from: p => { const v = RLO * Math.exp(p / 1000 * Math.log(RHI / RLO)); return v < 1 ? Math.round(v * 20) / 20 : Math.round(v * 10) / 10; } } };
+  const RLO = 0.25, RHI = 5, LOGD = { addp: { to: v => (v = Math.max(5, Math.min(300, v)), v <= 100 ? (v - 5) / 95 * 700 : 700 + (v - 100) / 200 * 300), from: p => p <= 700 ? Math.round((5 + p / 700 * 95) / 5) * 5 : Math.round((100 + (p - 700) / 300 * 200) / 10) * 10 }, risk: { to: v => (v = Math.max(0.25, Math.min(3, v)), v <= 1 ? (v - 0.25) / 0.75 * 500 : 500 + (v - 1) / 2 * 500), from: p => p <= 500 ? Math.round((0.25 + p / 500 * 0.75) * 20) / 20 : Math.round((1 + (p - 500) / 500 * 2) * 10) / 10 }, R: { to: v => 1000 * Math.log(Math.max(RLO, Math.min(RHI, v)) / RLO) / Math.log(RHI / RLO), from: p => { const v = RLO * Math.exp(p / 1000 * Math.log(RHI / RLO)); return v < 1 ? Math.round(v * 20) / 20 : Math.round(v * 10) / 10; } } };
   // a slider with the benchmarks as tick marks under it (click one to snap to it)
   function slider(key, label, min, max, step, ticks, extra) {
     const lg = LOGD[key]; if (lg) { min = 0; max = 1000; step = 1; }
@@ -1201,13 +1222,15 @@
         <div class="pu"><b data-k="pu">—</b><span data-k="pr"></span></div>
         <div class="bm" data-k="bm1">${BEAM}</div>
         <div class="ends"><div class="a"><b data-k="e1">—</b><em data-k="e1s"></em></div><div class="b"><b data-k="e2">—</b><em data-k="e2s"></em></div></div>
+        ${slider('addp', 'ADD', 5, 300, 5, [[25, '25%'], [50, '50%'], [100, '100%'], [200, '2x'], [300, '3x']])}
+        <div class="ar"><label></label><div class="ch"><button class="c grn" data-a="addx" data-k="addx" title="Adds this share of the trade's first size, each click">add</button></div></div>
         <div class="ar"><label>CLOSE</label><div class="ch">${cuts('cut', '', [10, 20, 25, 50, 75])}</div></div>
         <div class="ar"><label>LIMIT</label><div class="ch">${cuts('lim', ' gold')}</div></div>
         <div class="ar"><label>STOP</label><div class="ch"><button class="c" data-a="half">½ risk</button><button class="c" data-a="be">break even</button><button class="c rose" data-a="addstop" hidden>add stop</button></div></div>
         <div class="lgs" data-k="lgs"></div>
       </div>
       <div class="go" data-v="go"><button class="L" data-a="long">Long<small data-kk="long"></small></button><button class="S" data-a="short">Short<small data-kk="short"></small></button><div class="sdt" title="Which side the stop, target and lines are set for"><button data-sd="long">long</button><i></i><button data-sd="short">short</button><i></i><button class="kb" data-a="keys" title="Keyboard shortcuts">keys</button><i></i><button data-a="snap" title="Put the ticket, the desk and the chart back in place">reset</button></div></div>
-      <div class="go" data-v="go2" hidden><button class="A" data-a="addmode">Add</button><button class="X" data-a="close">Close<small data-kk="close"></small></button></div>
+      <div class="go" data-v="go2" hidden><button class="X" data-a="close">Close<small data-kk="close"></small></button></div>
       <div class="go" data-v="go4" hidden><button class="L" data-a="addgo"><span data-k="addq">Add</span><small data-kk="add"></small></button><button class="X" data-a="close2">Close<small data-kk="close"></small></button></div>
       <div class="kp" data-k="kp" hidden><div class="kh"><span>KEYS</span><button class="sw" data-kt="keys" aria-label="Keyboard shortcuts on or off"></button></div>
         <div class="kr"><span>Long</span><button data-kb="long"></button></div><div class="kr"><span>Short</span><button data-kb="short"></button></div><div class="kr"><span>Close</span><button data-kb="close"></button></div></div>
@@ -1245,7 +1268,7 @@
     lvr.onchange = () => { lvSet(+lvr.value); lvp.hidden = true; };
     on('levmax', () => { lvSet(1e9); lvp.hidden = true; });
     R.querySelector('.s').addEventListener('pointerdown', e => { if (!lvp.hidden && !e.composedPath().includes(lvp) && !e.target.closest('[data-a=lev]')) lvp.hidden = true; });
-    const TYPED = { risk: [0.01, 20], R: [0.1, 20], size: [1, 100] };
+    const TYPED = { addp: [1, 500], risk: [0.01, 20], R: [0.1, 20], size: [1, 100] };
     R.querySelectorAll('[data-sv]').forEach(b => {
       const key = b.dataset.sv, done = keep => { if (keep) { const t = b.textContent.trim().toLowerCase(), v = key === 'size' && /max/.test(t) ? 100 : parseFloat(t.replace(/[^0-9.]/g, ''));
         if (v > 0) { setSl(key, Math.max(TYPED[key][0], Math.min(TYPED[key][1], v))); saveSH(); } } b.blur(); redo(); };
@@ -1281,11 +1304,12 @@
     R.querySelector('[data-kt=keys]').onclick = () => { SH.keys.on = !SH.keys.on; KREC = null; saveSH(); renderShot(); };
     R.querySelectorAll('[data-kb]').forEach(b => b.onclick = () => { KREC = KREC === b.dataset.kb ? null : b.dataset.kb; renderShot(); });
     on('long', () => fire('long')); on('short', () => fire('short')); on('close', closeMine); on('close2', closeMine);
-    on('addmode', () => addOn(true)); on('addback', () => addOn(false)); on('addgo', addMore);
+    on('addback', () => addOn(false)); on('addgo', addMore);
     R.querySelectorAll('[data-sd]').forEach(b => b.onclick = () => { SH.side = b.dataset.sd; saveSH(); redo(); });
     on('vest', () => { SH.on = false; saveSH(); placeShot(); clearLines(); });
     // in the trade
     R.querySelectorAll('[data-cut]').forEach(b => b.onclick = () => cut(+b.dataset.cut));
+    on('addx', () => addPct(SH.addp));
     R.querySelectorAll('[data-lim]').forEach(b => b.onclick = () => scaleOut(+b.dataset.lim));
     on('be', breakEven); on('half', halfRisk); on('addstop', addStop);
     k('lgs').onclick = e => { const b = e.target.closest('button'); if (b) dropLeg(b.dataset.id); };
@@ -1437,6 +1461,10 @@
       const sm = t.m ? t.s(t.m) : 0, sS = slP != null ? t.s(slP) : null, sT = tpP != null ? t.s(tpP) : null;
       const a = Math.min(sS != null ? sS : -t.d0, sm, -t.d0 * 0.2), b = Math.max(sT != null ? sT : t.d0 * 2, sm, t.d0 * 0.2);
       setBeam(k('bm1'), { a, b, stop: sS, tgt: sT, price: sm, legs: t.scales.map(l => t.s(+l.triggerPrice)) });
+      { const i = R.querySelector('[data-r=addp]'), v = LOGD.addp.to(+SH.addp); if (R.activeElement !== i) i.value = v; i.style.setProperty('--p', v / 10 + '%');
+        const sv = R.querySelector('[data-sv=addp]'); if (R.activeElement !== sv) sv.textContent = SL_FMT.addp(+SH.addp);
+        R.querySelectorAll('[data-tk=addp]').forEach(b => b.classList.toggle('on', +b.dataset.v === +SH.addp)); }
+      { const a = addPlan(SH.addp), b = k('addx'); if (a) { b.textContent = +a.qs > 0 ? '+ ' + a.qs + ' ' + shortSym(a.sym) + (a.capped ? ' · all the margin left' : '') : 'no free margin'; b.disabled = !(+a.qs > 0) || !!SHOT.busy; } }
       k('e1').textContent = slP != null ? fmtPx(slP, sym) : 'NO STOP'; k('e1').className = slP != null ? '' : 'none';
       const slUsd = slP != null ? t.at(slP) : 0; k('e1s').textContent = slP != null ? fm(slUsd, { sign: true }) + (t.m ? ' · ' + pts(t.m - slP) + ' pts' : '') : ''; k('e1s').className = slUsd > 0 ? 'up' : '';
       k('e2').textContent = tpP != null ? fmtPx(tpP, sym) : '—'; k('e2s').textContent = tpP != null ? (t.m ? pts(tpP - t.m) + ' pts · ' : '') + fm(t.at(tpP), { sign: true }) : '';
