@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.6.2
+// @version      1.7.0
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -17,6 +17,11 @@
 (function () {
   'use strict';
   const W = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
+  // one clock for all the upkeep: each job runs on its own beat from a single timer, and the UI jobs
+  // slow down 4x while the tab is in the background (copying runs on its own loop and keeps full speed)
+  const JOBS = []; let clockT = null;
+  function every(ms, fn, keep) { JOBS.push({ ms, fn, keep: !!keep, at: 0 }); if (!clockT) clockT = setInterval(clock, 100); }
+  function clock() { const now = Date.now(), hid = document.hidden; for (const j of JOBS) { const ms = hid && !j.keep ? j.ms * 4 : j.ms; if (now - j.at < ms) continue; j.at = now; try { j.fn(); } catch (e) {} } }
   if (W.top !== W.self) return;
 
   // ---------- Vest session: reuse the sign-in Vest's own page already sends. Kept in memory only, never saved. ----------
@@ -745,6 +750,7 @@
       } catch (e) { L.err = String(e.message || e); }
       fastBusy = false;
       try { zoneTick(); } catch (e) {}
+      try { autoManage(); } catch (e) {}
     }
     if (need) { try { renderShot(); drawChart(); } catch (e) {} try { renderDesk(); } catch (e) {} }
     fastT = setTimeout(fastLoop, C.on ? 1500 : 1100);
@@ -845,10 +851,23 @@
       const g = p[side];
       const body = { orderType: 'market', leverage: String(p.lev), side, symbol: p.sym, quantity: p.qtyS, timeInForce: 'IOC', takeProfits: [{ executionType: 'market', triggerPrice: fmtP(g.tp, p.sym) }], stopLosses: SH.sl === false ? [] : [{ executionType: 'market', triggerPrice: fmtP(g.sl, p.sym) }] };
       sent = true; await send(p.id, 'POST', '/v3/positions/open', body);
-      shotMsg((side === 'long' ? 'Long ' : 'Short ') + p.qtyS + ' ' + shortSym(p.sym) + (SH.sl === false ? ' · no stop' : ' · stop ' + fmtPx(g.sl, p.sym)), 'ok');
+      shotMsg((side === 'long' ? 'Long ' : 'Short ') + p.qtyS + ' ' + shortSym(p.sym) + (SH.sl === false ? ' · no stop' : ' · stop ' + fmtPx(g.sl, p.sym)), 'ok'); flash(side);
+      const want = p.px, sym0 = p.sym, id0 = p.id; setTimeout(() => { const ps = L.pos.find(x => accOf(x) === id0 && x.symbol === sym0); if (!ps) return; const op = +ps.openPrice, sl = (op - want) * (side === 'long' ? 1 : -1);
+        shotMsg('Filled ' + fmtPx(op, sym0) + ' · ' + (Math.abs(sl) < tickOf(sym0) / 2 ? 'no slip' : (sl > 0 ? '' : '−') + pts(Math.abs(sl)) + ' pts ' + (sl > 0 ? 'slip' : 'better')), 'ok'); }, 1600);
     } catch (e) { if (e.status && e.status < 500 && e.status !== 429) sent = false; shotMsg(e.message, 'bad'); }
     SHOT.cool = Date.now() + (sent ? 2500 : 600); // no second shot until the position list has caught up
     SHOT.busy = false; saveSH(); kickFast(150); setTimeout(renderShot, 2600);
+  }
+  function flash(side) { const s = SP && SP.R.querySelector('.s'); if (!s) return; s.classList.remove('fl-long', 'fl-short'); void s.offsetWidth; s.classList.add('fl-' + side); setTimeout(() => s.classList.remove('fl-' + side), 900); }
+  // auto break even at +1R, then the stop trails up in 0.5R steps: off unless switched on in settings
+  function autoManage() {
+    if ((!DB.abe && !DB.atr) || SHOT.busy || Date.now() < (SHOT.autoAt || 0)) return;
+    const pos = curPos(); if (!pos) return; const t = tradeOf(pos); if (!t.sl || t.R == null || !t.m) return;
+    if (t.R < 1) return; const lockR = DB.atr ? Math.floor((t.R - 1) / 0.5 + 1e-9) * 0.5 : 0, tk = tickOf(t.sym);
+    const be = t.long ? t.op * (1 + t.f) / (1 - t.f) : t.op * (1 - t.f) / (1 + t.f), raw = lockR > 0 ? t.op + t.dir * t.d0 * lockR : be;
+    const want = t.long ? Math.ceil(raw / tk - 1e-9) * tk : Math.floor(raw / tk + 1e-9) * tk, cur = +t.sl.triggerPrice;
+    if ((want - cur) * t.dir <= tk / 2 || (t.m - want) * t.dir <= tk * 2) return;
+    SHOT.autoAt = Date.now() + 4000; setStop(want, lockR > 0 ? 'Trailed +' + trimNum(lockR) + 'R ·' : 'Auto break even ·', 'be');
   }
   async function act(tag, fn) {
     if (SHOT.busy) return; SHOT.busy = tag; renderShot();
@@ -983,11 +1002,12 @@
   .sp{flex:1;min-width:4px}
   .ib{flex:none;height:24px;min-width:24px;padding:0 7px;border-radius:8px;border:1px solid rgba(238,234,226,.12);background:none;color:#9e9ea5;font:700 11px/1 Inter,system-ui,sans-serif;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:5px;transition:border-color .25s,color .25s,background .25s;font-variant-numeric:tabular-nums}
   .ib:hover{color:#f1f1f3;border-color:rgba(238,234,226,.34)}
-  .ib .cs{width:10px;height:10px;border-radius:3px;margin:0;flex:none;box-shadow:inset 0 0 0 1px rgba(238,234,226,.25)}
+  .ib.gr{width:28px;padding:0;justify-content:center;color:#9e9ea5}.ib.gr svg{display:block}.ib.gr.on svg{color:#0b0b0b}.ib .cs{width:10px;height:10px;border-radius:3px;margin:0;flex:none;box-shadow:inset 0 0 0 1px rgba(238,234,226,.25)}
   .ctm{position:absolute;top:44px;right:18px;z-index:31;display:flex;flex-direction:column;gap:2px;width:190px;padding:5px;border-radius:12px;border:1px solid rgba(238,234,226,.14);background:#101010;box-shadow:0 22px 50px -16px rgba(0,0,0,.9);animation:lin .18s ease-out}.ctm[hidden]{display:none}
-  .ctm button{display:flex;align-items:center;gap:10px;height:32px;padding:0 10px;border:0;border-radius:8px;background:none;color:#c9c7c2;font:600 12px Inter,system-ui,sans-serif;cursor:pointer;text-align:left}
+  .ctm button{display:flex;align-items:center;gap:10px;height:28px;padding:0 10px;border:0;border-radius:8px;background:none;color:#c9c7c2;font:600 12px Inter,system-ui,sans-serif;cursor:pointer;text-align:left}
   .ctm button:hover{background:rgba(238,234,226,.06);color:#f1f1f3}.ctm button.on{background:rgba(238,234,226,.08);color:#f1f1f3}
-  .cth{padding:6px 10px 3px;font-size:9.5px;font-weight:700;letter-spacing:.16em;color:#6f6f75}.ctr{display:flex;gap:2px}.ctr button{flex:1;justify-content:center;padding:0 6px}
+  .ctg{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px;padding:0 1px}.ctg .sw3{gap:1px;padding:2px}.ctg .sw3 i{width:6px;height:12px}.ctg .sw3 i:first-child{width:9px}.ctg button{flex-direction:column;justify-content:center;gap:5px;height:auto!important;padding:7px 2px!important}.ctg small{font-size:9.5px;font-weight:600;color:#8b8b92}.ctg button.on small{color:#f1f1f3}.ctm{width:236px!important}
+  .ctt{padding:6px 10px 6px;font-size:13px;font-weight:800;color:#f1f1f3;border-bottom:1px solid rgba(238,234,226,.08);margin-bottom:2px}.ctm{max-height:min(560px,calc(100vh - 140px));overflow-y:auto;scrollbar-width:none}.cth{padding:6px 10px 3px;font-size:9.5px;font-weight:700;letter-spacing:.16em;color:#6f6f75}.ctr{display:flex;gap:2px}.ctr button{flex:1;justify-content:center;padding:0 6px}
   .sw3{display:inline-flex;gap:2px;padding:2px;border-radius:6px;background:rgba(238,234,226,.06)}.sw3 i{width:10px;height:14px;border-radius:2px}.sw3 i:first-child{width:14px}
   .ib.on{color:#0b0b0b;background:#e6e3dc;border-color:#e6e3dc}
   .ib i{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.6}
@@ -1014,10 +1034,13 @@
   .clg:empty{display:none}
   .clg div.bad{color:#efb1a7}
   .ib.lock{color:#0b0b0b;background:#e8988c;border-color:#e8988c}.ib.lock i{opacity:1;background:#0b0b0b}
-  .mk{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .mk{display:flex;justify-content:space-between;align-items:baseline;gap:8px}.mk>b{display:inline-flex;align-items:center;gap:7px}
+  .fr{width:5px;height:5px;border-radius:50%;background:#55555b;flex:none;transition:background .3s}.fr.ok{background:#9fd7b2;box-shadow:0 0 6px rgba(159,215,178,.6)}.fr.mid{background:#e3c98e}.fr.bad{background:#e8988c}
+  .rm{color:#9e9ea5}.rm.low{color:#efb1a7}
+  .s.fl-long{outline:1.5px solid rgba(159,215,178,.95);outline-offset:-1.5px}.s.fl-short{outline:1.5px solid rgba(232,152,140,.95);outline-offset:-1.5px}
   .mk b{font-size:19px;font-weight:600;letter-spacing:-.04em;font-variant-numeric:tabular-nums;white-space:nowrap;transition:color .4s}
-  .mk b.old{color:#5f5f66}
-  .mk span{font-size:11px;font-weight:600;color:#8b8b92;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+  .mk b em{font-style:normal}.mk .old{color:#5f5f66}
+  .mk>span{font-size:11px;font-weight:600;color:#8b8b92;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:0 1 auto}.mk>b{flex:0 1 auto;min-width:0}
   .mk span em{font-style:normal;color:#f1f1f3;font-weight:600}
   .zr{display:flex;align-items:center;gap:6px;height:28px;font-size:11.5px;font-weight:600;color:#8b8b92;font-variant-numeric:tabular-nums}
   .zr label{font-size:10.5px;font-weight:700;color:#6f6f75;letter-spacing:.06em;margin-right:2px}
@@ -1115,7 +1138,7 @@
   .sdt{grid-column:1/-1;display:flex;justify-content:center;align-items:center;gap:8px;margin-top:-2px;height:16px}
   .sdt button{border:0;background:none;padding:0 4px;color:#4f4f55;font:600 10px Inter,system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;transition:color .2s}
   .sdt button:hover{color:#9e9ea5}.sdt button.on{color:#e6e3dc}.sdt i{width:1px;height:9px;background:rgba(238,234,226,.14)}
-  .s>.go{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:auto;position:sticky;bottom:32px;z-index:3;padding:8px 0 0;background:linear-gradient(180deg,rgba(11,11,11,0),#0b0b0b 10px)}
+  .s>.go{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:auto;position:sticky;bottom:0;z-index:3;padding:8px 0 0;background:linear-gradient(180deg,rgba(11,11,11,0),#0b0b0b 10px)}
   .L,.S,.X{position:relative;height:50px;border-radius:10px;font:600 16px Inter,system-ui,sans-serif;letter-spacing:-.03em;cursor:pointer;transition:transform .12s,background .25s,border-color .25s,opacity .25s,box-shadow .3s;overflow:hidden}
   .L{border:0;background:#e6e3dc;color:#0b0b0b}.L:hover{background:#fff;box-shadow:0 0 26px -6px rgba(230,227,220,.55)}
   .S{border:1px solid rgba(238,234,226,.3);background:rgba(11,11,11,.6);color:#f1f1f3}.S:hover{border-color:#e6e3dc;box-shadow:0 0 26px -10px rgba(230,227,220,.5)}
@@ -1126,6 +1149,10 @@
   .s.add .sr[data-sr=risk],.s.add .sr[data-sr=R],.s.add .ld{display:none}
   .X{grid-column:1/-1;border:1px solid rgba(232,152,140,.45);background:rgba(11,11,11,.6);color:#efb1a7}.X:hover{border-color:#efb1a7;box-shadow:0 0 26px -10px rgba(232,152,140,.6)}
   .L:active,.S:active,.X:active{transform:scale(.975)}
+  /* finish: one focus ring, calm hovers, a soft top light on the fire buttons */
+  button:focus-visible,input:focus-visible{outline:2px solid rgba(227,201,142,.65);outline-offset:2px}
+  .c,.ls,.ldd,.ib,.sw{transition:background .15s,border-color .15s,color .15s,transform .1s}.c:active,.ls:active,.ib:active{transform:scale(.97)}
+  .L,.S{box-shadow:inset 0 1px 0 rgba(255,255,255,.14)}.S{box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
   .L[disabled],.S[disabled]{opacity:.32;cursor:not-allowed;box-shadow:none}
   .L small,.S small,.X small{display:block;font-size:9.5px;font-weight:700;opacity:.5;letter-spacing:.08em;margin-top:1px}
   .lk{grid-column:1/-1;display:flex;align-items:center;gap:12px;height:50px;padding:0 6px 0 16px;border-radius:10px;border:1px solid rgba(232,152,140,.35)}
@@ -1133,14 +1160,16 @@
   .lk b{font-size:13px;font-weight:600;letter-spacing:.22em;color:#efb1a7}
   .lk span{flex:1;min-width:0;font-size:11.5px;font-weight:600;color:#8b8b92;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .lk button{flex:none;height:36px;padding:0 14px;border-radius:8px;border:0;background:#e6e3dc;color:#0b0b0b;font:600 12px Inter,system-ui,sans-serif;cursor:pointer}
-  .s>.ft{position:sticky;bottom:0;z-index:3;display:flex;align-items:center;gap:8px;min-height:32px;margin-top:-10px;margin-bottom:-14px;padding:4px 0 6px;background:#0b0b0b}
-  .msg{flex:1;min-width:0;font-size:11px;font-weight:600;color:#8b8b92;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .msg.ok{color:#9fd7b2}.msg.bad{color:#efb1a7}
+  .s>
+  .mst{position:relative;height:0;z-index:7}.mst .msg{position:absolute;left:0;right:0;top:6px;padding:7px 11px;border-radius:9px;background:#141414;border:1px solid rgba(238,234,226,.14);box-shadow:0 10px 24px -10px rgba(0,0,0,.8);font-size:11.5px;font-weight:600;color:#c9c7c2;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:opacity .25s,transform .25s}.mst .msg:empty{opacity:0;transform:translateY(-4px);pointer-events:none}.msg.wait{color:#e3c98e;border-color:rgba(227,201,142,.35)}
+  .msg.ok{color:#9fd7b2;border-color:rgba(159,215,178,.35)!important}.msg.bad{color:#efb1a7;border-color:rgba(232,152,140,.4)}
   [hidden]{display:none!important}
   @media (prefers-reduced-motion:reduce){.dot,.moon,.bm .pd:after{animation:none}}`;
   const SL_FMT = { addp: v => (v >= 200 && v % 100 === 0 ? v / 100 + 'x' : trimNum(v) + '%'), risk: v => trimNum(v) + '%', R: v => trimNum(v) + 'R', size: v => (v >= 100 ? 'max' : trimNum(Math.round(v * 10) / 10) + '%') };
   // the reward dial runs on a log scale, so 0.5R and 1R get as much room as 2R to 5R
-  const RLO = 0.25, RHI = 5, LOGD = { addp: { to: v => (v = Math.max(5, Math.min(300, v)), v <= 100 ? (v - 5) / 95 * 700 : 700 + (v - 100) / 200 * 300), from: p => p <= 700 ? Math.round((5 + p / 700 * 95) / 5) * 5 : Math.round((100 + (p - 700) / 300 * 200) / 10) * 10 }, risk: { to: v => (v = Math.max(0.25, Math.min(3, v)), v <= 1 ? (v - 0.25) / 0.75 * 500 : 500 + (v - 1) / 2 * 500), from: p => p <= 500 ? Math.round((0.25 + p / 500 * 0.75) * 20) / 20 : Math.round((1 + (p - 500) / 500 * 2) * 10) / 10 }, R: { to: v => 1000 * Math.log(Math.max(RLO, Math.min(RHI, v)) / RLO) / Math.log(RHI / RLO), from: p => { const v = RLO * Math.exp(p / 1000 * Math.log(RHI / RLO)); return v < 1 ? Math.round(v * 20) / 20 : Math.round(v * 10) / 10; } } };
+  const anchors = (A, step) => ({ to: v => { v = Math.max(A[0], Math.min(A[A.length - 1], v)); let i = 0; while (i < A.length - 2 && v > A[i + 1]) i++; return (i + (v - A[i]) / (A[i + 1] - A[i])) * 1000 / (A.length - 1); },
+    from: p => { const t = Math.max(0, Math.min(1, p / 1000)) * (A.length - 1), i = Math.min(A.length - 2, Math.floor(t)), v = A[i] + (t - i) * (A[i + 1] - A[i]), k = step(v); return Math.round(v * k) / k; } }); // ticks sit evenly along the dial
+  const RLO = 0.25, RHI = 5, LOGD = { addp: anchors([5, 25, 50, 100, 200, 300], v => v < 100 ? 0.2 : 0.1), risk: anchors([0.25, 0.5, 1, 2, 3], v => v < 1 ? 20 : 10), R: { to: v => 1000 * Math.log(Math.max(RLO, Math.min(RHI, v)) / RLO) / Math.log(RHI / RLO), from: p => { const v = RLO * Math.exp(p / 1000 * Math.log(RHI / RLO)); return v < 1 ? Math.round(v * 20) / 20 : Math.round(v * 10) / 10; } } };
   // a slider with the benchmarks as tick marks under it (click one to snap to it)
   function slider(key, label, min, max, step, ticks, extra) {
     const lg = LOGD[key]; if (lg) { min = 0; max = 1000; step = 1; }
@@ -1215,9 +1244,10 @@
     R.innerHTML = `<style>${SCSS}${SLCSS}</style><div class="s">
       <div class="mw"><canvas class="moon" width="660" height="660"></canvas></div>
       <div class="hd" data-a="drag"><i class="dot"></i><div class="brand">GP.<span>SHOT</span></div><div class="sp"></div>
-        <button class="ib" data-a="zone" title="Zone"><i></i><span data-k="zc">zone</span></button><button class="ib" data-a="cth" title="Chart colours"><i class="cs" data-k="cts"></i></button><button class="ib" data-a="copy" title="Copier"><i></i><span data-k="cp">desk</span></button><button class="ib" data-a="vest" title="Vest's ticket">Vest</button></div>
-      <div class="ctm" data-k="ctm" hidden><span class="cth">LOOK</span><div class="ctr"><button data-look="vest">Vest</button><button data-look="gp">GP.</button></div><span class="cth">CHART</span>${CTHEMES.map(t => `<button data-cth="${t.id}"><span class="sw3"><i style="background:${t.bg}"></i><i style="background:${t.up};box-shadow:inset 0 0 0 1px ${t.upB}"></i><i style="background:${t.dn};box-shadow:inset 0 0 0 1px ${t.dnB}"></i></span>${t.name}</button>`).join('')}<span class="cth">LINES</span><div class="ctr"><button data-lst="0">solid</button><button data-lst="2">dashed</button><button data-lst="1">dotted</button></div><span class="cth">CHECKOUT</span><div class="ctr"><button data-giga="1" title="GIGA goes on every account you buy, in place of any other code">code GIGA</button><button data-giga="0">no code</button></div></div>
-      <div class="mk"><b data-k="px">—</b><span data-k="ac">—</span></div>
+        <button class="ib" data-a="zone" title="Zone"><i></i><span data-k="zc">zone</span></button><button class="ib gr" data-a="cth" title="Settings" aria-label="Settings"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v2.6M12 18.9v2.6M4.6 4.6l1.9 1.9M17.5 17.5l1.9 1.9M2.5 12h2.6M18.9 12h2.6M4.6 19.4l1.9-1.9M17.5 6.5l1.9-1.9"/></svg><i class="cs" data-k="cts" hidden></i></button><button class="ib" data-a="copy" title="Copier"><i></i><span data-k="cp">desk</span></button><button class="ib" data-a="vest" title="Vest's ticket">Vest</button></div>
+      <div class="ctm" data-k="ctm" hidden><div class="ctt">Settings</div><span class="cth">LOOK</span><div class="ctr"><button data-look="vest">Vest</button><button data-look="gp">GP.</button></div><span class="cth">CHART</span><div class="ctg">${CTHEMES.map(t => `<button data-cth="${t.id}" title="${t.name}"><span class="sw3"><i style="background:${t.bg}"></i><i style="background:${t.up};box-shadow:inset 0 0 0 1px ${t.upB}"></i><i style="background:${t.dn};box-shadow:inset 0 0 0 1px ${t.dnB}"></i></span><small>${t.name}</small></button>`).join('')}</div><span class="cth">LINES</span><div class="ctr"><button data-lst="0">solid</button><button data-lst="2">dashed</button><button data-lst="1">dotted</button></div><span class="cth">CODE GIGA AT CHECKOUT</span><div class="ctr"><button data-giga="1" title="GIGA goes on every account you buy, in place of any other code">on</button><button data-giga="0">off</button></div><span class="cth">TRADE</span><div class="ctr"><button data-am="abe" title="Stop to break even once the trade reaches +1R">auto BE at 1R</button><button data-am="atr" title="After +1R the stop locks profit in 0.5R steps">trail 0.5R</button></div><span class="cth">TOOLS</span><div class="ctr"><button data-a="keys" title="Keyboard shortcuts">keys</button><button data-a="snap" title="Put the ticket, the desk and the chart back in place">reset layout</button></div></div>
+      <div class="mk"><b><em data-k="px">—</em><i class="fr" data-k="fr"></i></b><span data-k="ac">—</span></div>
+      <div class="mst"><div class="msg" data-k="msg"></div></div>
       <div class="lvp" data-k="lvp" hidden><div class="lvh"><span>LEVERAGE</span><b data-k="lvv">—</b></div><input type="range" data-k="lvr" min="1" max="50" step="1" aria-label="Leverage"><div class="lvf"><span>1x</span><button data-a="levmax">max <span data-k="lvm"></span></button></div></div>
       <div class="zr" data-k="zr" hidden><div class="zs" data-k="zs"></div>
         <div class="zi" data-k="zi"><label>LOCK</label><input class="n" data-z="loss" inputmode="decimal" placeholder="−$ loss" aria-label="Lock after this loss"><input class="n" data-z="n" inputmode="numeric" placeholder="losers" aria-label="Lock after this many losers"><button class="ls on" data-a="zgo">enter</button></div>
@@ -1241,17 +1271,16 @@
         ${slider('addp', 'ADD', 5, 300, 5, [[25, '25%'], [50, '50%'], [100, '100%'], [200, '2x'], [300, '3x']])}
         <div class="ar"><label></label><div class="ch"><button class="c grn" data-a="addx" data-k="addx" title="Adds this share of the trade's first size, each click">add</button></div></div>
         <div class="ar"><label>CLOSE</label><div class="ch">${cuts('cut', '', [10, 20, 25, 50, 75])}</div></div>
-        <div class="ar"><label>LIMIT</label><div class="ch">${cuts('lim', ' gold')}</div></div>
+        <div class="ar"><label>LIMIT</label><div class="ch">${cuts('lim', ' gold', [10, 20, 25, 50, 75])}</div></div>
         <div class="ar"><label>STOP</label><div class="ch"><button class="c" data-a="half">½ risk</button><button class="c" data-a="be">break even</button><button class="c rose" data-a="addstop" hidden>add stop</button></div></div>
         <div class="lgs" data-k="lgs"></div>
       </div>
-      <div class="go" data-v="go"><button class="L" data-a="long">Long<small data-kk="long"></small></button><button class="S" data-a="short">Short<small data-kk="short"></small></button><div class="sdt" title="Which side the stop, target and lines are set for"><button data-sd="long">long</button><i></i><button data-sd="short">short</button><i></i><button class="kb" data-a="keys" title="Keyboard shortcuts">keys</button><i></i><button data-a="snap" title="Put the ticket, the desk and the chart back in place">reset</button></div></div>
+      <div class="go" data-v="go"><button class="L" data-a="long">Long<small data-kk="long"></small></button><button class="S" data-a="short">Short<small data-kk="short"></small></button><div class="sdt" title="Which side the stop, target and lines are set for"><button data-sd="long">long</button><i></i><button data-sd="short">short</button></div></div>
       <div class="go" data-v="go2" hidden><button class="X" data-a="close">Close<small data-kk="close"></small></button></div>
       <div class="go" data-v="go4" hidden><button class="L" data-a="addgo"><span data-k="addq">Add</span><small data-kk="add"></small></button><button class="X" data-a="close2">Close<small data-kk="close"></small></button></div>
       <div class="kp" data-k="kp" hidden><div class="kh"><span>KEYS</span><button class="sw" data-kt="keys" aria-label="Keyboard shortcuts on or off"></button></div>
         <div class="kr"><span>Long</span><button data-kb="long"></button></div><div class="kr"><span>Short</span><button data-kb="short"></button></div><div class="kr"><span>Close</span><button data-kb="close"></button></div></div>
       <div class="go" data-v="go3" hidden><div class="lk"><i></i><b>LOCKED</b><span data-k="lk"></span><button data-a="zend2">end zone</button></div></div>
-      <div class="ft"><div class="msg" data-k="msg"></div></div>
     </div>`;
     document.documentElement.appendChild(host);
     const peek = document.createElement('div'); peek.id = 'gpz-peek'; peek.style.cssText = 'position:fixed;z-index:2147483639;display:none';
@@ -1298,6 +1327,8 @@
     on('lsave', () => openName(true)); on('lno', () => openName(false));
     const ldOpen = v => { k('ll').hidden = !v; k('ldd').classList.toggle('op', !!v); };
     on('ldd', () => ldOpen(k('ll').hidden && (DB.loads || []).length > 0));
+    k('ldd').addEventListener('wheel', e => { const L0 = DB.loads || []; if (!L0.length) return; e.preventDefault(); const cur = L0.findIndex(x => x.n === SH.ldn), i = ((cur < 0 ? -1 : cur) + (e.deltaY > 0 ? 1 : -1) + L0.length) % L0.length;
+      const b = R.querySelector('.lc[data-i="' + i + '"] button:first-child'); if (b) { b.click(); ldOpen(false); } }, { passive: false });
     R.addEventListener('pointerdown', e => { if (!k('ll').hidden && !e.composedPath().some(n => n === k('ll') || n === k('ldd'))) ldOpen(false); });
     const keep = () => { const n = lname.value.trim().slice(0, 18); if (!n) return lname.focus(); const L0 = (DB.loads || []).filter(x => x.n.toLowerCase() !== n.toLowerCase()); L0.push(Object.assign({ n }, loadOf())); SH.ldn = n; saveSH(); DB.loads = L0.slice(-12); save(); openName(false); renderShot(); };
     on('lok', keep);
@@ -1309,13 +1340,14 @@
     const ctm = k('ctm');
     on('cth', () => { ctm.hidden = !ctm.hidden; renderShot(); });
     R.querySelectorAll('[data-look]').forEach(b => b.onclick = () => { DB.skin = b.dataset.look !== 'vest'; save(true); ctm.hidden = true; skinKey = ''; vestPanels(); applySkin(); renderShot(); drawChart(); });
+    R.querySelectorAll('[data-am]').forEach(b => b.onclick = () => { DB[b.dataset.am] = !DB[b.dataset.am]; save(true); renderShot(); });
     R.querySelectorAll('[data-giga]').forEach(b => b.onclick = () => { DB.giga = b.dataset.giga === '1'; DB.gigaSkip = 0; save(true); ctm.hidden = true; renderShot(); });
     R.querySelectorAll('[data-lst]').forEach(b => b.onclick = () => { DB.lst = +b.dataset.lst; save(true); ctm.hidden = true; renderShot(); drawChart(); });
     R.querySelectorAll('[data-cth]').forEach(b => b.onclick = () => { DB.cth = b.dataset.cth; DB.cthPaint = true; save(true); ctm.hidden = true; skinKey = ''; applySkin(); renderShot(); });
     R.addEventListener('pointerdown', e => { if (!ctm.hidden && !e.composedPath().some(n => n === ctm || (n.dataset && n.dataset.a === 'cth'))) { ctm.hidden = true; renderShot(); } });
     const kp = k('kp');
-    on('snap', () => snapAll());
-    on('keys', () => { kp.hidden = !kp.hidden; KREC = null; renderShot(); });
+    on('snap', () => { k('ctm').hidden = true; snapAll(); });
+    on('keys', () => { k('ctm').hidden = true; kp.hidden = !kp.hidden; KREC = null; renderShot(); });
     const kpOff = e => { if (!kp.hidden && !(e && e.composedPath().some(n => n === kp || (n.dataset && n.dataset.a === 'keys')))) { kp.hidden = true; KREC = null; renderShot(); } };
     SHOT.kpOff = kpOff; document.addEventListener('pointerdown', kpOff, true); R.addEventListener('pointerdown', kpOff);
     R.querySelector('[data-kt=keys]').onclick = () => { SH.keys.on = !SH.keys.on; KREC = null; saveSH(); renderShot(); };
@@ -1467,7 +1499,9 @@
     const zb = zoneBits(), locked = zb.locked && !pos;
     const stale = !(Date.now() - (L.markAt || 0) < FRESH);
     k('px').textContent = p.sym && L.mark[p.sym] ? shortSym(p.sym) + '  ' + fmtPx(L.mark[p.sym], p.sym) : '—'; k('px').classList.toggle('old', stale);
-    k('ac').innerHTML = p.id && p.bal ? `${esc(acctShort(p.id))} · <button class="lvb${p.lev && p.levMax && p.lev < p.levMax ? ' set' : ''}" data-a="lev" title="Leverage">${p.lev || '—'}x</button> · ${fm(p.bal, { short: true }).replace(/\.00$/, '')}` : '';
+    { const ca = p.id && capAcct(p.id), fund = !!ca && ca.account_type === 3 && p.bal > 0; R.querySelectorAll('[data-tk=risk]').forEach(b => { if (b.dataset.l == null) b.dataset.l = b.textContent; b.textContent = fund ? '$' + trimNum(Math.round(p.bal * +b.dataset.v / 100)) : b.dataset.l; }); }
+    { const age = (Date.now() - (L.markAt || 0)) / 1000, f = k('fr'); f.className = 'fr ' + (age < 1.6 ? 'ok' : age < 4 ? 'mid' : 'bad'); f.title = 'price ' + (age < 60 ? age.toFixed(1) + 's' : 'over a minute') + ' old'; }
+    k('ac').innerHTML = p.id && p.bal ? `${esc(acctShort(p.id).replace(/^Account /, '#'))} · <button class="lvb${p.lev && p.levMax && p.lev < p.levMax ? ' set' : ''}" data-a="lev" title="Leverage">${p.lev || '—'}x</button> · ${p.bal >= 1e3 ? '$' + trimNum(Math.round(p.bal / 10) / 100) + 'K' : fm(p.bal, { short: true }).replace(/\.00$/, '')}${(() => { const rm = roomOf(p.id), fl = floorOf(p.id); return rm != null && fl ? ` · <span class="rm${rm < (p.risk || 0) * 1.5 ? ' low' : ''}" title="${fl.which} room: what the account can lose before its floor">room $${Math.round(Math.max(0, rm)).toLocaleString('en-US')}</span>` : ''; })()}` : '';
     if (!pos) SHOT.adding = false; const adding = !!pos && !!SHOT.adding;
     R.querySelector('[data-v=plan]').hidden = !!pos && !adding; R.querySelector('[data-v=pos]').hidden = !pos || adding;
     R.querySelector('[data-v=go]').hidden = !!pos || locked; R.querySelector('[data-v=go2]').hidden = !pos || adding; R.querySelector('[data-v=go3]').hidden = !locked; R.querySelector('[data-v=go4]').hidden = !adding;
@@ -1516,7 +1550,8 @@
         R.querySelectorAll('[data-cth]').forEach(b => b.classList.toggle('on', b.dataset.cth === t.id));
         R.querySelectorAll('[data-look]').forEach(b => b.classList.toggle('on', (b.dataset.look === 'vest') === (DB.skin === false)));
         R.querySelectorAll('[data-lst]').forEach(b => b.classList.toggle('on', +b.dataset.lst === lineStyle()));
-        R.querySelectorAll('[data-giga]').forEach(b => b.classList.toggle('on', (b.dataset.giga === '1') === (DB.giga !== false))); }
+        R.querySelectorAll('[data-giga]').forEach(b => b.classList.toggle('on', (b.dataset.giga === '1') === (DB.giga !== false)));
+        R.querySelectorAll('[data-am]').forEach(b => b.classList.toggle('on', !!DB[b.dataset.am])); }
       const side = SH.side || 'long';
       R.querySelectorAll('[data-sd]').forEach(b => b.classList.toggle('on', b.dataset.sd === side));
       if (p.qty) {
@@ -1529,7 +1564,7 @@
         if (p.dSL) setBeam(k('bm0'), { a: -p.dSL, b: p.dTP, stop: -p.dSL, tgt: p.dTP, price: 0, legs: p.dPass && SH.tmode !== 'pass' && p.dPass < p.dTP ? [p.dPass] : [] });
         const share = p.risk > 0 ? p.fees / p.risk : 0, hot = share >= 0.4;
         k('fb').style.width = Math.min(100, share * 100) + '%'; k('fb').classList.toggle('hot', hot);
-        k('fe').textContent = fm(p.fees) + ' · ' + Math.round(share * 100) + '%'; k('fe').classList.toggle('hot', hot);
+        k('fe').textContent = fm(p.fees) + ' · ' + Math.round(share * 100) + '% of risk'; k('fe').classList.toggle('hot', hot);
         k('qz').innerHTML = `<b>${p.qtyS} ${shortSym(p.sym)}</b> · ${fk(p.N)}`;
       } else { k('slv').textContent = '—'; k('tpv').textContent = '—'; k('slp').textContent = ''; k('tpp').textContent = ''; k('fe').textContent = '—'; k('qz').textContent = ''; k('fb').style.width = '0'; }
       const cool = Date.now() < SHOT.cool;
@@ -1701,9 +1736,11 @@
       return o;
     }).filter(Boolean);
   }
+  function roomOf(id) { const fl = floorOf(id), c = cashOf(id); if (!fl || c == null) return null; let u = 0; L.pos.filter(p => accOf(p) === id).forEach(p => { const m = L.mark[p.symbol]; if (m) u += (m - +p.openPrice) * Math.abs(+p.quantity) * (/^s/i.test(p.side || '') ? -1 : 1); }); return c + u - fl.F; }
   function sizeFor(f, lq, sym) {
     const lb = balOf(C.leader) || 0, fb = balOf(f) || 0; if (!(lb > 0) || !(fb > 0)) return 0;
-    let q = C.mode === 'bal' ? lq * fb / lb : (fb < lb * 0.995 ? lq * fb / lb * 0.97 : lq); // same size, cut to fit a smaller account
+    const rl = C.mode === 'room' ? roomOf(C.leader) : null, rf = C.mode === 'room' ? roomOf(f) : null;
+    let q = C.mode === 'room' && rl > 0 && rf != null ? lq * Math.max(0, rf) / rl : C.mode === 'bal' ? lq * fb / lb : (fb < lb * 0.995 ? lq * fb / lb * 0.97 : lq); // same size, cut to fit a smaller account
     const px = L.mark[sym], lev = maxLev(sym, f) || 1, ff = L.bal[f] != null ? L.bal[f] : fb; if (px) q = Math.min(q, ff * lev * 0.99 / px); // never more than its free margin holds
     const d = dec(sym); return Math.floor(q * Math.pow(10, d) + 1e-7) / Math.pow(10, d);
   }
@@ -1737,9 +1774,9 @@
       hold(4000); C.opened[okey] = Date.now(); PENDING[key] = { at: Date.now(), lead: lp.positionId }; saveC();
       const lev = Math.min(+lp.leverage || 1e9, maxLev(sym, f) || 1e9);
       await ensureLev(f, sym, lev).catch(() => {});
-      const r = await send(f, 'POST', '/v3/positions/open', { orderType: 'market', leverage: trimNum(lev), side: lp.side, symbol: sym, quantity: fmtQ(want, sym), timeInForce: 'IOC', takeProfits: legsFor(lp.takeProfits, lq, want, sym), stopLosses: legsFor(lp.stopLosses, lq, want, sym) });
+      const t0 = Date.now(); const r = await send(f, 'POST', '/v3/positions/open', { orderType: 'market', leverage: trimNum(lev), side: lp.side, symbol: sym, quantity: fmtQ(want, sym), timeInForce: 'IOC', takeProfits: legsFor(lp.takeProfits, lq, want, sym), stopLosses: legsFor(lp.stopLosses, lq, want, sym) });
       if (r.positionId) { C.owned[r.positionId] = { f, sym, lead: lp.positionId }; C.share[r.positionId] = want / lq; delete PENDING[key]; }
-      C.err[f] = ''; clog((/^l/i.test(lp.side) ? 'long ' : 'short ') + fmtQ(want, sym) + ' ' + shortSym(sym) + ' on ' + acctLabel(f)); saveC();
+      C.err[f] = ''; (C.res || (C.res = {}))[f] = { ok: 1, ms: Date.now() - t0, t: Date.now() }; clog((/^l/i.test(lp.side) ? 'Long ' : 'Short ') + fmtQ(want, sym) + ' ' + shortSym(sym) + ' on ' + acctLabel(f)); saveC();
       return;
     }
     if (!own) { // a copy that came back without an id is adopted; anything else on that market is the trader's, left alone
@@ -1818,10 +1855,10 @@
   .hd b{font-size:10px;font-weight:600;letter-spacing:.24em;color:#9e9ea5;margin-left:2px}
   .sp{flex:1}
   .fx{position:relative;overflow:hidden;height:24px;padding:0 10px;border-radius:8px;border:1px solid rgba(232,152,140,.45);background:none;color:#efb1a7;font:600 11px Inter,system-ui,sans-serif;cursor:pointer;white-space:nowrap;transition:all .2s}
-  .fx:hover{background:#e8988c;border-color:#e8988c;color:#0b0b0b}.fx:active{transform:scale(.95)}
+  .fx:hover{background:rgba(232,152,140,.16);color:#f6c3ba}.fx{margin-right:10px}.fx:active{transform:scale(.95)}
   .x{width:24px;height:24px;border-radius:50%;border:1px solid rgba(238,234,226,.12);background:none;color:#9e9ea5;font:700 13px/1 Inter,system-ui,sans-serif;cursor:pointer}.x:hover{color:#f1f1f3;border-color:rgba(238,234,226,.4)}
   .top{display:flex;align-items:baseline;gap:12px;padding:6px 14px 8px;border-bottom:1px solid rgba(238,234,226,.08)}
-  .top .o{font-size:26px;font-weight:600;letter-spacing:-.06em;line-height:1;white-space:nowrap}
+  .top .o{font-size:26px;font-weight:600;letter-spacing:-.06em;line-height:1;white-space:nowrap}.o.flat{font-size:11px;letter-spacing:.18em;text-transform:uppercase;font-weight:700;color:#6f6f75}
   .top .t{margin-left:auto;text-align:right;font-size:13px;font-weight:600;letter-spacing:-.02em;white-space:nowrap}
   .top small{font-size:9.5px;font-weight:700;letter-spacing:.16em;color:#5f5f66;margin-right:6px}
   .up{color:#bfe6cb}.dn{color:#efb1a7}.flat{color:#e6e3dc}.dim{color:#4a4a4f}
@@ -1835,7 +1872,7 @@
   .d.side .r{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"nm ac" "vo vt";height:auto;row-gap:5px;padding:10px 10px 10px 14px}
   .d.side .nm{grid-area:nm}.d.side .ac{grid-area:ac}.d.side .vo{grid-area:vo;text-align:left}.d.side .vt{grid-area:vt}
   .d.side .vo:before,.d.side .vt:before{font-size:8.5px;font-weight:700;letter-spacing:.16em;color:#5f5f66;margin-right:6px}.d.side .vo:before{content:"OPEN"}.d.side .vt:before{content:"TODAY"}
-  .tb{display:flex;gap:2px;padding:2px;border-radius:8px;background:#111111;border:1px solid rgba(238,234,226,.06)}
+  .tb{display:flex;gap:2px;padding:2px;border-radius:8px;background:#111111;border:1px solid rgba(238,234,226,.06)}.fx{flex:none}.d.side .tb button{padding:0 7px}.d.side .ld{display:none}.d.side .hd{gap:4px;padding-right:8px}.d.side .fx{margin-right:6px;padding:0 9px}
   .tb button{height:22px;padding:0 9px;border:0;border-radius:6px;background:none;color:#8b8b92;font:600 10.5px Inter,system-ui,sans-serif;letter-spacing:.02em;cursor:pointer}.tb button:hover{color:#f1f1f3}
   .tb button.on{background:#e6e3dc;color:#0b0b0b}
   .d.acc .rh:not(.ra),.d.pnl .rh.ra,.d.pnl .cpy{display:none}
@@ -1846,7 +1883,18 @@
   .sw.on{background:#14231b;border-color:rgba(159,215,178,.6)}.sw.on:after{transform:translateX(13px);background:#9fd7b2}
   .cm{display:flex;gap:2px}.cm button{height:20px;padding:0 7px;white-space:nowrap;border-radius:6px;border:1px solid rgba(238,234,226,.1);background:none;color:#8b8b92;font:600 10px Inter,system-ui,sans-serif;cursor:pointer}.cm button.on{color:#f1f1f3;border-color:rgba(238,234,226,.35)}
   .ld{margin-left:auto;font-size:10.5px;color:#6f6f75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}.ld b{color:#c9c7c2;font-weight:600}
-  .r.a{grid-template-columns:minmax(0,1fr) 66px 62px 34px;cursor:pointer}
+  .r.a{grid-template-columns:minmax(0,1fr) 66px 62px 34px;cursor:pointer;height:auto;min-height:32px;padding-block:6px}
+  .r.a .ex{grid-column:1/-1;display:flex;flex-direction:column;gap:4px;min-width:0}
+  .pcs{display:flex;gap:5px;flex-wrap:wrap;align-items:center}.pc{font-size:10px;font-weight:700;letter-spacing:.04em;padding:2px 6px;border-radius:5px;background:rgba(159,215,178,.1);color:#bfe6cb;white-space:nowrap}.pc.sh{background:rgba(232,152,140,.1);color:#efb1a7}.pcs .pu{font-size:11px;font-weight:700}
+  .rb{display:flex;align-items:center;gap:7px;font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#55555b}.rb .bar{flex:1;height:3px;border-radius:9px;background:rgba(238,234,226,.07);overflow:hidden}.rb .bar i{display:block;height:100%;border-radius:9px;background:rgba(159,215,178,.55)}
+  .rb b{font-weight:600;letter-spacing:0;color:#8b8b92;font-size:10.5px;font-variant-numeric:tabular-nums}.rb.low .bar i{background:#e8988c}.rb.low b{color:#efb1a7}
+  .r:not(.a) .ac{opacity:.0;transition:opacity .15s}.r:not(.a):hover .ac,.r:not(.a) .ac:focus-within,.r:not(.a) .ac .busy{opacity:1}.d.busyall .r .ac{opacity:1}
+  .dl{display:block;margin-left:6px;flex:none}.dl path{fill:none;stroke-width:1.4;stroke-linejoin:round;stroke-linecap:round}
+  .gh{display:flex;justify-content:space-between;align-items:center;padding:9px 10px 5px 14px;font-size:9.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#6f6f75;cursor:pointer;border-bottom:1px solid rgba(238,234,226,.05)}.gh:hover{color:#c9c7c2}
+  .gh i{font-style:normal;margin-left:6px;color:#55555b}.gh b{letter-spacing:0;font-size:11px;font-weight:600}
+  .tg.lead{font-style:normal;font-size:8px;font-weight:700;letter-spacing:.12em;padding:1px 5px;border-radius:4px;background:#e6e3dc;color:#0b0b0b;margin-left:6px}
+  .r.a.lead{box-shadow:inset 2px 0 0 #e6e3dc}.fo.nil{border:0;cursor:default}
+  .cr{font-style:normal;font-size:9.5px;font-weight:700;margin-left:6px}.cr.ok{color:#9fd7b2}.cr.bad{color:#efb1a7}
   .r.fd{background:linear-gradient(90deg,rgba(159,215,178,.075),rgba(159,215,178,.02) 55%,rgba(159,215,178,0))}.r.fd:hover{background:linear-gradient(90deg,rgba(159,215,178,.11),rgba(159,215,178,.03) 55%,rgba(159,215,178,0))}
   .r.a.cur{background:rgba(238,234,226,.045)}.r.a.cur .nm b:before{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;background:#e6e3dc;margin-right:6px;vertical-align:2px}
   .r.a .v.b{color:#c9c7c2}
@@ -1854,7 +1902,7 @@
   .fo.on{background:#9fd7b2;border-color:#9fd7b2}.fo.on:after{content:"✓"}.fo:hover{border-color:rgba(238,234,226,.5)}
   .fo.lead{width:auto;padding:0 5px;border:0;background:#e6e3dc;font-size:8px;letter-spacing:.12em;cursor:default}
   .r .er{display:block;font-style:normal;font-size:9.5px;color:#efb1a7;overflow:hidden;text-overflow:ellipsis}
-  .d.side .r.a{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"nm fo" "vb vt";height:auto;row-gap:4px;padding:9px 10px 9px 14px}
+  .d.side .r.a{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"nm fo" "vb vt" "ex ex";height:auto;row-gap:4px;padding:9px 10px 9px 14px}.d.side .r.a .ex{grid-area:ex}
   .d.side .r.a .nm{grid-area:nm}.d.side .r.a .fo{grid-area:fo}.d.side .r.a .vb{grid-area:vb;text-align:left}.d.side .r.a .vt{grid-area:vt}
   .d.side .rh.ra{display:none}
   .rh{display:grid;grid-template-columns:minmax(0,1fr) 56px 56px 122px;align-items:center;gap:6px;height:22px;padding:0 8px 0 14px}.rh .v{font-size:9px;font-weight:700;letter-spacing:.16em;color:#5f5f66}
@@ -1885,7 +1933,7 @@
       <div class="mw"><canvas class="moon" width="440" height="440"></canvas></div>
       <div class="hd" data-a="drag"><i class="dot"></i><div class="tb"><button data-t="acc">Accounts</button><button data-t="pnl">PnL</button></div><div class="sp"></div><button class="fx" data-a="flat"><span data-k="fx">flatten</span></button><button class="x sd" data-a="side" aria-label="Beside the chart" title="Beside the chart">⇤</button><button class="x" data-a="x" aria-label="Close desk">×</button></div>
       <div class="top"><span class="o" data-k="open">—</span><span class="t"><small>TODAY</small><span data-k="today">—</span></span></div>
-      <div class="cpy" data-k="cpy"><b>COPY</b><button class="sw" data-a="arm" aria-label="Copy on or off"></button><div class="cm"><button data-cm="same">same</button><button data-cm="bal">by bal</button></div><span class="ld" data-k="ld"></span></div>
+      <div class="cpy" data-k="cpy"><b>COPY</b><button class="sw" data-a="arm" aria-label="Copy on or off"></button><div class="cm"><button data-cm="same">same</button><button data-cm="bal">by bal</button><button data-cm="room" title="Each copy sized by its account's room to the floor">by room</button></div><span class="ld" data-k="ld"></span></div>
       <div class="rh"><span></span><span class="v">OPEN</span><span class="v">TODAY</span><span></span></div>
       <div class="rh ra"><span></span><span class="v">BALANCE</span><span class="v">TODAY</span><span class="v">COPY</span></div>
       <div class="rows" data-k="rows"></div>
@@ -1903,6 +1951,7 @@
     R.querySelector('[data-a=all]').onclick = () => { DK.all = !DK.all; saveDK(); renderDesk(); placeDesk(); };
     k('rows').onclick = e => {
       const b = e.target.closest('[data-cut]'); if (b) return deskCut(b.closest('.r').dataset.id, +b.dataset.cut);
+      const gh = e.target.closest('.gh'); if (gh) { const lead = copyLeader(), ids = deskRows().filter(r => r.kind === gh.dataset.g && r.id !== lead).map(r => r.id), all = ids.every(id => C.followers[id]); ids.forEach(id => { if (all) delete C.followers[id]; else C.followers[id] = true; }); saveC(); renderDesk(); if (SP) renderShot(); kickFast(); return; }
       const f = e.target.closest('[data-fo]'); if (f) { const id = f.dataset.fo; if (id === copyLeader()) return; C.followers[id] = !C.followers[id]; if (!C.followers[id]) delete C.followers[id]; saveC(); renderDesk(); if (SP) renderShot(); kickFast(); return; }
       const r = e.target.closest('.r.a'); if (r && !r.classList.contains('cur')) switchAcct(r.dataset.id);
     };
@@ -1938,7 +1987,7 @@
     const t = SP && SP.host.style.display !== 'none' ? SP.host.getBoundingClientRect() : null;
     let x, y, w, h; const ch = DK.side ? chartCol() : null;
     DS.R.querySelector('.d').classList.toggle('side', !!ch);
-    if (ch) { const r = ch.getBoundingClientRect(); x = r.left - DESKW; y = r.top; w = DESKW - 12; h = Math.min(r.height, innerHeight - y - 8); }
+    if (ch) { const r = ch.getBoundingClientRect(); x = r.left - DESKW; y = r.top; w = DESKW - 12; h = Math.min(r.height, innerHeight - y - 8, want); } // ends after the last row
     else if (DK.dock && t && t.width > 200 && innerHeight - t.bottom - 16 >= 130) { x = t.left; y = t.bottom + 8; w = t.width; h = Math.min(want, innerHeight - y - 8); }
     else { w = 340; h = Math.min(want, innerHeight - 24); x = DK.x != null ? DK.x : t ? t.left - w - 10 : innerWidth - w - 16; y = DK.y != null ? DK.y : t ? t.top : 72;
       if (DK.x == null && t && x < 8) { x = 8; w = Math.max(240, t.left - 18); } // beside GP., never under it
@@ -1961,19 +2010,31 @@
       let base = +c.daily_reset_equity;
       if (!(c.daily_reset_at >= d0 - 3 * 36e5) || !isFinite(base)) { const b = DB.dayBase[key]; if (b[c.id] == null) { b[c.id] = eq; save(); } base = b[c.id]; }
       const role = C.leader === c.id && (C.on || Object.keys(C.followers).some(f => C.followers[f])) ? 'lead' : C.followers[c.id] ? 'copy' : '';
-      out.push({ id: c.id, role, bal: cash, u, today: eq - base + paidToday(c.id, d0), n: ps.length, kind: c.account_type === 3 ? (/instant/i.test(c.plan_product_type || '') ? 'Instant' : 'Funded') : 'Eval' });
+      const fl = floorOf(c.id), room = fl ? eq - fl.F : null, roomMax = fl ? Math.max(room, base - fl.F, 1) : null;
+      out.push({ id: c.id, role, bal: cash, eq, u, today: eq - base + paidToday(c.id, d0), n: ps.length, room, roomMax, roomW: fl ? fl.which : '', ps: ps.map(p => ({ long: !/^s/i.test(p.side || ''), q: Math.abs(+p.quantity), sym: p.symbol })),
+        kind: c.account_type === 3 ? (/instant/i.test(c.plan_product_type || '') ? 'Instant' : 'Funded') : 'Eval' });
     });
-    const rk = r => r.role === 'lead' ? 0 : r.role === 'copy' ? 1 : 2;
-    return out.sort((a, b) => rk(a) - rk(b) || (b.n > 0) - (a.n > 0) || b.u - a.u);
+    const rk = r => r.role === 'lead' ? 0 : 1;
+    return out.sort((a, b) => rk(a) - rk(b) || (b.n > 0) - (a.n > 0) || b.today - a.today); // lead first, then accounts in a trade, then by today
   }
   W.__gpzDesk = () => deskRows().map(r => ({ id: r.id, role: r.role, u: +r.u.toFixed(2), today: +r.today.toFixed(2), n: r.n }));
   const tone = v => Math.abs(v) < 0.005 ? 'flat' : v > 0 ? 'up' : 'dn';
+  function dayLine(rows) { // today's equity per account, a point a minute, kept for the day
+    const d0 = String(vestDay()); if (!DB.dl || DB.dl.d !== d0) DB.dl = { d: d0, at: 0, ids: {} };
+    if (Date.now() - DB.dl.at < 60000) return; DB.dl.at = Date.now();
+    rows.forEach(r => { const a = DB.dl.ids[r.id] || (DB.dl.ids[r.id] = []); a.push(Math.round(r.today * 100) / 100); if (a.length > 900) a.splice(0, a.length - 900); }); save();
+  }
+  function spark(id, v) {
+    const a = ((DB.dl && DB.dl.ids[id]) || []).concat(v); if (a.length < 2) return '';
+    const W = 46, H = 14, lo = Math.min(0, ...a), hi = Math.max(0, ...a), sp = hi - lo || 1, X = i => (i / (a.length - 1) * W).toFixed(1), Y = x => (H - 1 - (x - lo) / sp * (H - 2)).toFixed(1);
+    return `<svg class="dl" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true"><path d="M0 ${Y(0)}H${W}" stroke="rgba(238,234,226,.12)" stroke-dasharray="2 2"/><path d="${a.map((x, i) => (i ? 'L' : 'M') + X(i) + ' ' + Y(x)).join('')}" stroke="${v >= 0 ? '#9fd7b2' : '#e8988c'}"/></svg>`;
+  }
   function renderDesk() {
     if (!DK.open || !DS) return; const { R, k } = DS;
-    const rows = deskRows(), live = rows.filter(r => r.n), shown = DK.all ? rows : rows.filter(r => r.n || r.role);
+    const rows = deskRows(), live = rows.filter(r => r.n), shown = DK.all ? rows : rows.filter(r => r.n || r.role); dayLine(rows);
     const U = live.reduce((a, r) => a + r.u, 0), T = rows.reduce((a, r) => a + r.today, 0), npos = live.reduce((a, r) => a + r.n, 0);
-    R.querySelector('.d').classList.toggle('live', live.length > 0); R.querySelector('[data-a=side]').textContent = DK.side ? '⇥' : '⇤';
-    const o = k('open'); o.textContent = live.length ? fm(U, { sign: true }) : '$0'; o.className = 'o ' + (live.length ? tone(U) : 'dim');
+    R.querySelector('.d').classList.toggle('live', live.length > 0); R.querySelector('.d').classList.toggle('busyall', !!DK.busy.all); R.querySelector('[data-a=side]').textContent = DK.side ? '⇥' : '⇤';
+    const o = k('open'); o.textContent = live.length ? fm(U, { sign: true }) : 'flat'; o.className = 'o ' + (live.length ? tone(U) : 'dim flat');
     const t = k('today'); t.textContent = fm(T, { sign: true }); t.className = tone(T);
     const fx = R.querySelector('[data-a=flat]'); fx.disabled = !!DK.busy.all; fx.classList.toggle('busy', !!DK.busy.all); k('fx').textContent = npos ? 'flatten all · ' + npos : 'flatten all'; fx.title = 'Cancels every pending order and closes every position, on every account';
     const tab = DK.tab === 'pnl' ? 'pnl' : 'acc', d = R.querySelector('.d'); d.classList.toggle('acc', tab === 'acc'); d.classList.toggle('pnl', tab === 'pnl');
@@ -1981,18 +2042,26 @@
     R.querySelector('[data-a=arm]').classList.toggle('on', !!C.on);
     R.querySelectorAll('[data-cm]').forEach(b => b.classList.toggle('on', b.dataset.cm === C.mode));
     const cur = activeAcct(), lead = copyLeader();
-    k('ld').innerHTML = C.elsewhere ? 'on in another tab' : lead ? (C.on ? 'from ' : 'leader ') + '<b>' + acctShort(lead) + '</b>' : '';
-    const accHtml = () => rows.map(r => {
-      const isL = r.id === lead, on = !!C.followers[r.id], e = on && C.err[r.id];
-      return `<div class="r a${r.id === cur ? ' cur' : ''}${r.kind !== 'Eval' ? ' fd' : ''}" data-id="${r.id}"><div class="nm"><b>${acctShort(r.id).replace(/^Account /, '')}</b><em>${r.kind}${e ? '' : ''}</em>${e ? `<i class="er">${e}</i>` : ''}</div>
+    k('ld').innerHTML = C.elsewhere ? 'on in another tab' : lead ? (C.on ? 'from ' : 'lead ') + '<b>' + acctShort(lead).replace(/^Account /, '') + '</b>' : '';
+    const accRow = r => {
+      const isL = r.id === lead, on = !!C.followers[r.id], e = on && C.err[r.id], cr = on && C.res && C.res[r.id], crOk = cr && Date.now() - cr.t < 6e5;
+      const mark = e ? `<i class="cr bad" title="${esc(e)}">✕</i>` : crOk && cr.ok ? `<i class="cr ok" title="last copy landed">✓ ${cr.ms}ms</i>` : '';
+      const chip = r.ps.map(p => `<span class="pc${p.long ? '' : ' sh'}">${p.long ? 'LONG' : 'SHORT'} ${trimNum(+fmtQ(p.q, p.sym))} ${shortSym(p.sym)}</span>`).join('') + (r.n ? `<span class="pu ${tone(r.u)}">${fm(r.u, { sign: true })}</span>` : '');
+      const rb = r.room != null ? `<div class="rb${r.room / r.roomMax < 0.25 ? ' low' : ''}" title="${r.roomW} room: what the account can lose before its floor"><span>${r.roomW}</span><div class="bar"><i style="width:${Math.max(0, Math.min(100, r.room / r.roomMax * 100)).toFixed(1)}%"></i></div><b>${fm(Math.max(0, r.room))}</b></div>` : '';
+      return `<div class="r a${r.id === cur ? ' cur' : ''}${r.kind !== 'Eval' ? ' fd' : ''}${isL ? ' lead' : ''}" data-id="${r.id}"><div class="nm"><b>${acctShort(r.id).replace(/^Account /, '')}</b><em>${r.kind}</em>${isL ? '<i class="tg lead">LEAD</i>' : ''}${mark}</div>
         <div class="v vb b">${fk(r.bal)}</div>
         <div class="v vt ${tone(r.today)}">${fm(r.today, { sign: true })}</div>
-        ${isL ? '<span class="fo lead" title="Leader">LEAD</span>' : `<button class="fo${on ? ' on' : ''}" data-fo="${r.id}" title="${on ? 'Stop copying to it' : 'Copy to it'}"></button>`}</div>`;
-    }).join('');
+        ${isL ? '<span class="fo nil"></span>' : `<button class="fo${on ? ' on' : ''}" data-fo="${r.id}" title="${on ? 'Stop copying to it' : 'Copy to it'}"></button>`}
+        ${chip || rb ? `<div class="ex">${chip ? `<div class="pcs">${chip}</div>` : ''}${rb}</div>` : ''}</div>`;
+    };
+    const GROUPS = ['Funded', 'Instant', 'Eval'];
+    const accHtml = () => GROUPS.map(g => { const rs = rows.filter(r => r.kind === g); if (!rs.length) return '';
+      const sub = rs.reduce((a, r) => a + r.today, 0), all = rs.filter(r => r.id !== lead).every(r => C.followers[r.id]);
+      return `<div class="gh" data-g="${g}" title="${all ? 'Stop copying to all ' : 'Copy to all '}${g}"><span>${g}<i>${rs.length}</i></span><b class="${tone(sub)}">${fm(sub, { sign: true })}</b></div>` + rs.map(accRow).join(''); }).join('');
     const html = tab === 'acc' ? accHtml() : shown.map(r => {
       const b = DK.busy[r.id] || DK.busy.all, dis = !r.n || b ? ' disabled' : '';
       const btn = (p, lbl, cls) => `<button class="k${cls || ''}${DK.busy[r.id] === p ? ' busy' : ''}" data-cut="${p}" title="${p >= 100 ? 'Close' : 'Cut ' + p + '%'}"${dis}>${lbl}</button>`;
-      return `<div class="r${r.kind !== 'Eval' ? ' fd' : ''}" data-id="${r.id}"><div class="nm"><b>${acctShort(r.id).replace(/^Account /, '')}</b>${r.role ? `<i class="tg ${r.role}">${r.role === 'lead' ? 'LEAD' : 'COPY'}</i>` : `<em>${r.kind}</em>`}</div>
+      return `<div class="r${r.kind !== 'Eval' ? ' fd' : ''}" data-id="${r.id}"><div class="nm"><b>${acctShort(r.id).replace(/^Account /, '')}</b>${r.role ? `<i class="tg ${r.role}">${r.role === 'lead' ? 'LEAD' : 'COPY'}</i>` : `<em>${r.kind}</em>`}${spark(r.id, r.today)}</div>
         <div class="v vo ${r.n ? tone(r.u) : 'dim'}">${r.n ? fm(r.u, { sign: true }) : '—'}</div>
         <div class="v vt ${tone(r.today)}">${fm(r.today, { sign: true })}</div>
         <div class="ac">${btn(10, '10')}${btn(20, '20')}${btn(25, '25')}${btn(50, '50')}${btn(100, '×', ' cl')}</div></div>`;
@@ -2000,7 +2069,7 @@
     if (k('rows').innerHTML !== html) k('rows').innerHTML = html || '<div class="none">' + (tab === 'acc' ? 'reading your accounts' : 'nothing open') + '</div>';
     const fresh = DK.msg && Date.now() - DK.msgAt < 9000, n = Object.keys(C.followers).filter(f => C.followers[f]).length;
     const lg = C.log[0], lgFresh = lg && Date.now() - lg.t < 60000;
-    const m = k('m'); m.textContent = fresh ? DK.msg : tab === 'acc' && lgFresh ? lg.msg : C.on ? 'copying ' + n : live.length + ' of ' + rows.length + ' in trade'; m.className = 'm ' + (fresh ? DK.tone : tab === 'acc' && lgFresh && lg.bad ? 'bad' : '');
+    const hm = t => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), m = k('m'); m.textContent = fresh ? DK.msg + ' · ' + hm(DK.msgAt) : tab === 'acc' && lgFresh ? lg.msg + ' · ' + hm(lg.t) : C.on ? 'copying ' + n : live.length + ' of ' + rows.length + ' in trade'; m.className = 'm ' + (fresh ? DK.tone : tab === 'acc' && lgFresh && lg.bad ? 'bad' : '');
     k('all').textContent = tab === 'acc' ? '' : DK.all ? 'less' : rows.length > shown.length ? 'all ' + rows.length : '';
     placeDesk();
   }
@@ -2023,7 +2092,7 @@
     saveC(); delete DK.busy[id];
     const bad = res.filter(r => r.status === 'rejected'), nm = acctShort(id);
     deskSay(bad.length ? bad[0].reason.message : (pct >= 100 ? 'Closed ' : 'Cut ' + pct + '% · ') + nm, bad.length);
-    clog('desk ' + (pct >= 100 ? 'closed ' : 'cut ' + pct + '% on ') + nm, !!bad.length);
+    clog((pct >= 100 ? 'Closed ' : 'Cut ' + pct + '% · ') + nm, !!bad.length);
     renderDesk(); kickFast(150);
   }
   // one click: every position on every account, closed at market
@@ -2047,8 +2116,8 @@
     await sleep(900); const o2 = await cancelAllOrders(ids); // anything left hanging after the closes
     saveC(); delete DK.busy.all;
     const bad = res.filter(r => r.status === 'rejected').map(r => r.reason.message).concat(o1.bad, o2.bad), n = o1.n + o2.n;
-    deskSay(bad.length ? bad.length + ' failed · ' + bad[0] : 'Flat everywhere · ' + ps.length + ' closed · ' + n + ' order' + (n === 1 ? '' : 's') + ' cancelled', bad.length);
-    clog('desk flatten all: ' + ps.length + ' positions, ' + n + ' orders', !!bad.length);
+    deskSay(bad.length ? bad.length + ' failed · ' + bad[0] : 'Flattened · ' + ps.length + ' closed · ' + n + ' order' + (n === 1 ? '' : 's') + ' cancelled', bad.length);
+    clog(bad.length ? 'Flatten all: ' + bad.length + ' failed' : 'Flattened · ' + ps.length + ' closed · ' + n + ' order' + (n === 1 ? '' : 's') + ' cancelled', !!bad.length);
     renderDesk(); kickFast(150);
   }
 
@@ -2087,7 +2156,7 @@
     layoutCols(); placeShot(); placeDesk(); setTimeout(() => { layoutCols(); placeShot(); placeDesk(); }, 300);
     shotMsg('snapped back', 'ok');
   }
-  setInterval(() => { if (location.pathname !== lastPath) { lastPath = location.pathname; clearLines(); kickFast(); freshLayout(); } layoutCols(); bookFold(); placeShot(); placeDesk(); document.querySelectorAll('iframe[id^="tradingview_"]').forEach(hookFrame); }, 400);
+  every(400, () => { if (location.pathname !== lastPath) { lastPath = location.pathname; clearLines(); kickFast(); freshLayout(); } layoutCols(); bookFold(); placeShot(); placeDesk(); document.querySelectorAll('iframe[id^="tradingview_"]').forEach(hookFrame); });
 
   // =====================================================================================================
   // Massive skin for all of Vest: its dark theme runs on CSS variables, so one stylesheet recolours the page;
@@ -2149,7 +2218,7 @@
     if (DB.skin !== false) setTimeout(() => { if (!l.__gpzOwn) { try { l.setBodyFont && l.setBodyFont(LINE_FONT); l.setQuantityFont && l.setQuantityFont(LINE_FONT); } catch (e) {} } }, 0);
     return l;
   }
-  setInterval(() => { if (DB.skin !== false) wrapChart(chartApi()); }, 250);
+  every(250, () => { if (DB.skin !== false) wrapChart(chartApi()); });
   function wrapChart(ch) {
     try { const proto = ch && Object.getPrototypeOf(ch); if (!proto || proto === Object.prototype || typeof proto.createOrderLine !== 'function') return; if (!proto.__gpzWrapped) { Object.defineProperty(proto, '__gpzWrapped', { value: 1 }); ['createOrderLine', 'createPositionLine'].forEach(m => { const o = proto[m]; if (typeof o === 'function') proto[m] = function () { return wrapLine(o.apply(this, arguments)); }; }); } } catch (e) {}
   }
@@ -2238,7 +2307,7 @@
       } catch (e) {}
     });
   }
-  setInterval(noAutoScale, 700);
+  every(700, noAutoScale);
   // Vest mode: GP.'s own panels take Vest's colours too, so the page looks as if nothing were installed
   const VMAP = [[/#0b0b0b/gi, '#121714'], [/rgba\(11,\s*11,\s*11,/g, 'rgba(18,23,20,'], [/#1[01]1[01]1[01]|#151515/gi, '#0f0f0f'],
     [/#e6e3dc|#eeeae2|#dedbd3|#f1f1f3/gi, '#f2f2f2'], [/rgba\((230,\s*227,\s*220|238,\s*234,\s*226),/g, 'rgba(242,242,242,'], [/#c9c7c2/gi, '#d4d4d4'],
@@ -2253,12 +2322,12 @@
     document.querySelectorAll('[id^=gpz-]').forEach(h => { const R = h.shadowRoot, st = R && R.querySelector('style'); if (!st) return;
       if (st.__gpzOrig == null) st.__gpzOrig = st.textContent; const want = vm ? vestify(st.__gpzOrig) : st.__gpzOrig; if (st.textContent !== want) st.textContent = want; });
   }
-  setInterval(vestPanels, 700);
+  every(700, vestPanels);
   function toggleSkin() { DB.skin = DB.skin === false; save(true); skinKey = ''; applySkin(); if (P) render(); }
-  setInterval(applySkin, 1000);
+  every(1000, applySkin);
 
   // ---------- start ----------
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && OPEN) closePanel(); });
-  const boot = () => { booted = true; fonts(); applySkin(); placePill(); render(); setInterval(placePill, 1000); setInterval(() => { if (DB.zone || OPEN) render(); if (DB.zone && SHOT.visible) zoneBits(); }, 1000); loop(); fastLoop(); };
+  const boot = () => { booted = true; fonts(); applySkin(); placePill(); render(); every(1000, placePill); every(1000, () => { if (DB.zone || OPEN) render(); if (DB.zone && SHOT.visible) zoneBits(); }); loop(); fastLoop(); };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
