@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.5.11
+// @version      1.6.0
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -35,12 +35,24 @@
   const XO = W.XMLHttpRequest.prototype.open, XH = W.XMLHttpRequest.prototype.setRequestHeader, XS = W.XMLHttpRequest.prototype.send;
   W.XMLHttpRequest.prototype.open = function (m, u) { this.__gpzu = String(u); this.__gpzm = String(m || 'GET').toUpperCase(); return XO.apply(this, arguments); };
   W.XMLHttpRequest.prototype.setRequestHeader = function (k, v) { try { if (/^authorization$/i.test(k) && GATE.test(this.__gpzu || '')) offer(v); } catch (e) {} return XH.apply(this, arguments); };
-  W.XMLHttpRequest.prototype.send = function () { try { if (this.__gpzm !== 'GET' && TRADE_RE.test(this.__gpzu || '')) this.addEventListener('loadend', () => kickFast(250)); } catch (e) {} return XS.apply(this, arguments); };
+  // code GIGA at checkout: when you buy an account and type no code of your own, GIGA goes on the price quote.
+  // Switched in the chart menu. If Vest won't take it on a purchase, it steps aside for six hours so checkout is never blocked.
+  const QUOTE_RE = /\/v3\/payments\/purchases\/quotes/;
+  const gigaOn = () => { try { return DB.giga !== false && !(Date.now() - (DB.gigaSkip || 0) < 6 * 36e5); } catch (e) { return false; } };
+  const gigaBody = b => { if (typeof b !== 'string' || !gigaOn()) return null; const j = JSON.parse(b); if (j.promotionCodeText) return null; j.promotionCodeText = 'GIGA'; return JSON.stringify(j); };
+  const gigaCheck = (st, txt) => { try { const j = JSON.parse(txt || 'null'), qs = (j && j.quotes) || [];
+    if (st >= 400 || qs.some(q => q && q.promotion && !q.promotion.promotionCodeId)) { DB.gigaSkip = Date.now(); save(); } } catch (e) {} };
+  W.XMLHttpRequest.prototype.send = function () { try { if (this.__gpzm !== 'GET' && TRADE_RE.test(this.__gpzu || '')) this.addEventListener('loadend', () => kickFast(250));
+    if (this.__gpzm === 'POST' && QUOTE_RE.test(this.__gpzu || '')) { const nb = gigaBody(arguments[0]); if (nb) { arguments[0] = nb; this.addEventListener('loadend', () => gigaCheck(this.status, this.responseText)); } } } catch (e) {} return XS.apply(this, arguments); };
   const F0 = W.fetch;
   W.fetch = function (i, o) {
     let trade = false;
     try { const u = (i && i.url) || String(i); if (GATE.test(u)) { offer(new W.Headers((o && o.headers) || (i && i.headers) || {}).get('authorization')); trade = TRADE_RE.test(u) && String((o && o.method) || (i && i.method) || 'GET').toUpperCase() !== 'GET'; } } catch (e) {}
-    const r = F0.apply(this, arguments); if (trade) r.then(() => kickFast(250), () => {}); return r;
+    let giga = false;
+    try { const u = (i && i.url) || String(i); if (o && QUOTE_RE.test(u) && String(o.method || '').toUpperCase() === 'POST') { const nb = gigaBody(o.body); if (nb) { o = Object.assign({}, o, { body: nb }); arguments[1] = o; giga = true; } } } catch (e) {}
+    const r = F0.apply(this, arguments); if (trade) r.then(() => kickFast(250), () => {});
+    if (giga) r.then(res => res.clone().text().then(t => gigaCheck(res.status, t)), () => {});
+    return r;
   };
   setTimeout(() => { if (!AUTH && AUTH_ANY) { AUTH = AUTH_ANY; kick(); } }, 20000);
 
@@ -128,6 +140,12 @@
       for (const id in last) { const it = last[id], eqv = +it.equity_value, u = +it.total_unrealized_pnl || 0; if (isFinite(eqv)) L.cashS[id] = { cash: eqv - u, at: Date.now(), n: L.pos.filter(p => (p.accountId || p.account_id) === id).length }; }
     } catch (e) {}
   }
+  // a payout or withdrawal taken today comes off the balance; it is still profit made, so it goes back into the day's tally
+  function paidToday(id, d0) {
+    let s = 0; const ms = v => typeof v === 'number' ? (v < 1e12 ? v * 1000 : v) : Date.parse(v) || 0;
+    for (const k in DB.pay) { const x = DB.pay[k]; if (x.acct !== id || /reject|cancel|fail|declin/i.test(x.st || '')) continue; if (ms(x.c || x.t) >= d0) s += +x.req || +x.amt || 0; }
+    return s;
+  }
   function liveRows() {
     if (!L.cap) return [];
     const d0 = vestDay(), key = String(d0);
@@ -140,7 +158,7 @@
       const eq = cashOf(c.id) + u;
       let base = +c.daily_reset_equity;
       if (!(c.daily_reset_at >= d0 - 3 * 36e5) || !isFinite(base)) { const b = DB.dayBase[key]; if (b[c.id] == null) { b[c.id] = eq; save(); } base = b[c.id]; }
-      rows.push({ id: c.id, name: planShort(c.plan_name, +c.initial_capital), size: +c.initial_capital || 0, eq, u, today: eq - base, open });
+      rows.push({ id: c.id, name: planShort(c.plan_name, +c.initial_capital), size: +c.initial_capital || 0, eq, u, today: eq - base + paidToday(c.id, d0), open });
     });
     return rows.sort((a, b) => b.today - a.today);
   }
@@ -618,7 +636,7 @@
     const draw = () => { el.querySelectorAll('.seg').forEach(s => s.querySelectorAll('button').forEach(b => b.classList.toggle('on', o[s.dataset.s] === b.dataset.v))); drawCert(cv, z, o); };
     const inp = el.querySelector('[data-i=name]'); inp.value = o.name; inp.oninput = () => { o.name = DB.name = inp.value; save(); draw(); };
     el.querySelectorAll('.seg').forEach(s => s.onclick = e => { const b = e.target.closest('button'); if (!b) return; o[s.dataset.s] = b.dataset.v; DB[s.dataset.s] = b.dataset.v; save(); draw(); });
-    el.querySelector('[data-a=x]').onclick = () => { el.classList.remove('on'); setTimeout(() => el.remove(), 500); };
+    el.querySelector('[data-a=x]').onclick = () => { el.classList.remove('on'); setTimeout(() => el.remove(), 500); closePanel(); }; // the Pulse panel is gone: the certificate is all it shows
     el.onclick = e => { if (e.target === el) el.querySelector('[data-a=x]').click(); };
     const name = () => 'gp-zone-' + new Date(z.t0).toISOString().slice(0, 16).replace(/[:T]/g, '-') + '.png';
     el.querySelector('[data-a=dl]').onclick = () => cv.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = name(); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 3000); msg.textContent = 'Saved'; });
@@ -749,6 +767,7 @@
   const loadOf = (x = SH) => ({ risk: +x.risk, rmode: x.rmode === 'usd' ? 'usd' : 'pct', rusd: +x.rusd || 0, R: +x.R, tmode: x.tmode || 'R', usd: +x.usd || 0, size: +x.size, fees: !!x.fees });
   const FRESH = 3500; // a price older than this never sizes or sends an order
   W.__gpzVest = m => vestSuffix(m);
+  W.__gpzSync = () => syncHistory(false);
   W.__gpzPlan = () => { const p = plan(); return { why: p.why, id: p.id, closed: !!p.closed, ok: p.ok }; };
   function plan() {
     const sym = curSymbol(), id = activeAcct(), x = sym && SPEC[sym];
@@ -802,9 +821,7 @@
     const tr = (z.trades || []).filter(t => t.pnl != null), sum = tr.reduce((a, t) => a + t.pnl, 0);
     return { sum, lost: tr.filter(t => t.pnl < 0).length, won: tr.filter(t => t.pnl > 0).length };
   }
-  if (DB.zone) { delete DB.zone; save(); } // the zone is gone
   function zoneLocked() {
-    return false;
     const z = DB.zone, s = zoneStats(); if (!z || !s) return false;
     if (!z.locked && ((ZL.loss > 0 && s.sum <= -ZL.loss) || (ZL.n > 0 && s.lost >= ZL.n))) { z.locked = Date.now(); save(); }
     return !!z.locked;
@@ -965,9 +982,9 @@
   .s.in .dot{background:#9fd7b2;animation-duration:3.5s}.s.in.neg .dot{background:#e8988c}
   .brand{flex:none;margin-left:3px;font-size:15px;font-weight:600;letter-spacing:-.045em;white-space:nowrap}.brand span{margin-left:6px;font-size:9px;letter-spacing:.26em;font-weight:700;color:#8b8b92}
   .sp{flex:1;min-width:4px}
-  .ib{flex:none;height:24px;min-width:24px;padding:0 8px;border-radius:8px;border:1px solid rgba(238,234,226,.12);background:none;color:#9e9ea5;font:700 11px/1 Inter,system-ui,sans-serif;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:5px;transition:border-color .25s,color .25s,background .25s;font-variant-numeric:tabular-nums}
+  .ib{flex:none;height:24px;min-width:24px;padding:0 7px;border-radius:8px;border:1px solid rgba(238,234,226,.12);background:none;color:#9e9ea5;font:700 11px/1 Inter,system-ui,sans-serif;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:5px;transition:border-color .25s,color .25s,background .25s;font-variant-numeric:tabular-nums}
   .ib:hover{color:#f1f1f3;border-color:rgba(238,234,226,.34)}
-  .ib .cs{width:8px;height:8px;border-radius:3px;margin-right:6px;flex:none;box-shadow:inset 0 0 0 1px rgba(238,234,226,.25)}
+  .ib .cs{width:10px;height:10px;border-radius:3px;margin:0;flex:none;box-shadow:inset 0 0 0 1px rgba(238,234,226,.25)}
   .ctm{position:absolute;top:44px;right:18px;z-index:31;display:flex;flex-direction:column;gap:2px;width:190px;padding:5px;border-radius:12px;border:1px solid rgba(238,234,226,.14);background:#101010;box-shadow:0 22px 50px -16px rgba(0,0,0,.9);animation:lin .18s ease-out}.ctm[hidden]{display:none}
   .ctm button{display:flex;align-items:center;gap:10px;height:32px;padding:0 10px;border:0;border-radius:8px;background:none;color:#c9c7c2;font:600 12px Inter,system-ui,sans-serif;cursor:pointer;text-align:left}
   .ctm button:hover{background:rgba(238,234,226,.06);color:#f1f1f3}.ctm button.on{background:rgba(238,234,226,.08);color:#f1f1f3}
@@ -1199,8 +1216,8 @@
     R.innerHTML = `<style>${SCSS}${SLCSS}</style><div class="s">
       <div class="mw"><canvas class="moon" width="660" height="660"></canvas></div>
       <div class="hd" data-a="drag"><i class="dot"></i><div class="brand">GP.<span>SHOT</span></div><div class="sp"></div>
-        <button class="ib" data-a="cth" title="Chart colours"><i class="cs" data-k="cts"></i>chart</button><button class="ib" data-a="copy" title="Copier"><i></i><span data-k="cp">desk</span></button><button class="ib" data-a="vest" title="Vest's ticket">Vest</button></div>
-      <div class="ctm" data-k="ctm" hidden><span class="cth">LOOK</span><div class="ctr"><button data-look="vest">Vest</button><button data-look="gp">GP.</button></div><span class="cth">CHART</span>${CTHEMES.map(t => `<button data-cth="${t.id}"><span class="sw3"><i style="background:${t.bg}"></i><i style="background:${t.up};box-shadow:inset 0 0 0 1px ${t.upB}"></i><i style="background:${t.dn};box-shadow:inset 0 0 0 1px ${t.dnB}"></i></span>${t.name}</button>`).join('')}<span class="cth">LINES</span><div class="ctr"><button data-lst="0">solid</button><button data-lst="2">dashed</button><button data-lst="1">dotted</button></div></div>
+        <button class="ib" data-a="zone" title="Zone"><i></i><span data-k="zc">zone</span></button><button class="ib" data-a="cth" title="Chart colours"><i class="cs" data-k="cts"></i></button><button class="ib" data-a="copy" title="Copier"><i></i><span data-k="cp">desk</span></button><button class="ib" data-a="vest" title="Vest's ticket">Vest</button></div>
+      <div class="ctm" data-k="ctm" hidden><span class="cth">LOOK</span><div class="ctr"><button data-look="vest">Vest</button><button data-look="gp">GP.</button></div><span class="cth">CHART</span>${CTHEMES.map(t => `<button data-cth="${t.id}"><span class="sw3"><i style="background:${t.bg}"></i><i style="background:${t.up};box-shadow:inset 0 0 0 1px ${t.upB}"></i><i style="background:${t.dn};box-shadow:inset 0 0 0 1px ${t.dnB}"></i></span>${t.name}</button>`).join('')}<span class="cth">LINES</span><div class="ctr"><button data-lst="0">solid</button><button data-lst="2">dashed</button><button data-lst="1">dotted</button></div><span class="cth">CHECKOUT</span><div class="ctr"><button data-giga="1" title="GIGA goes on when you buy an account and type no code of your own">code GIGA</button><button data-giga="0">no code</button></div></div>
       <div class="mk"><b data-k="px">—</b><span data-k="ac">—</span></div>
       <div class="lvp" data-k="lvp" hidden><div class="lvh"><span>LEVERAGE</span><b data-k="lvv">—</b></div><input type="range" data-k="lvr" min="1" max="50" step="1" aria-label="Leverage"><div class="lvf"><span>1x</span><button data-a="levmax">max <span data-k="lvm"></span></button></div></div>
       <div class="zr" data-k="zr" hidden><div class="zs" data-k="zs"></div>
@@ -1293,6 +1310,7 @@
     const ctm = k('ctm');
     on('cth', () => { ctm.hidden = !ctm.hidden; renderShot(); });
     R.querySelectorAll('[data-look]').forEach(b => b.onclick = () => { DB.skin = b.dataset.look !== 'vest'; save(true); ctm.hidden = true; skinKey = ''; vestPanels(); applySkin(); renderShot(); drawChart(); });
+    R.querySelectorAll('[data-giga]').forEach(b => b.onclick = () => { DB.giga = b.dataset.giga === '1'; DB.gigaSkip = 0; save(true); ctm.hidden = true; renderShot(); });
     R.querySelectorAll('[data-lst]').forEach(b => b.onclick = () => { DB.lst = +b.dataset.lst; save(true); ctm.hidden = true; renderShot(); drawChart(); });
     R.querySelectorAll('[data-cth]').forEach(b => b.onclick = () => { DB.cth = b.dataset.cth; DB.cthPaint = true; save(true); ctm.hidden = true; skinKey = ''; applySkin(); renderShot(); });
     R.addEventListener('pointerdown', e => { if (!ctm.hidden && !e.composedPath().some(n => n === ctm || (n.dataset && n.dataset.a === 'cth'))) { ctm.hidden = true; renderShot(); } });
@@ -1315,6 +1333,7 @@
     k('lgs').onclick = e => { const b = e.target.closest('button'); if (b) dropLeg(b.dataset.id); };
     // zone: entered from the ticket with its lock, ended from it
     R.querySelectorAll('[data-z]').forEach(i => { i.value = ZL[i.dataset.z] > 0 ? ZL[i.dataset.z] : ''; i.onchange = () => { const v = Math.abs(parseFloat(String(i.value).replace(/[^\d.]/g, ''))); ZL[i.dataset.z] = v > 0 ? (i.dataset.z === 'n' ? Math.round(v) : Math.round(v * 100) / 100) : 0; DB.zl = ZL; save(); renderShot(); }; i.onkeydown = e => { if (e.key === 'Enter') i.blur(); }; });
+    on('zone', () => { SHOT.zopen = !SHOT.zopen; renderShot(); });
     on('zgo', () => { SHOT.zopen = false; if (!DB.zone) zoneStart(); renderShot(); });
     const end = () => { SHOT.zopen = false; if (DB.zone) zoneEnd(); renderShot(); };
     on('zend', end); on('zend2', end);
@@ -1428,8 +1447,7 @@
   const capAcctOld = id => capAcct(id) || CAPOLD[id] || null;
   const acctShort = id => (L.names && L.names[id]) || (capAcct(id) ? (CAPOLD[id] = capAcct(id), NM[id] = 'Account ' + ((+capAcct(id).attempt_index || 0) + 1)) : NM[id] || '…' + String(id).slice(-4));
   const fit = t => (t.length > 10 ? ' x' : t.length > 8 ? ' m' : ''); // long numbers step down a size, never clip
-  function zoneBits() { // the zone is gone: nothing to show, never locked
-    return { locked: false, zs: null };
+  function zoneBits() { // the zone chip and its line: the clock, the closed PnL, the count, the lock
     if (!SP) return; const { R, k } = SP, z = DB.zone, zs = zoneStats(), locked = zoneLocked();
     const chip = R.querySelector('[data-a=zone]'); chip.classList.toggle('armed', !!z && !locked); chip.classList.toggle('lock', locked);
     k('zc').textContent = z ? fdur(Date.now() - z.t0) : 'zone';
@@ -1495,7 +1513,8 @@
       { const t = cTheme(); k('cts').style.background = t.id === 'massive' ? '#e6e3dc' : t.id === 'vest' ? '#00D98E' : t.bg; R.querySelector('[data-a=cth]').classList.toggle('on', !k('ctm').hidden);
         R.querySelectorAll('[data-cth]').forEach(b => b.classList.toggle('on', b.dataset.cth === t.id));
         R.querySelectorAll('[data-look]').forEach(b => b.classList.toggle('on', (b.dataset.look === 'vest') === (DB.skin === false)));
-        R.querySelectorAll('[data-lst]').forEach(b => b.classList.toggle('on', +b.dataset.lst === lineStyle())); }
+        R.querySelectorAll('[data-lst]').forEach(b => b.classList.toggle('on', +b.dataset.lst === lineStyle()));
+        R.querySelectorAll('[data-giga]').forEach(b => b.classList.toggle('on', (b.dataset.giga === '1') === (DB.giga !== false))); }
       const side = SH.side || 'long';
       R.querySelectorAll('[data-sd]').forEach(b => b.classList.toggle('on', b.dataset.sd === side));
       if (p.qty) {
@@ -1940,7 +1959,7 @@
       let base = +c.daily_reset_equity;
       if (!(c.daily_reset_at >= d0 - 3 * 36e5) || !isFinite(base)) { const b = DB.dayBase[key]; if (b[c.id] == null) { b[c.id] = eq; save(); } base = b[c.id]; }
       const role = C.leader === c.id && (C.on || Object.keys(C.followers).some(f => C.followers[f])) ? 'lead' : C.followers[c.id] ? 'copy' : '';
-      out.push({ id: c.id, role, bal: cash, u, today: eq - base, n: ps.length, kind: c.account_type === 3 ? (/instant/i.test(c.plan_product_type || '') ? 'Instant' : 'Funded') : 'Eval' });
+      out.push({ id: c.id, role, bal: cash, u, today: eq - base + paidToday(c.id, d0), n: ps.length, kind: c.account_type === 3 ? (/instant/i.test(c.plan_product_type || '') ? 'Instant' : 'Funded') : 'Eval' });
     });
     const rk = r => r.role === 'lead' ? 0 : r.role === 'copy' ? 1 : 2;
     return out.sort((a, b) => rk(a) - rk(b) || (b.n > 0) - (a.n > 0) || b.u - a.u);
@@ -1954,7 +1973,7 @@
     R.querySelector('.d').classList.toggle('live', live.length > 0); R.querySelector('[data-a=side]').textContent = DK.side ? '⇥' : '⇤';
     const o = k('open'); o.textContent = live.length ? fm(U, { sign: true }) : '$0'; o.className = 'o ' + (live.length ? tone(U) : 'dim');
     const t = k('today'); t.textContent = fm(T, { sign: true }); t.className = tone(T);
-    const fx = R.querySelector('[data-a=flat]'); fx.disabled = !npos || !!DK.busy.all; fx.classList.toggle('busy', !!DK.busy.all); k('fx').textContent = npos ? 'flatten · ' + npos : 'flatten';
+    const fx = R.querySelector('[data-a=flat]'); fx.disabled = !!DK.busy.all; fx.classList.toggle('busy', !!DK.busy.all); k('fx').textContent = npos ? 'flatten all · ' + npos : 'flatten all'; fx.title = 'Cancels every pending order and closes every position, on every account';
     const tab = DK.tab === 'pnl' ? 'pnl' : 'acc', d = R.querySelector('.d'); d.classList.toggle('acc', tab === 'acc'); d.classList.toggle('pnl', tab === 'pnl');
     R.querySelectorAll('[data-t]').forEach(b => b.classList.toggle('on', b.dataset.t === tab));
     R.querySelector('[data-a=arm]').classList.toggle('on', !!C.on);
@@ -2006,14 +2025,28 @@
     renderDesk(); kickFast(150);
   }
   // one click: every position on every account, closed at market
+  // the failsafe: every pending order on every account cancelled, every position closed, then checked again
+  async function cancelAllOrders(ids) {
+    let n = 0; const bad = [];
+    await Promise.allSettled(ids.map(async id => {
+      const j = await send(id, 'GET', '/v3/positions/opened-orders').catch(e => { bad.push(e.message); return null; });
+      const os = j && (Array.isArray(j) ? j : j.orders || j.items || []) || [];
+      for (const o of os) { const oid = o.order_id || o.orderId || o.id; if (!oid || /filled|cancel|reject/i.test(o.status || '')) continue;
+        try { await sendExit(id, '/v3/positions/cancel-order', { orderId: oid }); n++; } catch (e) { bad.push(e.message); } }
+    }));
+    return { n, bad };
+  }
   async function deskFlatten() {
-    if (DK.busy.all) return; const ps = L.pos.slice(); if (!ps.length) return;
+    if (DK.busy.all) return;
+    const ids = (L.cap || []).filter(c => c.status === 2 && L.bal[c.id] != null).map(c => c.id); if (!ids.length) return;
     DK.busy.all = 1; renderDesk();
-    const res = await Promise.allSettled(ps.map(p => cutOne(accOf(p), p, 100)));
+    const o1 = await cancelAllOrders(ids); // pending limits first, so none can fill while the positions close
+    const ps = L.pos.slice(), res = await Promise.allSettled(ps.map(p => cutOne(accOf(p), p, 100)));
+    await sleep(900); const o2 = await cancelAllOrders(ids); // anything left hanging after the closes
     saveC(); delete DK.busy.all;
-    const bad = res.filter(r => r.status === 'rejected');
-    deskSay(bad.length ? bad.length + ' failed · ' + bad[0].reason.message : 'Flat · ' + ps.length + ' closed', bad.length);
-    clog('desk flattened ' + (ps.length - bad.length) + '/' + ps.length, !!bad.length);
+    const bad = res.filter(r => r.status === 'rejected').map(r => r.reason.message).concat(o1.bad, o2.bad), n = o1.n + o2.n;
+    deskSay(bad.length ? bad.length + ' failed · ' + bad[0] : 'Flat everywhere · ' + ps.length + ' closed · ' + n + ' order' + (n === 1 ? '' : 's') + ' cancelled', bad.length);
+    clog('desk flatten all: ' + ps.length + ' positions, ' + n + ' orders', !!bad.length);
     renderDesk(); kickFast(150);
   }
 
@@ -2114,12 +2147,14 @@
     if (DB.skin !== false) setTimeout(() => { if (!l.__gpzOwn) { try { l.setBodyFont && l.setBodyFont(LINE_FONT); l.setQuantityFont && l.setQuantityFont(LINE_FONT); } catch (e) {} } }, 0);
     return l;
   }
+  setInterval(() => { if (DB.skin !== false) wrapChart(chartApi()); }, 250);
   function wrapChart(ch) {
     try { const proto = ch && Object.getPrototypeOf(ch); if (!proto || proto === Object.prototype || typeof proto.createOrderLine !== 'function') return; if (!proto.__gpzWrapped) { Object.defineProperty(proto, '__gpzWrapped', { value: 1 }); ['createOrderLine', 'createPositionLine'].forEach(m => { const o = proto[m]; if (typeof o === 'function') proto[m] = function () { return wrapLine(o.apply(this, arguments)); }; }); } } catch (e) {}
   }
   // chart colours: the canvas and candles, picked from the chart chip
   if (DB.cthV !== 1) { DB.cthV = 1; DB.skin = false; DB.cthPaint = true; save(); } // Vest's own colours are the default
   if (DB.cthV !== 2) { DB.cthV = 2; if (DB.skin === false) DB.cth = 'vest'; save(); } // the look and the chart's colours are picked apart now
+  let CTH_FRAME = '';
   function cTheme() { return CTHEMES.find(t => t.id === DB.cth) || CTHEMES[0]; }
   function chartColors() { return cTheme().id === 'vest' ? Object.assign({}, VEST_CHART) : skinOverrides(); }
   function skinOverrides() {
@@ -2179,6 +2214,10 @@
       DB.cthPaint = false; save(true); skinKey = [f.id, sym, on].join('|'); skinTimers.forEach(clearTimeout); // Vest re-applies its own colours as the chart settles: paint again after it
       skinTimers = [setTimeout(() => paintChart(f, DB.skin !== false, true), 1500), setTimeout(() => paintChart(f, DB.skin !== false, true), 4000)]; return;
     }
+    if (f.id !== CTH_FRAME) { // a new chart: your picked set goes back on once, then it is yours to change in the chart's own settings
+      if (!paintChart(f, on, true)) return; CTH_FRAME = f.id; skinKey = [f.id, sym, on].join('|'); skinTimers.forEach(clearTimeout);
+      skinTimers = [setTimeout(() => paintChart(f, DB.skin !== false, true), 1500), setTimeout(() => paintChart(f, DB.skin !== false, true), 4000)]; return;
+    }
     const key = [f.id, sym, on].join('|'); if (key === skinKey) return;
     if (paintChart(f, on, false)) skinKey = key; // the frame's own dark and Vest's lines only: the candles are left alone
   }
@@ -2218,6 +2257,6 @@
 
   // ---------- start ----------
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && OPEN) closePanel(); });
-  const boot = () => { booted = true; fonts(); applySkin(); loop(); fastLoop(); }; // the Pulse pill and its panel are gone
+  const boot = () => { booted = true; fonts(); applySkin(); loop(); fastLoop(); setInterval(() => { if (DB.zone && SHOT.visible) zoneBits(); }, 1000); }; // the Pulse pill and its panel are gone
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
