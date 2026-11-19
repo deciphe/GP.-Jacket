@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.7.0
+// @version      1.7.1
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -42,12 +42,21 @@
   W.XMLHttpRequest.prototype.setRequestHeader = function (k, v) { try { if (/^authorization$/i.test(k) && GATE.test(this.__gpzu || '')) offer(v); } catch (e) {} return XH.apply(this, arguments); };
   // code GIGA at checkout: when you buy an account, GIGA goes on the price quote.
   // Switched in the chart menu; while on, it replaces any code typed at checkout.
-  const QUOTE_RE = /\/v3\/payments\/purchases\/quotes/;
+  const QUOTE_RE = /\/v3\/payments\//;
   const gigaOn = () => { try { return DB.giga !== false; } catch (e) { return false; } };
-  const gigaBody = b => { if (typeof b !== 'string' || !gigaOn()) return null; const j = JSON.parse(b); if (j.promotionCodeText === 'GIGA') return null; j.promotionCodeText = 'GIGA'; return JSON.stringify(j); }; // on means GIGA, whatever code was typed
+  const gigaBody = b => { if (typeof b !== 'string' || !gigaOn()) return null; const j = JSON.parse(b); if (!j || typeof j !== 'object' || Array.isArray(j)) return null;
+    const quote = 'items' in j || 'promotionCodeText' in j; if (!quote || j.promotionCodeText === 'GIGA') return null; j.promotionCodeText = 'GIGA'; return JSON.stringify(j); }; // on means GIGA, whatever code was typed or came with a signup link
+  const REF_RE = /"(signup|link)_ref_discount"/;
+  const gigaResp = t => { if (!gigaOn() || typeof t !== 'string' || !REF_RE.test(t)) return t; try { const j = JSON.parse(t);
+      const walk = o => { if (!o || typeof o !== 'object') return; for (const k in o) { const v = o[k]; if ((k === 'signup_ref_discount' || k === 'link_ref_discount') && v && typeof v === 'object' && 'code' in v) v.code = 'GIGA'; else walk(v); } };
+      walk(j); return JSON.stringify(j); } catch (e) { return t; } };
+  const XRT = Object.getOwnPropertyDescriptor(W.XMLHttpRequest.prototype, 'responseText'), XRS = Object.getOwnPropertyDescriptor(W.XMLHttpRequest.prototype, 'response');
   const gigaCheck = () => {};
   W.XMLHttpRequest.prototype.send = function () { try { if (this.__gpzm !== 'GET' && TRADE_RE.test(this.__gpzu || '')) this.addEventListener('loadend', () => kickFast(250));
-    if (this.__gpzm === 'POST' && QUOTE_RE.test(this.__gpzu || '')) { const nb = gigaBody(arguments[0]); if (nb) { arguments[0] = nb; this.addEventListener('loadend', () => gigaCheck(this.status, this.responseText)); } } } catch (e) {} return XS.apply(this, arguments); };
+    if (this.__gpzm === 'POST' && QUOTE_RE.test(this.__gpzu || '')) { const nb = gigaBody(arguments[0]); if (nb) arguments[0] = nb; }
+    if (this.__gpzm === 'GET' && /vestmarkets\.com\/v3\//.test(this.__gpzu || '') && gigaOn() && XRT && XRS) { const x = this; let c0, c1; // the referral discount Vest shows at checkout reads GIGA too
+      Object.defineProperty(x, 'responseText', { configurable: true, get() { const t = XRT.get.call(x); if (t !== c0) { c0 = t; c1 = gigaResp(t); } return c1; } });
+      Object.defineProperty(x, 'response', { configurable: true, get() { const r = XRS.get.call(x); return typeof r === 'string' ? x.responseText : r; } }); } } catch (e) {} return XS.apply(this, arguments); };
   const F0 = W.fetch;
   W.fetch = function (i, o) {
     let trade = false;
@@ -852,8 +861,6 @@
       const body = { orderType: 'market', leverage: String(p.lev), side, symbol: p.sym, quantity: p.qtyS, timeInForce: 'IOC', takeProfits: [{ executionType: 'market', triggerPrice: fmtP(g.tp, p.sym) }], stopLosses: SH.sl === false ? [] : [{ executionType: 'market', triggerPrice: fmtP(g.sl, p.sym) }] };
       sent = true; await send(p.id, 'POST', '/v3/positions/open', body);
       shotMsg((side === 'long' ? 'Long ' : 'Short ') + p.qtyS + ' ' + shortSym(p.sym) + (SH.sl === false ? ' · no stop' : ' · stop ' + fmtPx(g.sl, p.sym)), 'ok'); flash(side);
-      const want = p.px, sym0 = p.sym, id0 = p.id; setTimeout(() => { const ps = L.pos.find(x => accOf(x) === id0 && x.symbol === sym0); if (!ps) return; const op = +ps.openPrice, sl = (op - want) * (side === 'long' ? 1 : -1);
-        shotMsg('Filled ' + fmtPx(op, sym0) + ' · ' + (Math.abs(sl) < tickOf(sym0) / 2 ? 'no slip' : (sl > 0 ? '' : '−') + pts(Math.abs(sl)) + ' pts ' + (sl > 0 ? 'slip' : 'better')), 'ok'); }, 1600);
     } catch (e) { if (e.status && e.status < 500 && e.status !== 429) sent = false; shotMsg(e.message, 'bad'); }
     SHOT.cool = Date.now() + (sent ? 2500 : 600); // no second shot until the position list has caught up
     SHOT.busy = false; saveSH(); kickFast(150); setTimeout(renderShot, 2600);
