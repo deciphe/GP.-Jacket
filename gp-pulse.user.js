@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.5.5
+// @version      1.5.6
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -737,6 +737,7 @@
   // ---------- the plan: risk-locked size and fee-aware stop / target ----------
   const SH = Object.assign({ on: true, sl: true, risk: 2, R: 1, tmode: 'R', usd: 0, size: 100, fees: true, chart: true, side: 'long', dock: true, x: null, y: null }, DB.shot || {});
   const CTHEMES = [
+    { id: 'vest', name: 'Vest', bg: '#0F0F0F', up: '#00D98E', upB: '#00D98E', dn: '#E03737', dnB: '#E03737' }, // Vest's own colours, the whole page
     { id: 'massive', name: 'Massive', bg: '#0b0b0b', up: '#dedbd3', upB: '#dedbd3', dn: '#4b4b51', dnB: '#4b4b51' },
     { id: 'paper', name: 'Paper', light: true, bg: '#d8d8d8', grid: 'rgba(55,55,57,0.08)', text: '#4a4a4d', up: '#fdfdfd', upB: '#373739', upW: '#373739', dn: '#373739', dnB: '#373739', dnW: '#373739' },
     { id: 'pastel', name: 'Pastel', light: true, bg: '#d1d4dc', grid: 'rgba(27,30,40,0.07)', text: '#4a4d57', up: '#a5d6a7', upB: '#1b5e20', upW: '#1b5e20', dn: '#faa1a4', dnB: '#801922', dnW: '#801922' },
@@ -1266,7 +1267,7 @@
       Object.assign(SH, { risk: x.risk, rmode: x.rmode === 'usd' ? 'usd' : 'pct', rusd: +x.rusd || 0, R: x.R, tmode: x.tmode, usd: x.usd, size: x.size, fees: x.fees }); saveSH(); redo(); };
     const ctm = k('ctm');
     on('cth', () => { ctm.hidden = !ctm.hidden; renderShot(); });
-    R.querySelectorAll('[data-cth]').forEach(b => b.onclick = () => { DB.cth = b.dataset.cth; save(true); ctm.hidden = true; skinKey = ''; applySkin(); renderShot(); });
+    R.querySelectorAll('[data-cth]').forEach(b => b.onclick = () => { const v = b.dataset.cth; DB.skin = v !== 'vest'; if (v !== 'vest') DB.cth = v; DB.cthPaint = true; save(true); ctm.hidden = true; skinKey = ''; applySkin(); renderShot(); });
     R.addEventListener('pointerdown', e => { if (!ctm.hidden && !e.composedPath().some(n => n === ctm || (n.dataset && n.dataset.a === 'cth'))) { ctm.hidden = true; renderShot(); } });
     const kp = k('kp');
     on('snap', () => snapAll());
@@ -1459,7 +1460,7 @@
         R.querySelectorAll('[data-kb]').forEach(b => { const n = b.dataset.kb; b.classList.toggle('rec', KREC === n); b.textContent = KREC === n ? 'press keys' : K[n] ? keyName(K[n]) : 'none'; });
         const lg = { long: K.long, short: K.short, close: K.close, add: pos && (/^l/i.test(pos.side) ? K.long : K.short) };
         R.querySelectorAll('[data-kk]').forEach(m => { const v = K.on && lg[m.dataset.kk] ? keyName(lg[m.dataset.kk]) : ''; m.textContent = v; m.hidden = !v; }); }
-      { const t = cTheme(); k('cts').style.background = t.id === 'massive' ? '#e6e3dc' : t.bg; R.querySelector('[data-a=cth]').classList.toggle('on', !k('ctm').hidden);
+      { const t = cTheme(); k('cts').style.background = t.id === 'massive' ? '#e6e3dc' : t.id === 'vest' ? '#00D98E' : t.bg; R.querySelector('[data-a=cth]').classList.toggle('on', !k('ctm').hidden);
         R.querySelectorAll('[data-cth]').forEach(b => b.classList.toggle('on', b.dataset.cth === t.id)); }
       const side = SH.side || 'long';
       R.querySelectorAll('[data-sd]').forEach(b => b.classList.toggle('on', b.dataset.sd === side));
@@ -2071,7 +2072,8 @@
     try { const proto = ch && Object.getPrototypeOf(ch); if (!proto || proto === Object.prototype || typeof proto.createOrderLine !== 'function') return; if (!proto.__gpzWrapped) { Object.defineProperty(proto, '__gpzWrapped', { value: 1 }); ['createOrderLine', 'createPositionLine'].forEach(m => { const o = proto[m]; if (typeof o === 'function') proto[m] = function () { return wrapLine(o.apply(this, arguments)); }; }); } } catch (e) {}
   }
   // chart colours: the canvas and candles, picked from the chart chip
-  function cTheme() { return CTHEMES.find(t => t.id === DB.cth) || CTHEMES[0]; }
+  if (DB.cthV !== 1) { DB.cthV = 1; DB.skin = false; DB.cthPaint = true; save(); } // Vest's own colours are the default
+  function cTheme() { return DB.skin === false ? CTHEMES[0] : CTHEMES.find(t => t.id === DB.cth && t.id !== 'vest') || CTHEMES[1]; }
   function skinOverrides() {
     const o = { 'paneProperties.backgroundType': 'solid', 'paneProperties.background': MS.bg, 'paneProperties.backgroundGradientStartColor': MS.bg, 'paneProperties.backgroundGradientEndColor': MS.bg,
       'paneProperties.vertGridProperties.color': '#141414', 'paneProperties.horzGridProperties.color': '#141414', 'scalesProperties.lineColor': '#1f1f1f', 'scalesProperties.textColor': MS.muted,
@@ -2081,7 +2083,7 @@
     return Object.assign(o, themeOverrides());
   }
   function themeOverrides() {
-    const t = cTheme(); if (t.id === 'massive') return {};
+    const t = cTheme(); if (t.id === 'massive' || t.id === 'vest') return {};
     const o = { 'paneProperties.backgroundType': 'solid', 'paneProperties.background': t.bg, 'paneProperties.backgroundGradientStartColor': t.bg, 'paneProperties.backgroundGradientEndColor': t.bg,
  }; // canvas and candles only
     for (const k of ['candleStyle', 'hollowCandleStyle', 'haStyle']) Object.assign(o, { [`mainSeriesProperties.${k}.upColor`]: t.up, [`mainSeriesProperties.${k}.downColor`]: t.dn, [`mainSeriesProperties.${k}.borderUpColor`]: t.upB, [`mainSeriesProperties.${k}.borderDownColor`]: t.dnB, [`mainSeriesProperties.${k}.wickUpColor`]: t.upW, [`mainSeriesProperties.${k}.wickDownColor`]: t.dnW, [`mainSeriesProperties.${k}.drawBorder`]: true });
@@ -2089,7 +2091,7 @@
     return o;
   }
   const VEST_CHART = { 'paneProperties.background': '#0F0F0F', 'paneProperties.backgroundGradientStartColor': '#0F0F0F', 'paneProperties.backgroundGradientEndColor': '#0F0F0F', 'paneProperties.vertGridProperties.color': '#292929', 'paneProperties.horzGridProperties.color': '#292929', 'scalesProperties.lineColor': '#292929', 'scalesProperties.textColor': '#F2F2F2', 'mainSeriesProperties.candleStyle.upColor': '#00D98E', 'mainSeriesProperties.candleStyle.downColor': '#E03737', 'mainSeriesProperties.candleStyle.borderUpColor': '#00D98E', 'mainSeriesProperties.candleStyle.borderDownColor': '#E03737', 'mainSeriesProperties.candleStyle.wickUpColor': '#00D98E', 'mainSeriesProperties.candleStyle.wickDownColor': '#E03737' };
-  function paintChart(f, on) {
+  function paintChart(f, on, colors) { // colors: the canvas and candles too, only right after a set is picked
     try {
       const w = f.contentWindow, doc = f.contentDocument, api = w.tradingViewApi, ch = api && api.activeChart();
       if (!ch || typeof w.applyOverrides !== 'function') return false;
@@ -2098,10 +2100,10 @@
       if (on) {
         if (!st) { st = doc.createElement('style'); st.id = 'gpz-skin'; (doc.head || doc.documentElement).appendChild(st); }
         st.textContent = `:root, body { --tv-color-platform-background: ${MS.bg} !important; --tv-color-pane-background: ${MS.bg} !important; --tv-color-popup-background: ${MS.card} !important; --tv-color-popup-element-background-active: ${MS.active} !important; --themed-color-drawer-backdrop: ${MS.bg} !important; --themed-color-pane-bg: ${MS.bg} !important; --themed-color-text: ${MS.text} !important; --themed-color-background: ${MS.card} !important; font-family: Inter, system-ui, sans-serif; }`;
-        w.applyOverrides(skinOverrides());
-      } else { if (st) st.remove(); w.applyOverrides(Object.assign({}, VEST_CHART, themeOverrides())); }
+        if (colors) w.applyOverrides(skinOverrides());
+      } else { if (st) st.remove(); if (colors) w.applyOverrides(Object.assign({}, VEST_CHART, themeOverrides())); }
       { const ts = doc.getElementById('gpz-cth'); if (ts) ts.remove(); } // the canvas colour comes from the overrides alone: Vest's toolbars keep their own dark
-      try { for (const s of ch.getAllStudies() || []) if (s && s.name === 'Volume') ch.getStudyById(s.id).applyOverrides(on ? { 'volume.color.0': '#2a2a2e', 'volume.color.1': '#4a4a50' } : { 'volume.color.0': '#E03737', 'volume.color.1': '#00D98E' }); } catch (e) {}
+      if (colors) try { for (const s of ch.getAllStudies() || []) if (s && s.name === 'Volume') ch.getStudyById(s.id).applyOverrides(on ? { 'volume.color.0': '#2a2a2e', 'volume.color.1': '#4a4a50' } : { 'volume.color.0': '#E03737', 'volume.color.1': '#00D98E' }); } catch (e) {}
       return true;
     } catch (e) { return false; }
   }
@@ -2122,11 +2124,14 @@
     html.classList.toggle('gpz-skin', on);
     const f = document.querySelector('iframe[id^="tradingview_"]'); if (!f) return;
     let sym = ''; try { sym = f.contentWindow.tradingViewApi.activeChart().symbol(); } catch (e) { return; }
-    const key = [f.id, sym, on, html.classList.contains('dark'), DB.cth || ''].join('|'); if (key === skinKey) return;
     if (!html.classList.contains('dark') && on) return;
-    if (!paintChart(f, on)) return; // not ready yet: tried again on the next pass
-    skinKey = key; skinTimers.forEach(clearTimeout); // Vest re-applies its own colours as the chart settles: paint again after it
-    skinTimers = [setTimeout(() => paintChart(f, DB.skin !== false), 1500), setTimeout(() => paintChart(f, DB.skin !== false), 4000)];
+    if (DB.cthPaint) { // a colour set was just picked: paint the chart once, then it is yours to change in the chart's own settings
+      if (!paintChart(f, on, true)) return; // not ready yet: tried again on the next pass
+      DB.cthPaint = false; save(true); skinKey = [f.id, sym, on].join('|'); skinTimers.forEach(clearTimeout); // Vest re-applies its own colours as the chart settles: paint again after it
+      skinTimers = [setTimeout(() => paintChart(f, DB.skin !== false, true), 1500), setTimeout(() => paintChart(f, DB.skin !== false, true), 4000)]; return;
+    }
+    const key = [f.id, sym, on].join('|'); if (key === skinKey) return;
+    if (paintChart(f, on, false)) skinKey = key; // the frame's own dark and Vest's lines only: the candles are left alone
   }
   // TradingView's "A" (auto-scale the price axis) locks the chart. Vest turns it back on with every load and every
   // market switch; while GP. Shot is on it is switched off again, on every price scale of every pane.
