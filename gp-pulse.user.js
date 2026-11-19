@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.5.4
+// @version      1.5.5
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -1203,7 +1203,7 @@
         <div class="ar"><label>STOP</label><div class="ch"><button class="c" data-a="half">½ risk</button><button class="c" data-a="be">break even</button><button class="c rose" data-a="addstop" hidden>add stop</button></div></div>
         <div class="lgs" data-k="lgs"></div>
       </div>
-      <div class="go" data-v="go"><button class="L" data-a="long">Long<small data-kk="long"></small></button><button class="S" data-a="short">Short<small data-kk="short"></small></button><div class="sdt" title="Which side the stop, target and lines are set for"><button data-sd="long">long</button><i></i><button data-sd="short">short</button><i></i><button class="kb" data-a="keys" title="Keyboard shortcuts">keys</button></div></div>
+      <div class="go" data-v="go"><button class="L" data-a="long">Long<small data-kk="long"></small></button><button class="S" data-a="short">Short<small data-kk="short"></small></button><div class="sdt" title="Which side the stop, target and lines are set for"><button data-sd="long">long</button><i></i><button data-sd="short">short</button><i></i><button class="kb" data-a="keys" title="Keyboard shortcuts">keys</button><i></i><button data-a="snap" title="Put the ticket, the desk and the chart back in place">reset</button></div></div>
       <div class="go" data-v="go2" hidden><button class="A" data-a="addmode">Add</button><button class="X" data-a="close">Close<small data-kk="close"></small></button></div>
       <div class="go" data-v="go4" hidden><button class="L" data-a="addgo"><span data-k="addq">Add</span><small data-kk="add"></small></button><button class="X" data-a="close2">Close<small data-kk="close"></small></button></div>
       <div class="kp" data-k="kp" hidden><div class="kh"><span>KEYS</span><button class="sw" data-kt="keys" aria-label="Keyboard shortcuts on or off"></button></div>
@@ -1269,6 +1269,7 @@
     R.querySelectorAll('[data-cth]').forEach(b => b.onclick = () => { DB.cth = b.dataset.cth; save(true); ctm.hidden = true; skinKey = ''; applySkin(); renderShot(); });
     R.addEventListener('pointerdown', e => { if (!ctm.hidden && !e.composedPath().some(n => n === ctm || (n.dataset && n.dataset.a === 'cth'))) { ctm.hidden = true; renderShot(); } });
     const kp = k('kp');
+    on('snap', () => snapAll());
     on('keys', () => { kp.hidden = !kp.hidden; KREC = null; renderShot(); });
     const kpOff = e => { if (!kp.hidden && !(e && e.composedPath().some(n => n === kp || (n.dataset && n.dataset.a === 'keys')))) { kp.hidden = true; KREC = null; renderShot(); } };
     SHOT.kpOff = kpOff; document.addEventListener('pointerdown', kpOff, true); R.addEventListener('pointerdown', kpOff);
@@ -1338,9 +1339,9 @@
     if (!col) { if (SPL) SPL.style.display = 'none'; return; }
     const own = DB.colF == null || !(DB.colF > 0); // no drag yet: Vest's layout as it is
     if (own) col.removeAttribute('data-gpz-col');
-    if (!own && !document.getElementById('gpz-col-css')) { const st = document.createElement('style'); st.id = 'gpz-col-css'; st.textContent = '[data-gpz-col]{flex:0 0 var(--gpz-colw)!important;width:var(--gpz-colw)!important;max-width:none!important;min-width:0!important;box-sizing:border-box!important}'; document.documentElement.appendChild(st); }
-    if (!own) { const f = Math.max(0.18, Math.min(0.6, DB.colF)), tot = splitTotal(col);
-      const w = Math.max(300, Math.round(tot * f)); document.documentElement.style.setProperty('--gpz-colw', w + 'px');
+    if (!own) { const f = Math.max(0.18, Math.min(0.6, DB.colF)), tot = splitTotal(col), w = Math.max(300, Math.round(tot * f)) + 'px'; // the width lives in our own rule: Vest rewrites <html>'s style
+      let st = document.getElementById('gpz-col-css'); if (!st) { st = document.createElement('style'); st.id = 'gpz-col-css'; document.documentElement.appendChild(st); }
+      const css = `[data-gpz-col]{flex:0 0 ${w}!important;width:${w}!important;max-width:none!important;min-width:0!important;box-sizing:border-box!important}`; if (st.textContent !== css) st.textContent = css;
       col.setAttribute('data-gpz-col', ''); }
     if (!SPL) {
       SPL = document.createElement('div'); SPL.id = 'gpz-split'; SPL.title = 'Drag to widen · double-click for Vest\'s own';
@@ -1862,7 +1863,7 @@
   }
   function placeDesk() {
     if (!DS) return; const st = DS.host.style;
-    if (!DK.open) { st.display = 'none'; chartCol(); return; }
+    if (!DK.open || !IS_TRADE()) { st.display = 'none'; chartCol(); return; } // off the trade page it waits, still open
     st.display = '';
     if (!DK.side) document.querySelectorAll('[data-gpz-chartcol]').forEach(e => e.removeAttribute('data-gpz-chartcol'));
     const q = c => DS.R.querySelector(c), hh = [...DS.R.querySelectorAll('.rh,.cpy')].reduce((a, e) => a + e.offsetHeight, 0), want = q('.hd').offsetHeight + q('.top').offsetHeight + hh + q('.rows').scrollHeight + q('.ft').offsetHeight + 2;
@@ -1993,7 +1994,18 @@
   }
   if (DK.open) setTimeout(() => deskToggle(true), 1200);
   let lastPath = location.pathname;
-  setInterval(() => { if (location.pathname !== lastPath) { lastPath = location.pathname; clearLines(); kickFast(); } layoutCols(); bookFold(); placeShot(); placeDesk(); document.querySelectorAll('iframe[id^="tradingview_"]').forEach(hookFrame); }, 400);
+  function freshLayout() { // forget what was measured on the old page: Vest builds a new one
+    OCOL = null; SHOT.lastH = 0; bookDone = ''; skinKey = ''; tkFit(null);
+    document.querySelectorAll('[data-gpz-col],[data-gpz-chartcol]').forEach(e => { e.removeAttribute('data-gpz-col'); e.removeAttribute('data-gpz-chartcol'); });
+  }
+  function snapAll() { // the reset: everything back in its place
+    SH.dock = true; SH.x = SH.y = null; SH.on = true; saveSH();
+    Object.assign(DK, { open: true, side: true, dock: true, x: null, y: null }); saveDK();
+    DB.colF = null; save(true); freshLayout(); deskHost(); renderDesk();
+    layoutCols(); placeShot(); placeDesk(); setTimeout(() => { layoutCols(); placeShot(); placeDesk(); }, 300);
+    shotMsg('snapped back', 'ok');
+  }
+  setInterval(() => { if (location.pathname !== lastPath) { lastPath = location.pathname; clearLines(); kickFast(); freshLayout(); } layoutCols(); bookFold(); placeShot(); placeDesk(); document.querySelectorAll('iframe[id^="tradingview_"]').forEach(hookFrame); }, 400);
 
   // =====================================================================================================
   // Massive skin for all of Vest: its dark theme runs on CSS variables, so one stylesheet recolours the page;
