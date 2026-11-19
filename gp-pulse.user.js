@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.5.8
+// @version      1.5.9
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -950,6 +950,7 @@
   .ctm{position:absolute;top:44px;right:18px;z-index:31;display:flex;flex-direction:column;gap:2px;width:190px;padding:5px;border-radius:12px;border:1px solid rgba(238,234,226,.14);background:#101010;box-shadow:0 22px 50px -16px rgba(0,0,0,.9);animation:lin .18s ease-out}.ctm[hidden]{display:none}
   .ctm button{display:flex;align-items:center;gap:10px;height:32px;padding:0 10px;border:0;border-radius:8px;background:none;color:#c9c7c2;font:600 12px Inter,system-ui,sans-serif;cursor:pointer;text-align:left}
   .ctm button:hover{background:rgba(238,234,226,.06);color:#f1f1f3}.ctm button.on{background:rgba(238,234,226,.08);color:#f1f1f3}
+  .cth{padding:6px 10px 3px;font-size:9.5px;font-weight:700;letter-spacing:.16em;color:#6f6f75}.ctr{display:flex;gap:2px}.ctr button{flex:1;justify-content:center;padding:0 6px}
   .sw3{display:inline-flex;gap:2px;padding:2px;border-radius:6px;background:rgba(238,234,226,.06)}.sw3 i{width:10px;height:14px;border-radius:2px}.sw3 i:first-child{width:14px}
   .ib.on{color:#0b0b0b;background:#e6e3dc;border-color:#e6e3dc}
   .ib i{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.6}
@@ -1027,7 +1028,7 @@
   .bb i{display:block;height:100%;border-radius:3px;background:#e3c98e;transition:width .7s cubic-bezier(.16,1,.3,1),background .3s}
   .bb i.hot{background:#e8988c}
   .bt{display:flex;justify-content:space-between;gap:8px;font-size:11px;font-weight:600;color:#8b8b92;font-variant-numeric:tabular-nums;white-space:nowrap}
-  .sw.sm{transform:scale(.78);transform-origin:left center;vertical-align:-3px;margin-left:5px}
+  .sw.sm{width:24px;height:14px;vertical-align:-2px;margin-left:7px}.sw.sm:after{width:8px;height:8px;top:2px;left:2px}.sw.sm.on:after{transform:translateX(10px)}
   .s.nosl .sr[data-sr=risk]>b{color:#4f4f55}.s.nosl .pl .sl b{color:#4f4f55}
   .lvb{border:0;background:none;padding:0 2px;margin:0 -2px;border-radius:5px;color:#f1f1f3;font:inherit;font-weight:700;cursor:pointer;border-bottom:1px dashed rgba(238,234,226,.35)}
   .lvb:hover{background:rgba(238,234,226,.08)}.lvb.set{color:#e3c98e;border-bottom-color:rgba(227,201,142,.6)}
@@ -1046,9 +1047,10 @@
   .lvf{display:flex;justify-content:space-between;align-items:center;font-size:10.5px;font-weight:600;color:#6f6f75}
   .lvf button{height:22px;padding:0 8px;border-radius:6px;border:1px solid rgba(238,234,226,.14);background:none;color:#9e9ea5;font:600 10.5px Inter,system-ui,sans-serif;cursor:pointer}.lvf button:hover{color:#f1f1f3}
   .bt b{color:#e3c98e;font-weight:600}.bt b.hot{color:#efb1a7}.bt span:last-child b{color:#f1f1f3}
-  .sw{position:relative;width:26px;height:15px;border-radius:99px;border:0;background:rgba(238,234,226,.14);cursor:pointer;flex:none;vertical-align:-3px;margin-left:6px}
-  .sw:after{content:"";position:absolute;left:2px;top:2px;width:11px;height:11px;border-radius:50%;background:#8b8b92;transition:transform .25s}
-  .sw.on{background:#e3c98e}.sw.on:after{transform:translateX(11px);background:#0b0b0b}
+  .sw{position:relative;width:28px;height:16px;border-radius:99px;border:1px solid rgba(238,234,226,.16);background:rgba(238,234,226,.025);cursor:pointer;flex:none;vertical-align:-3px;margin-left:6px;padding:0;transition:border-color .25s,background .25s}
+  .sw:hover{border-color:rgba(238,234,226,.34)}
+  .sw:after{content:"";position:absolute;left:3px;top:3px;width:8px;height:8px;border-radius:50%;background:#55555b;transition:transform .25s cubic-bezier(.3,1.4,.5,1),background .25s,box-shadow .25s}
+  .sw.on{border-color:rgba(159,215,178,.45);background:rgba(159,215,178,.08)}.sw.on:after{transform:translateX(12px);background:#bfe6cb;box-shadow:0 0 8px rgba(159,215,178,.6)}
   /* in the trade */
   .tv{padding-top:12px;border-top:1px solid rgba(238,234,226,.07)}
   .th{display:flex;justify-content:space-between;gap:8px;font-size:10.5px;font-weight:700;color:#6f6f75;letter-spacing:.06em;white-space:nowrap}
@@ -1177,7 +1179,7 @@
       <div class="mw"><canvas class="moon" width="660" height="660"></canvas></div>
       <div class="hd" data-a="drag"><i class="dot"></i><div class="brand">GP.<span>SHOT</span></div><div class="sp"></div>
         <button class="ib" data-a="cth" title="Chart colours"><i class="cs" data-k="cts"></i>chart</button><button class="ib" data-a="copy" title="Copier"><i></i><span data-k="cp">desk</span></button><button class="ib" data-a="vest" title="Vest's ticket">Vest</button></div>
-      <div class="ctm" data-k="ctm" hidden>${CTHEMES.map(t => `<button data-cth="${t.id}"><span class="sw3"><i style="background:${t.bg}"></i><i style="background:${t.up};box-shadow:inset 0 0 0 1px ${t.upB}"></i><i style="background:${t.dn};box-shadow:inset 0 0 0 1px ${t.dnB}"></i></span>${t.name}</button>`).join('')}</div>
+      <div class="ctm" data-k="ctm" hidden><span class="cth">LOOK</span><div class="ctr"><button data-look="vest">Vest</button><button data-look="gp">GP.</button></div><span class="cth">CHART</span>${CTHEMES.map(t => `<button data-cth="${t.id}"><span class="sw3"><i style="background:${t.bg}"></i><i style="background:${t.up};box-shadow:inset 0 0 0 1px ${t.upB}"></i><i style="background:${t.dn};box-shadow:inset 0 0 0 1px ${t.dnB}"></i></span>${t.name}</button>`).join('')}<span class="cth">LINES</span><div class="ctr"><button data-lst="0">solid</button><button data-lst="2">dashed</button><button data-lst="1">dotted</button></div></div>
       <div class="mk"><b data-k="px">—</b><span data-k="ac">—</span></div>
       <div class="lvp" data-k="lvp" hidden><div class="lvh"><span>LEVERAGE</span><b data-k="lvv">—</b></div><input type="range" data-k="lvr" min="1" max="50" step="1" aria-label="Leverage"><div class="lvf"><span>1x</span><button data-a="levmax">max <span data-k="lvm"></span></button></div></div>
       <div class="zr" data-k="zr" hidden><div class="zs" data-k="zs"></div>
@@ -1267,7 +1269,9 @@
       Object.assign(SH, { risk: x.risk, rmode: x.rmode === 'usd' ? 'usd' : 'pct', rusd: +x.rusd || 0, R: x.R, tmode: x.tmode, usd: x.usd, size: x.size, fees: x.fees }); saveSH(); redo(); };
     const ctm = k('ctm');
     on('cth', () => { ctm.hidden = !ctm.hidden; renderShot(); });
-    R.querySelectorAll('[data-cth]').forEach(b => b.onclick = () => { const v = b.dataset.cth; DB.skin = v !== 'vest'; if (v !== 'vest') DB.cth = v; DB.cthPaint = true; save(true); vestPanels(); ctm.hidden = true; skinKey = ''; applySkin(); renderShot(); });
+    R.querySelectorAll('[data-look]').forEach(b => b.onclick = () => { DB.skin = b.dataset.look !== 'vest'; save(true); ctm.hidden = true; skinKey = ''; vestPanels(); applySkin(); renderShot(); drawChart(); });
+    R.querySelectorAll('[data-lst]').forEach(b => b.onclick = () => { DB.lst = +b.dataset.lst; save(true); ctm.hidden = true; renderShot(); drawChart(); });
+    R.querySelectorAll('[data-cth]').forEach(b => b.onclick = () => { DB.cth = b.dataset.cth; DB.cthPaint = true; save(true); ctm.hidden = true; skinKey = ''; applySkin(); renderShot(); });
     R.addEventListener('pointerdown', e => { if (!ctm.hidden && !e.composedPath().some(n => n === ctm || (n.dataset && n.dataset.a === 'cth'))) { ctm.hidden = true; renderShot(); } });
     const kp = k('kp');
     on('snap', () => snapAll());
@@ -1461,7 +1465,9 @@
         const lg = { long: K.long, short: K.short, close: K.close, add: pos && (/^l/i.test(pos.side) ? K.long : K.short) };
         R.querySelectorAll('[data-kk]').forEach(m => { const v = K.on && lg[m.dataset.kk] ? keyName(lg[m.dataset.kk]) : ''; m.textContent = v; m.hidden = !v; }); }
       { const t = cTheme(); k('cts').style.background = t.id === 'massive' ? '#e6e3dc' : t.id === 'vest' ? '#00D98E' : t.bg; R.querySelector('[data-a=cth]').classList.toggle('on', !k('ctm').hidden);
-        R.querySelectorAll('[data-cth]').forEach(b => b.classList.toggle('on', b.dataset.cth === t.id)); }
+        R.querySelectorAll('[data-cth]').forEach(b => b.classList.toggle('on', b.dataset.cth === t.id));
+        R.querySelectorAll('[data-look]').forEach(b => b.classList.toggle('on', (b.dataset.look === 'vest') === (DB.skin === false)));
+        R.querySelectorAll('[data-lst]').forEach(b => b.classList.toggle('on', +b.dataset.lst === lineStyle())); }
       const side = SH.side || 'long';
       R.querySelectorAll('[data-sd]').forEach(b => b.classList.toggle('on', b.dataset.sd === side));
       if (p.qty) {
@@ -1528,15 +1534,22 @@
       set('setEditable', !!o.move); set('setCancellable', !!o.cancel); set('setCancelButtonIconColor', o.cancel ? color : 'rgba(0,0,0,0)');
       const h = HOLD[key]; if (h && Date.now() > h.until) delete HOLD[key];
       if (!CHDOWN) set('setPrice', HOLD[key] ? HOLD[key].px : price); // never fight a line that is being dragged
-      if (DB.skin === false) color = color === ROSE ? 'rgba(222,28,78,0.8)' : color === MINT ? 'rgba(0,217,142,0.8)' : color;
-      const lt = cTheme().light, bg = lt ? 'rgba(22,22,24,0.94)' : 'rgba(11,11,11,0.78)', tx = lt ? toneOf(color, 0, 1) : color, ln = lt ? toneOf(color, 0.42, 0.95) : color;
-      if (l.__gpzBg !== bg) { l.__gpzBg = bg; set('setBodyBackgroundColor', bg); set('setQuantityBackgroundColor', bg); set('setCancelButtonBackgroundColor', bg); }
+      if (style === 2) style = lineStyle();
+      const lt = cTheme().light, vm = !lt && DB.skin === false, vc = vm ? vestTone(color) : null;
+      const bg = lt ? 'rgba(22,22,24,0.94)' : vm ? '#121714' : 'rgba(11,11,11,0.78)', tx = lt ? toneOf(color, 0, 1) : vm ? vc : color, ln = lt ? toneOf(color, 0.42, 0.95) : vm ? vc : color, bd = vm ? vc : 'rgba(0,0,0,0)';
+      if (l.__gpzBg !== bg + bd) { l.__gpzBg = bg + bd; set('setBodyBackgroundColor', bg); set('setQuantityBackgroundColor', bg); set('setCancelButtonBackgroundColor', bg); set('setBodyBorderColor', bd); set('setQuantityBorderColor', bd); set('setCancelButtonBorderColor', bd); }
       set('setText', text); set('setQuantity', ''); set('setLineColor', ln); set('setBodyTextColor', tx); set('setQuantityTextColor', tx); set('setLineStyle', style);
     } catch (e) { CHL[key] = null; }
   }
   // on a light chart the lines go dark and the labels stay dark boxes with bright text
   function toneOf(c, dark, a) { const m = String(c).match(/(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/) || (/^#([0-9a-f]{6})$/i.test(c) ? [0, ...[1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16))] : null); if (!m) return c;
     const [r, g, b] = [m[1], m[2], m[3]].map(v => Math.round(+v * (1 - dark))); return `rgba(${r},${g},${b},${a})`; }
+  const lineStyle = () => [0, 1, 2].includes(DB.lst) ? DB.lst : 2; // TP, SL and floor lines: solid, dotted or dashed
+  function vestTone(c) { // Vest look: plain, full-strength colours, easy to see on Vest's chart
+    const m = String(c).match(/(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/); if (!m) return c; const [r, g, b] = [+m[1], +m[2], +m[3]];
+    if (r > 200 && g > 180 && b < 160) return '#f5c542'; // gold: pass
+    if (g > r + 20) return '#00d98e'; if (r > g + 30) return '#ff4d5e'; return 'rgba(242,242,242,0.75)';
+  }
   function clearLines(keep) { for (const key in CHL) if (!keep || keep.indexOf(key) < 0) { try { CHL[key] && CHL[key].remove(); } catch (e) {} delete CHL[key]; delete HOLD[key]; } }
   function vestSuffix(m) { // returns how many of Vest's TP / SL labels now carry the distance
     let n = 0;
@@ -2074,7 +2087,9 @@
   }
   // chart colours: the canvas and candles, picked from the chart chip
   if (DB.cthV !== 1) { DB.cthV = 1; DB.skin = false; DB.cthPaint = true; save(); } // Vest's own colours are the default
-  function cTheme() { return DB.skin === false ? CTHEMES[0] : CTHEMES.find(t => t.id === DB.cth && t.id !== 'vest') || CTHEMES[1]; }
+  if (DB.cthV !== 2) { DB.cthV = 2; if (DB.skin === false) DB.cth = 'vest'; save(); } // the look and the chart's colours are picked apart now
+  function cTheme() { return CTHEMES.find(t => t.id === DB.cth) || CTHEMES[0]; }
+  function chartColors() { return cTheme().id === 'vest' ? Object.assign({}, VEST_CHART) : skinOverrides(); }
   function skinOverrides() {
     const o = { 'paneProperties.backgroundType': 'solid', 'paneProperties.background': MS.bg, 'paneProperties.backgroundGradientStartColor': MS.bg, 'paneProperties.backgroundGradientEndColor': MS.bg,
       'paneProperties.vertGridProperties.color': '#141414', 'paneProperties.horzGridProperties.color': '#141414', 'scalesProperties.lineColor': '#1f1f1f', 'scalesProperties.textColor': MS.muted,
@@ -2101,10 +2116,10 @@
       if (on) {
         if (!st) { st = doc.createElement('style'); st.id = 'gpz-skin'; (doc.head || doc.documentElement).appendChild(st); }
         st.textContent = `:root, body { --tv-color-platform-background: ${MS.bg} !important; --tv-color-pane-background: ${MS.bg} !important; --tv-color-popup-background: ${MS.card} !important; --tv-color-popup-element-background-active: ${MS.active} !important; --themed-color-drawer-backdrop: ${MS.bg} !important; --themed-color-pane-bg: ${MS.bg} !important; --themed-color-text: ${MS.text} !important; --themed-color-background: ${MS.card} !important; font-family: Inter, system-ui, sans-serif; }`;
-        if (colors) w.applyOverrides(skinOverrides());
-      } else { if (st) st.remove(); if (colors) w.applyOverrides(Object.assign({}, VEST_CHART, themeOverrides())); }
+      } else if (st) st.remove();
+      if (colors) w.applyOverrides(chartColors());
       { const ts = doc.getElementById('gpz-cth'); if (ts) ts.remove(); } // the canvas colour comes from the overrides alone: Vest's toolbars keep their own dark
-      if (colors) try { for (const s of ch.getAllStudies() || []) if (s && s.name === 'Volume') ch.getStudyById(s.id).applyOverrides(on ? { 'volume.color.0': '#2a2a2e', 'volume.color.1': '#4a4a50' } : { 'volume.color.0': '#E03737', 'volume.color.1': '#00D98E' }); } catch (e) {}
+      if (colors) try { for (const s of ch.getAllStudies() || []) if (s && s.name === 'Volume') ch.getStudyById(s.id).applyOverrides(cTheme().id !== 'vest' ? { 'volume.color.0': '#2a2a2e', 'volume.color.1': '#4a4a50' } : { 'volume.color.0': '#E03737', 'volume.color.1': '#00D98E' }); } catch (e) {}
       return true;
     } catch (e) { return false; }
   }
