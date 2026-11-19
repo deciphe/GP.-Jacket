@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.5.9
+// @version      1.5.10
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -739,8 +739,8 @@
   const CTHEMES = [
     { id: 'vest', name: 'Vest', bg: '#121714', up: '#00D98E', upB: '#00D98E', dn: '#E03737', dnB: '#E03737' }, // Vest's own colours, the whole page
     { id: 'massive', name: 'Massive', bg: '#0b0b0b', up: '#dedbd3', upB: '#dedbd3', dn: '#4b4b51', dnB: '#4b4b51' },
-    { id: 'paper', name: 'Paper', light: true, bg: '#d8d8d8', grid: 'rgba(55,55,57,0.08)', text: '#4a4a4d', up: '#fdfdfd', upB: '#373739', upW: '#373739', dn: '#373739', dnB: '#373739', dnW: '#373739' },
-    { id: 'pastel', name: 'Pastel', light: true, bg: '#d1d4dc', grid: 'rgba(27,30,40,0.07)', text: '#4a4d57', up: '#a5d6a7', upB: '#1b5e20', upW: '#1b5e20', dn: '#faa1a4', dnB: '#801922', dnW: '#801922' },
+    { id: 'paper', name: 'Paper', light: true, scale: '#2b2b2e', bg: '#d8d8d8', grid: 'rgba(55,55,57,0.08)', text: '#4a4a4d', up: '#fdfdfd', upB: '#373739', upW: '#373739', dn: '#373739', dnB: '#373739', dnW: '#373739' },
+    { id: 'pastel', name: 'Pastel', light: true, scale: '#2a2d36', bg: '#d1d4dc', grid: 'rgba(27,30,40,0.07)', text: '#4a4d57', up: '#a5d6a7', upB: '#1b5e20', upW: '#1b5e20', dn: '#faa1a4', dnB: '#801922', dnW: '#801922' },
     { id: 'night', name: 'Night', bg: '#000000', grid: 'rgba(255,255,255,0.05)', text: '#8b8b92', up: '#163918', upB: '#81c784', upW: '#81c784', dn: '#481015', dnB: '#f7525f', dnW: '#f7525f' }];
   SH.keys = Object.assign({ on: false, long: 'Alt+KeyB', short: 'Alt+KeyS', close: 'Alt+KeyX' }, SH.keys || {}); // keyboard shortcuts: off until switched on
   SH.chart = true;
@@ -1536,7 +1536,7 @@
       if (!CHDOWN) set('setPrice', HOLD[key] ? HOLD[key].px : price); // never fight a line that is being dragged
       if (style === 2) style = lineStyle();
       const lt = cTheme().light, vm = !lt && DB.skin === false, vc = vm ? vestTone(color) : null;
-      const bg = lt ? 'rgba(22,22,24,0.94)' : vm ? '#121714' : 'rgba(11,11,11,0.78)', tx = lt ? toneOf(color, 0, 1) : vm ? vc : color, ln = lt ? toneOf(color, 0.42, 0.95) : vm ? vc : color, bd = vm ? vc : 'rgba(0,0,0,0)';
+      const bg = lt ? 'rgba(22,22,24,0.94)' : vm ? '#121714' : 'rgba(11,11,11,0.78)', tx = lt ? lightTone(color, 1) : vm ? vc : color, ln = lt ? lightTone(color, 0) : vm ? vc : color, bd = vm ? vc : 'rgba(0,0,0,0)';
       if (l.__gpzBg !== bg + bd) { l.__gpzBg = bg + bd; set('setBodyBackgroundColor', bg); set('setQuantityBackgroundColor', bg); set('setCancelButtonBackgroundColor', bg); set('setBodyBorderColor', bd); set('setQuantityBorderColor', bd); set('setCancelButtonBorderColor', bd); }
       set('setText', text); set('setQuantity', ''); set('setLineColor', ln); set('setBodyTextColor', tx); set('setQuantityTextColor', tx); set('setLineStyle', style);
     } catch (e) { CHL[key] = null; }
@@ -1545,6 +1545,10 @@
   function toneOf(c, dark, a) { const m = String(c).match(/(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/) || (/^#([0-9a-f]{6})$/i.test(c) ? [0, ...[1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16))] : null); if (!m) return c;
     const [r, g, b] = [m[1], m[2], m[3]].map(v => Math.round(+v * (1 - dark))); return `rgba(${r},${g},${b},${a})`; }
   const lineStyle = () => [0, 1, 2].includes(DB.lst) ? DB.lst : 2; // TP, SL and floor lines: solid, dotted or dashed
+  function lightTone(c, label) { // light charts: deep, saturated lines; labels stay dark boxes with bright text
+    const v = vestTone(c), L = { '#ff4d5e': ['#c41d2e', '#ff6b78'], '#00d98e': ['#0f8a4a', '#3ee08f'], '#f5c542': ['#a66f00', '#f5c542'] }[v];
+    return L ? L[label] : label ? '#e6e3dc' : '#2b2b2e';
+  }
   function vestTone(c) { // Vest look: plain, full-strength colours, easy to see on Vest's chart
     const m = String(c).match(/(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/); if (!m) return c; const [r, g, b] = [+m[1], +m[2], +m[3]];
     if (r > 200 && g > 180 && b < 160) return '#f5c542'; // gold: pass
@@ -2102,6 +2106,7 @@
     const t = cTheme(); if (t.id === 'massive' || t.id === 'vest') return {};
     const o = { 'paneProperties.backgroundType': 'solid', 'paneProperties.background': t.bg, 'paneProperties.backgroundGradientStartColor': t.bg, 'paneProperties.backgroundGradientEndColor': t.bg,
  }; // canvas and candles only
+    if (t.scale) o['scalesProperties.textColor'] = t.scale; // on a light canvas the price and time numbers go dark to stay readable
     for (const k of ['candleStyle', 'hollowCandleStyle', 'haStyle']) Object.assign(o, { [`mainSeriesProperties.${k}.upColor`]: t.up, [`mainSeriesProperties.${k}.downColor`]: t.dn, [`mainSeriesProperties.${k}.borderUpColor`]: t.upB, [`mainSeriesProperties.${k}.borderDownColor`]: t.dnB, [`mainSeriesProperties.${k}.wickUpColor`]: t.upW, [`mainSeriesProperties.${k}.wickDownColor`]: t.dnW, [`mainSeriesProperties.${k}.drawBorder`]: true });
     o['mainSeriesProperties.barStyle.upColor'] = t.upB; o['mainSeriesProperties.barStyle.downColor'] = t.dnB;
     return o;
