@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.5.6
+// @version      1.5.8
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -737,7 +737,7 @@
   // ---------- the plan: risk-locked size and fee-aware stop / target ----------
   const SH = Object.assign({ on: true, sl: true, risk: 2, R: 1, tmode: 'R', usd: 0, size: 100, fees: true, chart: true, side: 'long', dock: true, x: null, y: null }, DB.shot || {});
   const CTHEMES = [
-    { id: 'vest', name: 'Vest', bg: '#0F0F0F', up: '#00D98E', upB: '#00D98E', dn: '#E03737', dnB: '#E03737' }, // Vest's own colours, the whole page
+    { id: 'vest', name: 'Vest', bg: '#121714', up: '#00D98E', upB: '#00D98E', dn: '#E03737', dnB: '#E03737' }, // Vest's own colours, the whole page
     { id: 'massive', name: 'Massive', bg: '#0b0b0b', up: '#dedbd3', upB: '#dedbd3', dn: '#4b4b51', dnB: '#4b4b51' },
     { id: 'paper', name: 'Paper', light: true, bg: '#d8d8d8', grid: 'rgba(55,55,57,0.08)', text: '#4a4a4d', up: '#fdfdfd', upB: '#373739', upW: '#373739', dn: '#373739', dnB: '#373739', dnW: '#373739' },
     { id: 'pastel', name: 'Pastel', light: true, bg: '#d1d4dc', grid: 'rgba(27,30,40,0.07)', text: '#4a4d57', up: '#a5d6a7', upB: '#1b5e20', upW: '#1b5e20', dn: '#faa1a4', dnB: '#801922', dnW: '#801922' },
@@ -1066,7 +1066,7 @@
   @keyframes glow{0%,100%{opacity:.55}50%{opacity:1}}
   .ar{display:grid;grid-template-columns:46px minmax(0,1fr);align-items:center;gap:8px}
   .ar>label{font-size:10.5px;font-weight:700;color:#6f6f75;letter-spacing:.06em}
-  .ch{display:flex;gap:5px;min-width:0}
+  .ch{display:flex;gap:5px;min-width:0}.ch .c{flex:1 1 0;min-width:0;padding:0}
   .lgs{display:flex;flex-wrap:wrap;gap:5px}.lgs:empty{display:none}
   .lg{display:inline-flex;align-items:center;height:26px;padding:0 4px 0 11px;border-radius:6px;border:1px solid rgba(227,201,142,.35);color:#e3c98e;font-size:11.5px;font-weight:700;font-variant-numeric:tabular-nums;animation:lin .35s ease-out}
   .lg button{border:0;background:none;color:#8b8b92;font:700 13px Inter,system-ui,sans-serif;cursor:pointer;padding:0 7px}.lg button:hover{color:#efb1a7}
@@ -1172,7 +1172,7 @@
     const host = document.createElement('div'); host.id = 'gpz-shot'; host.style.cssText = 'position:fixed;z-index:2147483639;display:none';
     ['keydown', 'keyup', 'keypress'].forEach(t => host.addEventListener(t, e => e.stopPropagation()));
     const R = host.attachShadow({ mode: 'open' });
-    const cuts = (attr, cls) => [25, 50, 75].map(v => `<button class="c${cls || ''}" data-${attr}="${v}">${v}%</button>`).join('');
+    const cuts = (attr, cls, vs) => (vs || [25, 50, 75]).map(v => `<button class="c${cls || ''}" data-${attr}="${v}">${v}%</button>`).join('');
     R.innerHTML = `<style>${SCSS}${SLCSS}</style><div class="s">
       <div class="mw"><canvas class="moon" width="660" height="660"></canvas></div>
       <div class="hd" data-a="drag"><i class="dot"></i><div class="brand">GP.<span>SHOT</span></div><div class="sp"></div>
@@ -1199,7 +1199,7 @@
         <div class="pu"><b data-k="pu">—</b><span data-k="pr"></span></div>
         <div class="bm" data-k="bm1">${BEAM}</div>
         <div class="ends"><div class="a"><b data-k="e1">—</b><em data-k="e1s"></em></div><div class="b"><b data-k="e2">—</b><em data-k="e2s"></em></div></div>
-        <div class="ar"><label>CLOSE</label><div class="ch">${cuts('cut')}</div></div>
+        <div class="ar"><label>CLOSE</label><div class="ch">${cuts('cut', '', [10, 20, 25, 50, 75])}</div></div>
         <div class="ar"><label>LIMIT</label><div class="ch">${cuts('lim', ' gold')}</div></div>
         <div class="ar"><label>STOP</label><div class="ch"><button class="c" data-a="half">½ risk</button><button class="c" data-a="be">break even</button><button class="c rose" data-a="addstop" hidden>add stop</button></div></div>
         <div class="lgs" data-k="lgs"></div>
@@ -1267,7 +1267,7 @@
       Object.assign(SH, { risk: x.risk, rmode: x.rmode === 'usd' ? 'usd' : 'pct', rusd: +x.rusd || 0, R: x.R, tmode: x.tmode, usd: x.usd, size: x.size, fees: x.fees }); saveSH(); redo(); };
     const ctm = k('ctm');
     on('cth', () => { ctm.hidden = !ctm.hidden; renderShot(); });
-    R.querySelectorAll('[data-cth]').forEach(b => b.onclick = () => { const v = b.dataset.cth; DB.skin = v !== 'vest'; if (v !== 'vest') DB.cth = v; DB.cthPaint = true; save(true); ctm.hidden = true; skinKey = ''; applySkin(); renderShot(); });
+    R.querySelectorAll('[data-cth]').forEach(b => b.onclick = () => { const v = b.dataset.cth; DB.skin = v !== 'vest'; if (v !== 'vest') DB.cth = v; DB.cthPaint = true; save(true); vestPanels(); ctm.hidden = true; skinKey = ''; applySkin(); renderShot(); });
     R.addEventListener('pointerdown', e => { if (!ctm.hidden && !e.composedPath().some(n => n === ctm || (n.dataset && n.dataset.a === 'cth'))) { ctm.hidden = true; renderShot(); } });
     const kp = k('kp');
     on('snap', () => snapAll());
@@ -1528,6 +1528,7 @@
       set('setEditable', !!o.move); set('setCancellable', !!o.cancel); set('setCancelButtonIconColor', o.cancel ? color : 'rgba(0,0,0,0)');
       const h = HOLD[key]; if (h && Date.now() > h.until) delete HOLD[key];
       if (!CHDOWN) set('setPrice', HOLD[key] ? HOLD[key].px : price); // never fight a line that is being dragged
+      if (DB.skin === false) color = color === ROSE ? 'rgba(222,28,78,0.8)' : color === MINT ? 'rgba(0,217,142,0.8)' : color;
       const lt = cTheme().light, bg = lt ? 'rgba(22,22,24,0.94)' : 'rgba(11,11,11,0.78)', tx = lt ? toneOf(color, 0, 1) : color, ln = lt ? toneOf(color, 0.42, 0.95) : color;
       if (l.__gpzBg !== bg) { l.__gpzBg = bg; set('setBodyBackgroundColor', bg); set('setQuantityBackgroundColor', bg); set('setCancelButtonBackgroundColor', bg); }
       set('setText', text); set('setQuantity', ''); set('setLineColor', ln); set('setBodyTextColor', tx); set('setQuantityTextColor', tx); set('setLineStyle', style);
@@ -1760,7 +1761,7 @@
   .up{color:#bfe6cb}.dn{color:#efb1a7}.flat{color:#e6e3dc}.dim{color:#4a4a4f}
   .rows{flex:1 1 auto;min-height:0;overflow:auto;scrollbar-width:none}
   .rows::-webkit-scrollbar{display:none}
-  .r{display:grid;grid-template-columns:minmax(0,1fr) 62px 62px 82px;align-items:center;gap:6px;height:32px;padding:0 8px 0 14px;border-bottom:1px solid rgba(238,234,226,.05)}
+  .r{display:grid;grid-template-columns:minmax(0,1fr) 56px 56px 122px;align-items:center;gap:6px;height:32px;padding:0 8px 0 14px;border-bottom:1px solid rgba(238,234,226,.05)}
   .r:hover{background:rgba(238,234,226,.03)}
   .x.sd{font-size:12px}.d.side .x.sd{background:#e6e3dc;border-color:#e6e3dc;color:#0b0b0b}
   .d.side{border-radius:14px}.d.side .hd{cursor:default}
@@ -1790,7 +1791,7 @@
   .d.side .r.a{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"nm fo" "vb vt";height:auto;row-gap:4px;padding:9px 10px 9px 14px}
   .d.side .r.a .nm{grid-area:nm}.d.side .r.a .fo{grid-area:fo}.d.side .r.a .vb{grid-area:vb;text-align:left}.d.side .r.a .vt{grid-area:vt}
   .d.side .rh.ra{display:none}
-  .rh{display:grid;grid-template-columns:minmax(0,1fr) 62px 62px 82px;align-items:center;gap:6px;height:22px;padding:0 8px 0 14px}.rh .v{font-size:9px;font-weight:700;letter-spacing:.16em;color:#5f5f66}
+  .rh{display:grid;grid-template-columns:minmax(0,1fr) 56px 56px 122px;align-items:center;gap:6px;height:22px;padding:0 8px 0 14px}.rh .v{font-size:9px;font-weight:700;letter-spacing:.16em;color:#5f5f66}
   .nm{display:flex;align-items:center;gap:6px;min-width:0;white-space:nowrap}
   .nm b{font-size:12.5px;font-weight:600;letter-spacing:-.02em}
   .nm em{font-style:normal;font-size:10.5px;font-weight:600;color:#6f6f75;overflow:hidden;text-overflow:ellipsis}
@@ -1798,7 +1799,7 @@
   .tg.lead{background:#e6e3dc;color:#0b0b0b}.tg.copy{border:1px solid rgba(159,215,178,.5);color:#9fd7b2}
   .v{text-align:right;font-size:12px;font-weight:600;letter-spacing:-.02em;white-space:nowrap}
   .ac{display:flex;gap:3px;justify-content:flex-end}
-  .k{position:relative;overflow:hidden;width:25px;height:22px;padding:0;border-radius:7px;border:1px solid rgba(238,234,226,.12);background:none;color:#9e9ea5;font:600 10px Inter,system-ui,sans-serif;cursor:pointer;transition:all .2s}
+  .k{position:relative;overflow:hidden;width:22px;height:22px;padding:0;border-radius:7px;border:1px solid rgba(238,234,226,.12);background:none;color:#9e9ea5;font:600 10px Inter,system-ui,sans-serif;cursor:pointer;transition:all .2s}
   .k:hover{color:#f1f1f3;border-color:rgba(238,234,226,.45)}.k:active{transform:scale(.92)}
   .k.cl{color:#efb1a7;border-color:rgba(232,152,140,.4);font-size:12px}.k.cl:hover{background:#e8988c;border-color:#e8988c;color:#0b0b0b}
   .k[disabled],.fx[disabled]{opacity:.2;pointer-events:none}
@@ -1928,7 +1929,7 @@
       return `<div class="r${r.kind !== 'Eval' ? ' fd' : ''}" data-id="${r.id}"><div class="nm"><b>${acctShort(r.id).replace(/^Account /, '')}</b>${r.role ? `<i class="tg ${r.role}">${r.role === 'lead' ? 'LEAD' : 'COPY'}</i>` : `<em>${r.kind}</em>`}</div>
         <div class="v vo ${r.n ? tone(r.u) : 'dim'}">${r.n ? fm(r.u, { sign: true }) : '—'}</div>
         <div class="v vt ${tone(r.today)}">${fm(r.today, { sign: true })}</div>
-        <div class="ac">${btn(25, '25')}${btn(50, '50')}${btn(100, '×', ' cl')}</div></div>`;
+        <div class="ac">${btn(10, '10')}${btn(20, '20')}${btn(25, '25')}${btn(50, '50')}${btn(100, '×', ' cl')}</div></div>`;
     }).join('');
     if (k('rows').innerHTML !== html) k('rows').innerHTML = html || '<div class="none">' + (tab === 'acc' ? 'reading your accounts' : 'nothing open') + '</div>';
     const fresh = DK.msg && Date.now() - DK.msgAt < 9000, n = Object.keys(C.followers).filter(f => C.followers[f]).length;
@@ -2090,7 +2091,7 @@
     o['mainSeriesProperties.barStyle.upColor'] = t.upB; o['mainSeriesProperties.barStyle.downColor'] = t.dnB;
     return o;
   }
-  const VEST_CHART = { 'paneProperties.background': '#0F0F0F', 'paneProperties.backgroundGradientStartColor': '#0F0F0F', 'paneProperties.backgroundGradientEndColor': '#0F0F0F', 'paneProperties.vertGridProperties.color': '#292929', 'paneProperties.horzGridProperties.color': '#292929', 'scalesProperties.lineColor': '#292929', 'scalesProperties.textColor': '#F2F2F2', 'mainSeriesProperties.candleStyle.upColor': '#00D98E', 'mainSeriesProperties.candleStyle.downColor': '#E03737', 'mainSeriesProperties.candleStyle.borderUpColor': '#00D98E', 'mainSeriesProperties.candleStyle.borderDownColor': '#E03737', 'mainSeriesProperties.candleStyle.wickUpColor': '#00D98E', 'mainSeriesProperties.candleStyle.wickDownColor': '#E03737' };
+  const VEST_CHART = { 'paneProperties.backgroundType': 'solid', 'paneProperties.background': '#121714', 'paneProperties.backgroundGradientStartColor': '#121714', 'paneProperties.backgroundGradientEndColor': '#121714', 'paneProperties.vertGridProperties.color': 'rgba(0,0,0,0)', 'paneProperties.horzGridProperties.color': 'rgba(0,0,0,0)', 'scalesProperties.lineColor': '#292929', 'scalesProperties.textColor': '#F2F2F2', 'mainSeriesProperties.candleStyle.upColor': '#00D98E', 'mainSeriesProperties.candleStyle.downColor': '#E03737', 'mainSeriesProperties.candleStyle.borderUpColor': '#00D98E', 'mainSeriesProperties.candleStyle.borderDownColor': '#E03737', 'mainSeriesProperties.candleStyle.wickUpColor': '#00D98E', 'mainSeriesProperties.candleStyle.wickDownColor': '#E03737' };
   function paintChart(f, on, colors) { // colors: the canvas and candles too, only right after a set is picked
     try {
       const w = f.contentWindow, doc = f.contentDocument, api = w.tradingViewApi, ch = api && api.activeChart();
@@ -2149,6 +2150,21 @@
     });
   }
   setInterval(noAutoScale, 700);
+  // Vest mode: GP.'s own panels take Vest's colours too, so the page looks as if nothing were installed
+  const VMAP = [[/#0b0b0b/gi, '#121714'], [/rgba\(11,\s*11,\s*11,/g, 'rgba(18,23,20,'], [/#1[01]1[01]1[01]|#151515/gi, '#0f0f0f'],
+    [/#e6e3dc|#eeeae2|#dedbd3|#f1f1f3/gi, '#f2f2f2'], [/rgba\((230,\s*227,\s*220|238,\s*234,\s*226),/g, 'rgba(242,242,242,'], [/#c9c7c2/gi, '#d4d4d4'],
+    [/#9e9ea5|#8b8b92|#7a7a80|#6f6f75|#6d6d73/gi, '#a3a3a3'], [/#5f5f66|#55555b|#4f4f55/gi, '#737373'],
+    [/#9fd7b2|#bfe6cb/gi, '#00d98e'], [/rgba\(159,\s*215,\s*178,/g, 'rgba(0,217,142,'], [/#e8988c|#efb1a7/gi, '#de1c4e'], [/rgba\(232,\s*152,\s*140,/g, 'rgba(222,28,78,']];
+  const VEXTRA = `.mw{display:none!important}.s,.d{background:#121714!important;border-color:#292929!important;border-radius:8px!important;box-shadow:none!important}
+    .L{background:#00d98e!important;color:#fff!important;box-shadow:none!important}.S{background:#de1c4e!important;border-color:#de1c4e!important;color:#fff!important}
+    .L small,.S small{color:rgba(255,255,255,.7)!important}`;
+  const vestify = css => VMAP.reduce((c, [re, to]) => c.replace(re, to), css) + VEXTRA;
+  function vestPanels() {
+    const vm = DB.skin === false;
+    document.querySelectorAll('[id^=gpz-]').forEach(h => { const R = h.shadowRoot, st = R && R.querySelector('style'); if (!st) return;
+      if (st.__gpzOrig == null) st.__gpzOrig = st.textContent; const want = vm ? vestify(st.__gpzOrig) : st.__gpzOrig; if (st.textContent !== want) st.textContent = want; });
+  }
+  setInterval(vestPanels, 700);
   function toggleSkin() { DB.skin = DB.skin === false; save(true); skinKey = ''; applySkin(); if (P) render(); }
   setInterval(applySkin, 1000);
 
