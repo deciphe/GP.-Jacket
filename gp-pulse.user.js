@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.7.8
+// @version      1.7.9
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -1423,7 +1423,14 @@
   }
   function splitTotal(col) { // chart column + order column: the two that share the room
     const fr = document.querySelector('iframe[id^=tradingview_]'), ch = [...col.parentElement.children].find(e => e.contains(fr));
-    return col.getBoundingClientRect().width + (ch ? ch.getBoundingClientRect().width : 0);
+    // from the row's own width, not the two columns: when Vest adds something wide (the Extended hours badge) the chart column
+    // can grow past its share, and measuring it fed back into the width we set — the ticket rocked side to side
+    const P = col.parentElement, ps = getComputedStyle(P), kids = [...P.children].filter(e => e.offsetParent !== null || e === col || e === ch);
+    let avail = P.getBoundingClientRect().width - (parseFloat(ps.paddingLeft) || 0) - (parseFloat(ps.paddingRight) || 0) - (parseFloat(ps.columnGap) || 0) * Math.max(0, kids.length - 1);
+    for (const e of kids) { if (e === col || e === ch) continue; avail -= e.getBoundingClientRect().width; }
+    if (ch) avail -= parseFloat(getComputedStyle(ch).marginLeft) || 0;
+    const sum = col.getBoundingClientRect().width + (ch ? ch.getBoundingClientRect().width : 0);
+    return avail > 200 ? Math.min(sum, avail) : sum;
   }
   let bookDone = '';
   function bookFold() {
@@ -1437,13 +1444,15 @@
   W.__gpzBook = () => { const tab = [...document.querySelectorAll('[role=tab]')].find(t => t.textContent.trim() === 'Book'), c = tab && tab.closest('[data-slot=card]'); return c ? Math.round(c.getBoundingClientRect().width) : null; };
   function layoutCols() {
     const on = SH.on && IS_TRADE() && !!AUTH && SH.wide !== false, col = on ? orderCol() : null;
+    if (!col && on && Date.now() - (layoutCols.seen || 0) < 1500) return; // Vest re-mounting its ticket for a moment: hold the layout, no jump
+    if (col) layoutCols.seen = Date.now();
     document.querySelectorAll('[data-gpz-col]').forEach(e => { if (e !== col) e.removeAttribute('data-gpz-col'); });
     if (!col) { if (SPL) SPL.style.display = 'none'; return; }
     const own = DB.colF == null || !(DB.colF > 0); // no drag yet: Vest's layout as it is
     if (own) col.removeAttribute('data-gpz-col');
     if (!own) { const f = Math.max(0.18, Math.min(0.6, DB.colF)), tot = splitTotal(col), w = Math.max(300, Math.round(tot * f)) + 'px'; // the width lives in our own rule: Vest rewrites <html>'s style
       let st = document.getElementById('gpz-col-css'); if (!st) { st = document.createElement('style'); st.id = 'gpz-col-css'; document.documentElement.appendChild(st); }
-      const css = `[data-gpz-col]{flex:0 0 ${w}!important;width:${w}!important;max-width:none!important;min-width:0!important;box-sizing:border-box!important}`; if (st.textContent !== css) st.textContent = css;
+      const css = `[data-gpz-col]{flex:0 0 ${w}!important;width:${w}!important;max-width:none!important;min-width:0!important;box-sizing:border-box!important}`, was = parseFloat((st.textContent.match(/flex:0 0 ([\d.]+)px/) || [])[1]) || 0; if (st.textContent !== css && (SPL && SPL.drag || Math.abs(was - parseFloat(w)) >= 8)) st.textContent = css; // small wobbles in Vest's layout never move the ticket
       col.setAttribute('data-gpz-col', ''); }
     if (!SPL) {
       SPL = document.createElement('div'); SPL.id = 'gpz-split'; SPL.title = 'Drag to widen · double-click for Vest\'s own';
@@ -1466,7 +1475,7 @@
   W.__gpzCols = () => { const c = document.querySelector('[data-gpz-col]'); return c ? { col: Math.round(c.getBoundingClientRect().width), row: Math.round(splitTotal(c)) } : null; };
   // one of Vest's own windows is up (checkout, settings, a confirm): GP. steps out of its way and comes back docked when it closes
   // Vest's own menus and dropdowns (account picker, market list…) sit above GP. while they are open
-  const POPS = '[data-radix-popper-content-wrapper],[role=menu],[role=listbox]';
+  const POPS = '[role=menu],[role=listbox]'; // menus only: tooltips and hover cards (Vest's Extended badge…) never move GP., or the two flicker over each other
   function vestPop() { for (const e of document.querySelectorAll(POPS)) { if (e.closest('[id^=gpz-]') || e.getAttribute('data-state') === 'closed') continue; const r = e.getBoundingClientRect(); if (r.width > 20 && r.height > 20) return true; } return false; }
   let popLow = false;
   function popZ() { const low = vestPop(); if (low === popLow) return; popLow = low; ['gpz-shot', 'gpz-peek', 'gpz-desk'].forEach(id => { const h = document.getElementById(id); if (h) h.style.zIndex = low ? '1' : id === 'gpz-desk' ? '2147483640' : '2147483639'; }); }
@@ -1533,7 +1542,7 @@
     k('px').textContent = p.sym && L.mark[p.sym] ? shortSym(p.sym) + '  ' + fmtPx(L.mark[p.sym], p.sym) : '—'; k('px').classList.toggle('old', stale);
     { const ca = p.id && capAcct(p.id), fund = !!ca && ca.account_type === 3 && p.bal > 0; R.querySelectorAll('[data-tk=risk]').forEach(b => { if (b.dataset.l == null) b.dataset.l = b.textContent; b.textContent = fund ? '$' + trimNum(Math.round(p.bal * +b.dataset.v / 100)) : b.dataset.l; }); }
     { const age = (Date.now() - (L.markAt || 0)) / 1000, f = k('fr'); f.className = 'fr ' + (age < 1.6 ? 'ok' : age < 4 ? 'mid' : 'bad'); f.title = 'price ' + (age < 60 ? age.toFixed(1) + 's' : 'over a minute') + ' old'; }
-    k('ac').innerHTML = p.id && p.bal ? `${esc(acctShort(p.id).replace(/^Account /, '#'))} · <button class="lvb${p.lev && p.levMax && p.lev < p.levMax ? ' set' : ''}" data-a="lev" title="Leverage">${p.lev || '—'}x</button> · ${p.bal >= 1e3 ? '$' + trimNum(Math.round(p.bal / 10) / 100) + 'K' : fm(p.bal, { short: true }).replace(/\.00$/, '')}${(() => { const rm = roomOf(p.id), fl = floorOf(p.id); return rm != null && fl ? ` · <span class="rm${rm < (p.risk || 0) * 1.5 ? ' low' : ''}" title="${fl.which} room: what the account can lose before its floor">room $${Math.round(Math.max(0, rm)).toLocaleString('en-US')}</span>` : ''; })()}` : '';
+    k('ac').innerHTML = p.id && p.bal ? `${esc(acctShort(p.id).replace(/^Account /, '#'))} · <button class="lvb${p.lev && p.levMax && p.lev < p.levMax ? ' set' : ''}" data-a="lev" title="Leverage">${p.lev || '—'}x</button> · ${p.bal >= 1e3 ? '$' + trimNum(Math.round(p.bal / 10) / 100) + 'K' : fm(p.bal, { short: true }).replace(/\.00$/, '')}` : '';
     if (!pos) SHOT.adding = false; const adding = !!pos && !!SHOT.adding;
     R.querySelector('[data-v=plan]').hidden = !!pos && !adding; R.querySelector('[data-v=pos]').hidden = !pos || adding;
     R.querySelector('[data-v=go]').hidden = !!pos || locked; R.querySelector('[data-v=go2]').hidden = !pos || adding; R.querySelector('[data-v=go3]').hidden = !locked; R.querySelector('[data-v=go4]').hidden = !adding;
@@ -2232,10 +2241,10 @@
     document.querySelectorAll('[data-gpz-col],[data-gpz-chartcol]').forEach(e => { e.removeAttribute('data-gpz-col'); e.removeAttribute('data-gpz-chartcol'); });
   }
   let reflowT = [];
-  function reflow() { if (document.hidden) return; freshLayout(); layoutCols(); placeShot(); placeDesk(); }
+  function reflow() { if (document.hidden) return; if (OCOL && !OCOL.isConnected) OCOL = null; layoutCols(); placeShot(); placeDesk(); } // re-place only: tearing the dock down on every nudge made it flicker
   function reflowSoon() { reflowT.forEach(clearTimeout); reflowT = [0, 120, 450, 1200].map(ms => setTimeout(reflow, ms)); } // Vest often re-renders just after a tab comes back
-  ['focus', 'pageshow', 'resize'].forEach(ev => addEventListener(ev, reflowSoon));
-  ['pushState', 'replaceState'].forEach(m => { const o = history[m]; history[m] = function () { const r = o.apply(this, arguments); setTimeout(reflowSoon, 0); return r; }; });
+  ['pageshow', 'resize'].forEach(ev => addEventListener(ev, reflowSoon));
+  ['pushState', 'replaceState'].forEach(m => { const o = history[m]; history[m] = function () { const was = location.pathname, r = o.apply(this, arguments); if (location.pathname !== was) setTimeout(reflowSoon, 0); return r; }; }); // only a real page change, not Vest's frequent URL updates
   addEventListener('popstate', reflowSoon);
   function snapAll() { // the reset: everything back in its place
     SH.dock = true; SH.x = SH.y = null; SH.on = true; saveSH();
@@ -2244,7 +2253,7 @@
     layoutCols(); placeShot(); placeDesk(); setTimeout(() => { layoutCols(); placeShot(); placeDesk(); }, 300);
     shotMsg('snapped back', 'ok');
   }
-  every(400, () => { watchPops(); popZ(); if (document.hidden) return; if (location.pathname !== lastPath) { lastPath = location.pathname; clearLines(); kickFast(); freshLayout(); reflowSoon(); } else if (OCOL && !OCOL.isConnected) freshLayout(); layoutCols(); bookFold(); placeShot(); placeDesk(); document.querySelectorAll('iframe[id^="tradingview_"]').forEach(hookFrame); });
+  every(400, () => { watchPops(); popZ(); if (document.hidden) return; if (location.pathname !== lastPath) { lastPath = location.pathname; clearLines(); kickFast(); freshLayout(); reflowSoon(); } else if (OCOL && !OCOL.isConnected) OCOL = null; layoutCols(); bookFold(); placeShot(); placeDesk(); document.querySelectorAll('iframe[id^="tradingview_"]').forEach(hookFrame); });
 
   // =====================================================================================================
   // Massive skin for all of Vest: its dark theme runs on CSS variables, so one stylesheet recolours the page;
