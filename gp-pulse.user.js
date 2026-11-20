@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.7.5
+// @version      1.7.8
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -766,7 +766,7 @@
     if (need) { try { renderShot(); drawChart(); } catch (e) {} try { renderDesk(); } catch (e) {} }
     fastT = setTimeout(fastLoop, C.on ? 1500 : 1100);
   }
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) kickFast(0); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) { kickFast(0); reflowSoon(); } });
 
   // ---------- the plan: risk-locked size and fee-aware stop / target ----------
   const SH = Object.assign({ on: true, sl: true, tp: true, risk: 2, R: 1, tmode: 'R', usd: 0, size: 100, fees: true, chart: true, side: 'long', dock: true, x: null, y: null, addp: 50 }, DB.shot || {});
@@ -844,7 +844,7 @@
   const nextReset = () => vestDay() + 864e5;
   function lockedAcct(id) {
     const Z = DB.zlock || (DB.zlock = {}); for (const k in Z) if (Z[k] <= Date.now()) { delete Z[k]; save(); }
-    const z = DB.zone; if (z && id && !Z[id] && (ZL.loss > 0 || ZL.n > 0)) { const s = zoneStats(id); if (s && ((ZL.loss > 0 && s.sum <= -ZL.loss) || (ZL.n > 0 && s.lost >= ZL.n))) { Z[id] = nextReset(); save(); } }
+    const z = DB.zone; if (z && id && !Z[id] && (ZL.loss > 0 || ZL.n > 0)) { const s = zoneStats(id); if (s && ((ZL.loss > 0 && s.sum <= -ZL.loss) || (ZL.n > 0 && s.lost >= ZL.n))) { Z[id] = nextReset(); save(true); } }
     return !!Z[id];
   }
   function zoneLocked() { const z = DB.zone; if (z) for (const t of z.trades || []) if (t.acct) lockedAcct(t.acct); return lockedAcct(activeAcct()); }
@@ -1050,7 +1050,7 @@
   .clg div.bad{color:#efb1a7}
   .ib.lock{color:#0b0b0b;background:#e8988c;border-color:#e8988c}.ib.lock i{opacity:1;background:#0b0b0b}
   .mk{display:flex;justify-content:space-between;align-items:baseline;gap:8px}.mk>b{display:inline-flex;align-items:center;gap:7px}
-  .fr{width:5px;height:5px;border-radius:50%;background:#55555b;flex:none;transition:background .3s}.fr.ok{background:#9fd7b2;box-shadow:0 0 6px rgba(159,215,178,.6)}.fr.mid{background:#e3c98e}.fr.bad{background:#e8988c}
+  .fr{width:5px;height:5px;border-radius:50%;background:#55555b;flex:none;transition:background .3s}.fr.ok{background:#9fd7b2;box-shadow:0 0 6px rgba(159,215,178,.6)}.fr.mid{background:#d6d3cc}.fr.bad{background:#e8988c}
   .rm{color:#9e9ea5}.rm.low{color:#efb1a7}
   .s.fl-long{outline:1.5px solid rgba(159,215,178,.95);outline-offset:-1.5px}.s.fl-short{outline:1.5px solid rgba(232,152,140,.95);outline-offset:-1.5px}
   .mk b{font-size:19px;font-weight:600;letter-spacing:-.04em;font-variant-numeric:tabular-nums;white-space:nowrap;transition:color .4s}
@@ -1070,8 +1070,8 @@
   .c:active{transform:scale(.96)}
   .c.on{background:#e6e3dc;border-color:#e6e3dc;color:#0b0b0b}
   .c[disabled]{opacity:.3;cursor:not-allowed}
-  .c.pass{flex:none;width:54px;height:24px;font-size:10.5px;letter-spacing:.06em;color:#9e9ea5}.c.pass.on{background:#e3c98e;border-color:#e3c98e;color:#0b0b0b}
-  .c.gold{color:#e3c98e;border-color:rgba(227,201,142,.3)}.c.grn{color:#bfe6cb;border-color:rgba(159,215,178,.3)}[data-a=addx]{flex:1;font-weight:700}.c.gold:hover{border-color:#e3c98e}
+  .c.pass{flex:none;width:54px;height:24px;font-size:10.5px;letter-spacing:.06em;color:#9e9ea5}.c.pass.on{background:#e6e3dc;border-color:#e6e3dc;color:#0b0b0b}
+  .c.gold{color:#c9c7c2;border-color:rgba(238,234,226,.16)}.c.grn{color:#bfe6cb;border-color:rgba(159,215,178,.3)}[data-a=addx]{flex:1;font-weight:700}.c.gold:hover{border-color:#d6d3cc}
   .c.rose{color:#efb1a7;border-color:rgba(232,152,140,.45)}
   .c.mint{color:#9fd7b2;border-color:rgba(159,215,178,.32)}.c.mint:hover{border-color:#9fd7b2}
   .pv,.tv{display:flex;flex-direction:column;gap:10px}
@@ -1082,8 +1082,8 @@
   .pl b{display:block;margin-top:3px;font-size:30px;font-weight:600;letter-spacing:-.055em;line-height:1;font-variant-numeric:tabular-nums}
   .pl .sl b{color:#efb1a7}.pl .tp b{color:#bfe6cb}
   .pl b.m{font-size:24px}.pl b.x{font-size:20px}.pu b.m{font-size:36px}.pu b.x{font-size:29px}
-  .pl em{display:block;margin-top:5px;font-style:normal;font-size:11px;font-weight:600;color:#8b8b92;font-variant-numeric:tabular-nums;white-space:nowrap}
-  .pl em i{font-style:normal;color:#5f5f66}
+  .pl em{display:none;margin-top:5px;font-style:normal;font-size:11px;font-weight:600;color:#8b8b92;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .pl em i{font-style:normal;color:#5f5f66}.pl em.note{display:block}
   .pe{display:flex;gap:4px;margin-top:6px}.pl .tp .pe{justify-content:flex-end}.pe .n{width:64px;height:22px;font-size:11px}.pe .c.pass{height:22px;width:46px}
   .bm{position:relative;height:22px;margin:0 5px}
   .bm i{position:absolute;display:block}
@@ -1092,7 +1092,7 @@
   .bm .zl{background:rgba(232,152,140,.5)}.bm .zh{background:rgba(159,215,178,.5)}
   .bm .fl{top:9px;height:4px}.bm .fl.up{background:#bfe6cb;box-shadow:0 0 14px rgba(159,215,178,.55)}.bm .fl.dn{background:#efb1a7;box-shadow:0 0 14px rgba(232,152,140,.5)}
   .bm .bk{top:5px;width:2px;height:12px;margin-left:-1px;border-radius:2px;transition:left .8s cubic-bezier(.16,1,.3,1)}
-  .bm .ks{background:#e8988c}.bm .kt{background:#9fd7b2}.bm .ke{background:#e6e3dc;top:7px;height:8px;opacity:.55}.bm .kg{background:#e3c98e;top:7px;height:8px}
+  .bm .ks{background:#e8988c}.bm .kt{background:#9fd7b2}.bm .ke{background:#e6e3dc;top:7px;height:8px;opacity:.55}.bm .kg{background:#d6d3cc;top:7px;height:8px}
   .bm .pd{top:5px;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:#e6e3dc;border:3px solid #0b0b0b;box-shadow:0 0 0 1px #e6e3dc,0 0 16px rgba(230,227,220,.45);transition:left .9s cubic-bezier(.16,1,.3,1),background .4s,box-shadow .4s}
   .bm.up .pd{background:#bfe6cb;box-shadow:0 0 0 1px #bfe6cb,0 0 18px rgba(159,215,178,.7)}.bm.dn .pd{background:#efb1a7;box-shadow:0 0 0 1px #efb1a7,0 0 18px rgba(232,152,140,.65)}
   .bm .pd:after{content:"";position:absolute;inset:-7px;border-radius:50%;border:1px solid currentColor;color:rgba(230,227,220,.5);animation:ring 3.5s ease-out infinite}
@@ -1100,13 +1100,13 @@
   /* fees against the stop: the gold part of the risk goes to Vest, the rest is room for price */
   .bal{display:flex;flex-direction:column;gap:5px}
   .bb{height:3px;border-radius:3px;background:rgba(238,234,226,.14);overflow:hidden}
-  .bb i{display:block;height:100%;border-radius:3px;background:#e3c98e;transition:width .7s cubic-bezier(.16,1,.3,1),background .3s}
+  .bb i{display:block;height:100%;border-radius:3px;background:rgba(230,227,220,.55);transition:width .7s cubic-bezier(.16,1,.3,1),background .3s}
   .bb i.hot{background:#e8988c}
   .bt{display:flex;justify-content:space-between;gap:8px;font-size:11px;font-weight:600;color:#8b8b92;font-variant-numeric:tabular-nums;white-space:nowrap}
   .sw.sm{width:24px;height:14px;vertical-align:-2px;margin-left:7px}.sw.sm:after{width:8px;height:8px;top:2px;left:2px}.sw.sm.on:after{transform:translateX(10px)}
   .s.nosl .sr[data-sr=risk]>b{color:#4f4f55}.s.nosl .pl .sl b{color:#4f4f55}
   .lvb{border:0;background:none;padding:0 2px;margin:0 -2px;border-radius:5px;color:#f1f1f3;font:inherit;font-weight:700;cursor:pointer;border-bottom:1px dashed rgba(238,234,226,.35)}
-  .lvb:hover{background:rgba(238,234,226,.08)}.lvb.set{color:#e3c98e;border-bottom-color:rgba(227,201,142,.6)}
+  .lvb:hover{background:rgba(238,234,226,.08)}.lvb.set{color:#e6e3dc;border-bottom-color:rgba(238,234,226,.5)}
   .lvp{position:absolute;right:14px;top:84px;z-index:30;width:230px;padding:12px 14px 10px;border-radius:12px;background:#111111;border:1px solid rgba(238,234,226,.14);box-shadow:0 22px 50px -16px rgba(0,0,0,.9);animation:lin .2s ease-out}
   .lvh{display:flex;justify-content:space-between;align-items:baseline;font-size:10.5px;font-weight:600;letter-spacing:.14em;color:#8b8b92}.lvh b{font-size:20px;letter-spacing:-.03em;color:#f1f1f3;font-variant-numeric:tabular-nums}
   .lvp input{-webkit-appearance:none;appearance:none;width:100%;height:18px;margin:8px 0 4px;background:none;cursor:pointer}
@@ -1117,11 +1117,11 @@
   .kp{position:absolute;right:18px;bottom:96px;z-index:30;width:210px;padding:12px 14px;border-radius:12px;background:#111111;border:1px solid rgba(238,234,226,.14);box-shadow:0 22px 50px -16px rgba(0,0,0,.9);animation:lin .2s ease-out}.kp[hidden]{display:none}
   .kh{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:10.5px;font-weight:600;letter-spacing:.14em;color:#8b8b92}
   .kr{display:flex;justify-content:space-between;align-items:center;height:30px;font-size:12px;font-weight:600;color:#c9c7c2}.kp:not(.on) .kr{opacity:.4}
-  .kr button{min-width:76px;height:24px;padding:0 10px;border-radius:7px;border:1px solid rgba(238,234,226,.14);background:none;color:#f1f1f3;font:700 11px Inter,system-ui,sans-serif;letter-spacing:.06em;cursor:pointer}.kr button:hover{border-color:rgba(238,234,226,.34)}.kr button.rec{border-color:#e3c98e;color:#e3c98e}
-  .sdt .kb.on{color:#e3c98e}
+  .kr button{min-width:76px;height:24px;padding:0 10px;border-radius:7px;border:1px solid rgba(238,234,226,.14);background:none;color:#f1f1f3;font:700 11px Inter,system-ui,sans-serif;letter-spacing:.06em;cursor:pointer}.kr button:hover{border-color:rgba(238,234,226,.34)}.kr button.rec{border-color:#d6d3cc;color:#d6d3cc}
+  .sdt .kb.on{color:#e6e3dc}
   .lvf{display:flex;justify-content:space-between;align-items:center;font-size:10.5px;font-weight:600;color:#6f6f75}
   .lvf button{height:22px;padding:0 8px;border-radius:6px;border:1px solid rgba(238,234,226,.14);background:none;color:#9e9ea5;font:600 10.5px Inter,system-ui,sans-serif;cursor:pointer}.lvf button:hover{color:#f1f1f3}
-  .bt b{color:#e3c98e;font-weight:600}.bt b.hot{color:#efb1a7}.bt span:last-child b{color:#f1f1f3}
+  .bt b{color:#c9c7c2;font-weight:600}.bt b.hot{color:#efb1a7}.bt span:last-child b{color:#f1f1f3}
   .sw{position:relative;width:28px;height:16px;border-radius:99px;border:1px solid rgba(238,234,226,.16);background:rgba(238,234,226,.025);cursor:pointer;flex:none;vertical-align:-3px;margin-left:6px;padding:0;transition:border-color .25s,background .25s}
   .sw:hover{border-color:rgba(238,234,226,.34)}
   .sw:after{content:"";position:absolute;left:3px;top:3px;width:8px;height:8px;border-radius:50%;background:#55555b;transition:transform .25s cubic-bezier(.3,1.4,.5,1),background .25s,box-shadow .25s}
@@ -1136,8 +1136,8 @@
   .pu span small{display:block;margin-top:3px;font-size:11px;font-weight:600;letter-spacing:0;color:#6f6f75;text-align:right}
   .ends{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:-4px}
   .ends div:last-child{text-align:right}
-  .ends b{display:block;font-size:13px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
-  .ends em{display:block;margin-top:2px;font-style:normal;font-size:11px;font-weight:600;font-variant-numeric:tabular-nums;color:#8b8b92}
+  .ends b:not(.none){display:none}.ends b{display:block;font-size:13px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+  .ends em{display:block;margin-top:0;font-style:normal;font-size:14px;letter-spacing:-.02em;font-weight:600;font-variant-numeric:tabular-nums;color:#8b8b92}
   .ends .a em{color:#efb1a7}.ends .b em{color:#bfe6cb}.ends .a em.up{color:#bfe6cb}
   .ends b[data-k=e2].none{color:#8b8b92;animation:none;letter-spacing:.06em;font-size:11.5px}
   .ends b.none{color:#efb1a7;letter-spacing:.06em;font-size:11.5px;animation:glow 1.6s ease-in-out infinite}
@@ -1146,7 +1146,7 @@
   .ar>label{font-size:10.5px;font-weight:700;color:#6f6f75;letter-spacing:.06em}
   .ch{display:flex;gap:5px;min-width:0}.ch .c{flex:1 1 0;min-width:0;padding:0}
   .lgs{display:flex;flex-wrap:wrap;gap:5px}.lgs:empty{display:none}
-  .lg{display:inline-flex;align-items:center;height:26px;padding:0 4px 0 11px;border-radius:6px;border:1px solid rgba(227,201,142,.35);color:#e3c98e;font-size:11.5px;font-weight:700;font-variant-numeric:tabular-nums;animation:lin .35s ease-out}
+  .lg{display:inline-flex;align-items:center;height:26px;padding:0 4px 0 11px;border-radius:6px;border:1px solid rgba(238,234,226,.14);color:#d6d3cc;font-size:11.5px;font-weight:700;font-variant-numeric:tabular-nums;animation:lin .35s ease-out}
   .lg button{border:0;background:none;color:#8b8b92;font:700 13px Inter,system-ui,sans-serif;cursor:pointer;padding:0 7px}.lg button:hover{color:#efb1a7}
   .busy:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent);animation:sweep 1s linear infinite}
   @keyframes sweep{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
@@ -1166,13 +1166,13 @@
   .X{grid-column:1/-1;border:1px solid rgba(232,152,140,.45);background:rgba(11,11,11,.6);color:#efb1a7}.X:hover{border-color:#efb1a7;box-shadow:0 0 26px -10px rgba(232,152,140,.6)}
   .L:active,.S:active,.X:active{transform:scale(.975)}
   /* finish: one focus ring, calm hovers, a soft top light on the fire buttons */
-  button:focus-visible,input:focus-visible{outline:2px solid rgba(227,201,142,.65);outline-offset:2px}
+  button:focus-visible,input:focus-visible{outline:2px solid rgba(238,234,226,.55);outline-offset:2px}
   .s.notp .sr[data-sr=R]>b,.s.notp .pl .tp b{color:#4f4f55}.s.notp .pl .tp .pe{opacity:.35;pointer-events:none}
   .sw.k-sl,.sw.k-tp,.sw.k-fe{background:#121212;border-color:rgba(238,234,226,.12);box-shadow:inset 0 1px 2px rgba(0,0,0,.5)}
   .sw.k-sl:after,.sw.k-tp:after,.sw.k-fe:after{background:#46464c;box-shadow:0 1px 2px rgba(0,0,0,.6)}
   .sw.k-sl.on{background:linear-gradient(180deg,rgba(232,152,140,.26),rgba(232,152,140,.12));border-color:rgba(239,177,167,.55)}.sw.k-sl.on:after{background:#f6cfc8;box-shadow:0 0 0 1px rgba(232,152,140,.5),0 0 10px rgba(232,152,140,.55)}
   .sw.k-tp.on{background:linear-gradient(180deg,rgba(159,215,178,.26),rgba(159,215,178,.12));border-color:rgba(191,230,203,.55)}.sw.k-tp.on:after{background:#d9f2e1;box-shadow:0 0 0 1px rgba(159,215,178,.5),0 0 10px rgba(159,215,178,.55)}
-  .sw.k-fe.on{background:linear-gradient(180deg,rgba(227,201,142,.26),rgba(227,201,142,.12));border-color:rgba(236,214,166,.55)}.sw.k-fe.on:after{background:#f3e4c2;box-shadow:0 0 0 1px rgba(227,201,142,.5),0 0 10px rgba(227,201,142,.5)}
+  .sw.k-fe.on{background:linear-gradient(180deg,rgba(230,227,220,.22),rgba(230,227,220,.1));border-color:rgba(238,234,226,.5)}.sw.k-fe.on:after{background:#f1efea;box-shadow:0 0 0 1px rgba(230,227,220,.45),0 0 10px rgba(230,227,220,.4)}
   .c,.ls,.ldd,.ib,.sw{transition:background .15s,border-color .15s,color .15s,transform .1s}.c:active,.ls:active,.ib:active{transform:scale(.97)}
   .L,.S{box-shadow:inset 0 1px 0 rgba(255,255,255,.14)}.S{box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
   .L[disabled],.S[disabled]{opacity:.32;cursor:not-allowed;box-shadow:none}
@@ -1183,7 +1183,7 @@
   .lk span{flex:1;min-width:0;font-size:11.5px;font-weight:600;color:#8b8b92;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .lk button{flex:none;height:36px;padding:0 14px;border-radius:8px;border:0;background:#e6e3dc;color:#0b0b0b;font:600 12px Inter,system-ui,sans-serif;cursor:pointer}
   .s>
-  .mst{position:relative;height:0;z-index:7}.mst .msg{position:absolute;left:0;right:0;top:6px;padding:7px 11px;border-radius:9px;background:#141414;border:1px solid rgba(238,234,226,.14);box-shadow:0 10px 24px -10px rgba(0,0,0,.8);font-size:11.5px;font-weight:600;color:#c9c7c2;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:opacity .25s,transform .25s}.mst .msg:empty{opacity:0;transform:translateY(-4px);pointer-events:none}.msg.wait{color:#e3c98e;border-color:rgba(227,201,142,.35)}
+  .mst{position:relative;height:0;z-index:7}.mst .msg{position:absolute;left:0;right:0;top:6px;padding:7px 11px;border-radius:9px;background:#141414;border:1px solid rgba(238,234,226,.14);box-shadow:0 10px 24px -10px rgba(0,0,0,.8);font-size:11.5px;font-weight:600;color:#c9c7c2;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:opacity .25s,transform .25s}.mst .msg:empty{opacity:0;transform:translateY(-4px);pointer-events:none}.msg.wait{color:#d6d3cc;border-color:rgba(214,211,204,.35)}
   .msg.ok{color:#9fd7b2;border-color:rgba(159,215,178,.35)!important}.msg.bad{color:#efb1a7;border-color:rgba(232,152,140,.4)}
   [hidden]{display:none!important}
   @media (prefers-reduced-motion:reduce){.dot,.moon,.bm .pd:after{animation:none}}`;
@@ -1214,13 +1214,14 @@
   .rg input::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;margin-top:-6px;border-radius:50%;background:#e6e3dc;border:3px solid #0b0b0b;box-shadow:0 0 0 1px #e6e3dc,0 0 14px rgba(230,227,220,.28);transition:transform .2s}
   .rg input::-moz-range-thumb{width:10px;height:10px;border-radius:50%;background:#e6e3dc;border:3px solid #0b0b0b;box-shadow:0 0 0 1px #e6e3dc,0 0 14px rgba(230,227,220,.28)}
   .rg input:hover::-webkit-slider-thumb,.rg input:active::-webkit-slider-thumb{transform:scale(1.18)}
-  .rg input:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 2px #e3c98e}
+  .rg input:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 2px #e6e3dc}
   .sr.off .rg input::-webkit-slider-runnable-track{background:rgba(238,234,226,.1)}
   .sr.off .rg input::-webkit-slider-thumb{background:#4f4f55;box-shadow:0 0 0 1px #4f4f55}
   .tk{position:absolute;left:12px;right:12px;bottom:0;height:13px}
   .tk button{position:absolute;transform:translateX(-50%);padding:0 3px;border:0;background:none;color:#5c5c62;font:700 9.5px Inter,system-ui,sans-serif;cursor:pointer;letter-spacing:.02em;transition:color .2s}
   .tk button:before{content:"";position:absolute;left:50%;top:-6px;width:1px;height:4px;background:rgba(238,234,226,.18)}
   .tk button:hover{color:#f1f1f3}.tk button.on{color:#e6e3dc}
+  .rg .tk button:not(.on){opacity:0;transition:opacity .2s,color .2s}.rg:hover .tk button,.rg:focus-within .tk button{opacity:1}
   .ld{position:relative;display:flex;align-items:center;gap:6px;flex:none;z-index:4}.ld>*{flex:none}
   .ldd{flex:1 1 auto!important;min-width:0;display:flex;align-items:center;gap:8px;height:30px;padding:0 10px 0 12px;border-radius:9px;border:1px solid rgba(238,234,226,.12);background:rgba(238,234,226,.025);color:#c9c7c2;font:700 12px Inter,system-ui,sans-serif;cursor:pointer;transition:border-color .2s,background .2s;white-space:nowrap;overflow:hidden}
   .ldd:hover,.ldd.op{border-color:rgba(238,234,226,.3);background:rgba(238,234,226,.05);color:#f1f1f3}.ldd:disabled{cursor:default;opacity:.55}
@@ -1231,7 +1232,7 @@
   .ls{flex:none;height:30px;min-width:30px;padding:0 10px;border-radius:9px;border:1px solid rgba(238,234,226,.12);background:none;color:#9e9ea5;font:700 12px Inter,system-ui,sans-serif;cursor:pointer;transition:all .2s;white-space:nowrap}
   .ls:hover{color:#f1f1f3;border-color:rgba(238,234,226,.3)}.ls.on{background:#e6e3dc;border-color:#e6e3dc;color:#0b0b0b}
   .ln{display:flex;gap:6px;flex:1 0 100%!important}.ln[hidden]{display:none}.ld:has(.ln:not([hidden]))>:not(.ln){display:none}
-  .ln input{flex:1;min-width:0;height:30px;padding:0 12px;border-radius:9px;border:1px solid rgba(227,201,142,.55);background:#0b0b0b;color:#f1f1f3;font:700 12px Inter,system-ui,sans-serif;outline:none}
+  .ln input{flex:1;min-width:0;height:30px;padding:0 12px;border-radius:9px;border:1px solid rgba(238,234,226,.3);background:#0b0b0b;color:#f1f1f3;font:700 12px Inter,system-ui,sans-serif;outline:none}
   .ll{position:absolute;left:0;right:0;bottom:calc(100% + 6px);display:flex;flex-direction:column;gap:2px;max-height:210px;overflow-y:auto;scrollbar-width:none;padding:5px;border-radius:12px;border:1px solid rgba(238,234,226,.14);background:#101010;box-shadow:0 -18px 40px -8px rgba(0,0,0,.75);animation:lup .16s ease-out;transform-origin:bottom}.ll[hidden]{display:none}.ll::-webkit-scrollbar{display:none}
   @keyframes lup{from{opacity:0;transform:translateY(4px) scale(.98)}to{opacity:1;transform:none}}
   .lc{position:relative;flex:none;display:flex;align-items:center;height:32px;border-radius:8px;transition:background .15s}
@@ -1464,6 +1465,13 @@
   }
   W.__gpzCols = () => { const c = document.querySelector('[data-gpz-col]'); return c ? { col: Math.round(c.getBoundingClientRect().width), row: Math.round(splitTotal(c)) } : null; };
   // one of Vest's own windows is up (checkout, settings, a confirm): GP. steps out of its way and comes back docked when it closes
+  // Vest's own menus and dropdowns (account picker, market list…) sit above GP. while they are open
+  const POPS = '[data-radix-popper-content-wrapper],[role=menu],[role=listbox]';
+  function vestPop() { for (const e of document.querySelectorAll(POPS)) { if (e.closest('[id^=gpz-]') || e.getAttribute('data-state') === 'closed') continue; const r = e.getBoundingClientRect(); if (r.width > 20 && r.height > 20) return true; } return false; }
+  let popLow = false;
+  function popZ() { const low = vestPop(); if (low === popLow) return; popLow = low; ['gpz-shot', 'gpz-peek', 'gpz-desk'].forEach(id => { const h = document.getElementById(id); if (h) h.style.zIndex = low ? '1' : id === 'gpz-desk' ? '2147483640' : '2147483639'; }); }
+  let popObs = null;
+  function watchPops() { if (popObs || !document.body) return; popObs = new MutationObserver(popZ); popObs.observe(document.body, { childList: true }); document.addEventListener('pointerdown', () => setTimeout(popZ, 30), true); document.addEventListener('keydown', () => setTimeout(popZ, 30), true); }
   function vestModal() { for (const d of document.querySelectorAll('[role=dialog],[role=alertdialog]')) { if (d.closest('[id^=gpz-]') || d.getAttribute('data-state') === 'closed') continue; const r = d.getBoundingClientRect(); if (r.width > 120 && r.height > 120) return true; } return false; }
   function placeShot() {
     const S = shotHost(), on = SH.on && IS_TRADE() && !!AUTH;
@@ -1544,8 +1552,8 @@
         R.querySelectorAll('[data-tk=addp]').forEach(b => b.classList.toggle('on', +b.dataset.v === +SH.addp)); }
       { const a = addPlan(SH.addp), b = k('addx'); if (a) { b.textContent = +a.qs > 0 ? '+ ' + a.qs + ' ' + shortSym(a.sym) + (a.capped ? ' · all the margin left' : '') : 'no free margin'; b.disabled = !(+a.qs > 0) || !!SHOT.busy; } }
       k('e1').textContent = slP != null ? fmtPx(slP, sym) : 'NO STOP'; k('e1').className = slP != null ? '' : 'none';
-      const slUsd = slP != null ? t.at(slP) : 0; k('e1s').textContent = slP != null ? fm(slUsd, { sign: true }) + (t.m ? ' · ' + pts(t.m - slP) + ' pts' : '') : ''; k('e1s').className = slUsd > 0 ? 'up' : '';
-      k('e2').textContent = tpP != null ? fmtPx(tpP, sym) : 'NO TARGET'; k('e2').className = tpP != null ? '' : 'none'; k('e2s').textContent = tpP != null ? (t.m ? pts(tpP - t.m) + ' pts · ' : '') + fm(t.at(tpP), { sign: true }) : '';
+      const slUsd = slP != null ? t.at(slP) : 0; k('e1s').textContent = slP != null ? fm(slUsd, { sign: true }) : ''; k('e1s').className = slUsd > 0 ? 'up' : '';
+      k('e2').textContent = tpP != null ? fmtPx(tpP, sym) : 'NO TARGET'; k('e2').className = tpP != null ? '' : 'none'; k('e2s').textContent = tpP != null ? fm(t.at(tpP), { sign: true }) : '';
       R.querySelector('[data-a=addstop]').hidden = slP != null; R.querySelector('[data-a=half]').hidden = R.querySelector('[data-a=be]').hidden = slP == null;
       R.querySelectorAll('[data-v=pos] .c').forEach(c => { const tag = c.dataset.cut ? 'cut' + c.dataset.cut : c.dataset.lim ? 'lim' + c.dataset.lim : c.dataset.a; c.classList.toggle('busy', SHOT.busy === tag); c.disabled = !!SHOT.busy; });
       const lh = t.scales.map(l => `<span class="lg">${legFixed(l) ? Math.round(Math.abs(+l.quantity) / t.q * 100) + '% · ' : ''}${fmtPx(l.triggerPrice, sym)}<button data-id="${esc(l.id)}" title="Remove">×</button></span>`).join('');
@@ -1584,6 +1592,7 @@
         k('slv').className = fit(k('slv').textContent); k('tpv').className = fit(k('tpv').textContent);
         k('slp').innerHTML = p.dSL ? pts(p.dSL) + ' pts <i>· ' + fmtPx(p[side].sl, p.sym) + '</i>' : '—';
         if (SH.sl === false) { k('slv').textContent = 'NO STOP'; k('slp').textContent = 'risk is the size'; }
+        k('slp').classList.toggle('note', SH.sl === false); k('tpp').classList.toggle('note', SH.tp === false);
         k('tpp').innerHTML = p.dTP ? pts(p.dTP) + ' pts <i>· ' + fmtPx(p[side].tp, p.sym) + '</i>' : '—';
         if (SH.tp === false) { k('tpv').textContent = 'NO TARGET'; k('tpp').textContent = 'open'; k('tpv').className = ''; }
         if (p.dSL) setBeam(k('bm0'), { a: -p.dSL, b: p.dTP, stop: -p.dSL, tgt: p.dTP, price: 0, legs: p.dPass && SH.tmode !== 'pass' && p.dPass < p.dTP ? [p.dPass] : [] });
@@ -1684,7 +1693,7 @@
     return m ? Math.abs(m) * 0.0006 : 0;
   }
   const lenOf = l => { const [v, u] = l.__gpzLen; return l.__gpzNudge ? [u === 'pixel' ? v + 230 : Math.min(90, v + 16), u] : [v, u]; };
-  const ROSE = 'rgba(232,152,140,0.7)', MINT = 'rgba(159,215,178,0.7)', GOLD = 'rgba(227,201,142,0.75)';
+  const ROSE = 'rgba(232,152,140,0.7)', MINT = 'rgba(159,215,178,0.7)', GOLD = 'rgba(214,211,204,0.6)'; // resting limits and the pass line: soft cream, no gold
   // the account's real floor today: Vest's daily_loss_floor already carries the buffer from withdrawn profit,
   // but the max drawdown floor still binds when it is higher; the line sits where equity would touch it
   function floorOf(id) {
@@ -1743,12 +1752,19 @@
     if (cur && cur.tab !== TAB && Date.now() - cur.at < 5000) { C.elsewhere = true; return false; }
     C.elsewhere = false; try { W.localStorage.setItem('gpz-copier', JSON.stringify({ tab: TAB, at: Date.now() })); } catch (e) {} return true;
   }
+  // followers that can still trade: a blown, passed or closed account drops off the copy list by itself
+  function pruneFollowers() {
+    if (!L.cap || !L.cap.length) return; let gone = 0;
+    for (const f of Object.keys(C.followers)) { const c = L.cap.find(x => x.id === f); if (!C.followers[f] || !c || c.status !== 2) { delete C.followers[f]; gone++; } }
+    if (gone) saveC(); return gone;
+  }
+  const nFollow = () => Object.keys(C.followers).filter(f => C.followers[f] && f !== C.leader).length;
   function clog(msg, bad) { C.log.unshift({ t: Date.now(), msg, bad: !!bad }); C.log = C.log.slice(0, 40); saveC(); }
   function arm(on) {
     if (on) {
-      const id = activeAcct(); if (!id) return shotMsg('pick the leader account on Vest first', 'bad');
+      const id = leadPick(); if (!id) return shotMsg('pick a LEAD account in the desk first', 'bad'); if (id !== activeAcct()) switchAcct(id);
       C.leader = id; delete C.followers[id]; C.pre = {}; L.pos.filter(p => accOf(p) === id).forEach(p => { C.pre[p.positionId] = 1; });
-      C.on = true; C.err = {}; clog('copying ' + acctLabel(id) + ' → ' + Object.keys(C.followers).filter(f => C.followers[f]).length + ' accounts');
+      C.on = true; C.err = {}; clog('copying ' + acctLabel(id) + ' → ' + (pruneFollowers(), nFollow()) + ' accounts');
     } else { C.on = false; clog('copying off'); }
     saveC(); renderShot(); kickFast(50);
   }
@@ -1834,7 +1850,13 @@
     }
     if (C.err[f] && !/left alone|too small/.test(C.err[f])) C.err[f] = '';
   }
-  const copyLeader = () => C.on ? C.leader : activeAcct();
+  const leadPick = () => C.pick && L.bal[C.pick] != null ? C.pick : activeAcct(); // the desk's LEAD choice, else the account Vest has open
+  const copyLeader = () => C.on ? C.leader : leadPick();
+  function setLead(id) { // any row can take the lead: it stops following, the old lead just steps back
+    if (!id) return; C.pick = id; delete C.followers[id];
+    if (C.on && C.leader !== id) { C.leader = id; C.pre = {}; L.pos.filter(p => accOf(p) === id).forEach(p => { C.pre[p.positionId] = 1; }); clog('lead is now ' + acctLabel(id)); }
+    saveC(); renderDesk(); if (SP) renderShot(); if (id !== activeAcct()) switchAcct(id); kickFast();
+  }
   // switch Vest's active account the way a person would: its account menu, then the row with that name
   let switching = 0;
   async function switchAcct(id) {
@@ -1852,7 +1874,7 @@
     renderDesk(); kickFast(300);
   }
   function renderCopy() { // the chip on the ticket: desk, or how many it copies to
-    if (!SP) return; const { R, k } = SP, n = Object.keys(C.followers).filter(f => C.followers[f]).length;
+    if (!SP) return; const { R, k } = SP, n = (pruneFollowers(), nFollow());
     R.querySelector('[data-a=copy]').classList.toggle('armed', !!C.on); R.querySelector('[data-a=copy]').classList.toggle('on', !!DK.open);
     k('cp').textContent = C.on ? 'copying ' + n : 'desk';
     if (DS && DK.open) renderDesk();
@@ -1862,9 +1884,9 @@
   // A cut on a copy follower moves its share down first, so the copier keeps the smaller size instead of topping it back up.
   // A cut on the leader is mirrored by the copier on every follower.
   if (DB.deskV !== 2) { DB.desk = Object.assign({}, DB.desk, { open: true, side: true }); DB.deskV = 2; } // the desk loads open, at the chart's left
-  const DK = Object.assign({ open: true, dock: true, side: true, all: false, tab: 'acc', x: null, y: null }, DB.desk || {});
+  const DK = Object.assign({ open: true, dock: true, side: true, all: false, tab: 'acc', x: null, y: null, sort: 'auto', big: false }, DB.desk || {});
   DK.busy = {}; DK.msg = ''; DK.tone = ''; DK.msgAt = 0;
-  const saveDK = () => { DB.desk = { open: DK.open, dock: DK.dock, side: DK.side, all: DK.all, tab: DK.tab, x: DK.x, y: DK.y }; save(); };
+  const saveDK = () => { DB.desk = { open: DK.open, dock: DK.dock, side: DK.side, all: DK.all, tab: DK.tab, x: DK.x, y: DK.y, sort: DK.sort, big: DK.big }; save(); };
   let DS = null;
   const DCSS = `:host{all:initial}
   *{box-sizing:border-box}
@@ -1909,7 +1931,7 @@
   .sw.on{background:#14231b;border-color:rgba(159,215,178,.6)}.sw.on:after{transform:translateX(13px);background:#9fd7b2}
   .cm{display:flex;gap:2px}.cm button{height:20px;padding:0 7px;white-space:nowrap;border-radius:6px;border:1px solid rgba(238,234,226,.1);background:none;color:#8b8b92;font:600 10px Inter,system-ui,sans-serif;cursor:pointer}.cm button.on{color:#f1f1f3;border-color:rgba(238,234,226,.35)}
   .ld{margin-left:auto;font-size:10.5px;color:#6f6f75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}.ld b{color:#c9c7c2;font-weight:600}
-  .r.a{grid-template-columns:minmax(0,1fr) 66px 62px 34px;cursor:pointer;height:auto;min-height:32px;padding-block:6px}
+  .r.a{grid-template-columns:minmax(0,1fr) 66px 62px auto;cursor:pointer;height:auto;min-height:32px;padding-block:6px}
   .r.a .ex{grid-column:1/-1;display:flex;flex-direction:column;gap:4px;min-width:0}
   .pcs{display:flex;gap:5px;flex-wrap:wrap;align-items:center}.pc{font-size:10px;font-weight:700;letter-spacing:.04em;padding:2px 6px;border-radius:5px;background:rgba(159,215,178,.1);color:#bfe6cb;white-space:nowrap}.pc.sh{background:rgba(232,152,140,.1);color:#efb1a7}.pcs .pu{font-size:11px;font-weight:700}
   .rb{display:flex;align-items:center;gap:7px;font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#55555b}.rb .bar{flex:1;height:3px;border-radius:9px;background:rgba(238,234,226,.07);overflow:hidden}.rb .bar i{display:block;height:100%;border-radius:9px;background:rgba(159,215,178,.55)}
@@ -1928,10 +1950,27 @@
   .r.a .v.b{color:#c9c7c2}
   .fo{justify-self:end;width:18px;height:18px;border-radius:5px;border:1px solid rgba(238,234,226,.22);background:none;cursor:pointer;display:grid;place-items:center;padding:0;color:#0b0b0b;font:700 11px/1 Inter,system-ui,sans-serif}
   .fo.on{background:#9fd7b2;border-color:#9fd7b2}.fo.on:after{content:"✓"}.fo:hover{border-color:rgba(238,234,226,.5)}
+  .ro{display:flex;align-items:center;gap:5px;justify-self:end}
+  .lb{height:18px;padding:0 6px;border-radius:5px;border:1px solid rgba(238,234,226,.16);background:none;color:#6f6f75;font:700 8px/1 Inter,system-ui,sans-serif;letter-spacing:.12em;cursor:pointer;opacity:0;transition:opacity .15s,color .15s,border-color .15s,background .15s}
+  .r.a:hover .lb,.lb:focus-visible{opacity:1}.lb:hover{color:#f1f1f3;border-color:rgba(238,234,226,.5)}.lb.on{opacity:1;background:#e6e3dc;border-color:#e6e3dc;color:#0b0b0b;cursor:default}
+  .so{display:flex;align-items:center;gap:3px;padding:6px 12px 6px 14px;border-bottom:1px solid rgba(238,234,226,.06);overflow-x:auto;scrollbar-width:none}.so::-webkit-scrollbar{display:none}
+  .so>b{font-size:9.5px;font-weight:600;letter-spacing:.2em;color:#8b8b92;margin-right:5px}
+  .so button{flex:none;height:20px;padding:0 7px;white-space:nowrap;border-radius:6px;border:1px solid transparent;background:none;color:#6f6f75;font:600 10px Inter,system-ui,sans-serif;cursor:pointer}.so button:hover{color:#c9c7c2}.so button.on{color:#f1f1f3;border-color:rgba(238,234,226,.3)}
+  .d.pnl .so{display:none}
+  .scrim{display:none}
+  :host(.big) .scrim{display:block;position:fixed;inset:0;background:rgba(6,6,6,.62);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+  .d.big{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(1120px,calc(100vw - 64px));height:min(780px,calc(100vh - 80px));border-radius:18px;box-shadow:0 40px 120px rgba(0,0,0,.6)}
+  .d.big .hd{cursor:default}.d.big .sd,.d.big [data-t=pnl]{display:none}.d.big .bg{background:#e6e3dc;color:#0b0b0b;border-color:#e6e3dc}
+  .d.big .rh{display:none}
+  .d.big .rows{display:grid;grid-template-columns:repeat(auto-fill,minmax(236px,1fr));gap:8px;padding:10px 12px 14px;align-content:start}
+  .d.big .gh{grid-column:1/-1;border:0;padding:10px 4px 2px}
+  .d.big .r.a{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"nm ro" "vb vt" "ex ex";row-gap:4px;padding:10px 10px 10px 12px;border-radius:11px;background:rgba(238,234,226,.025);box-shadow:inset 0 0 0 1px rgba(238,234,226,.06)}
+  .d.big .r.a .nm{grid-area:nm}.d.big .r.a .ro{grid-area:ro}.d.big .r.a .vb{grid-area:vb;text-align:left}.d.big .r.a .vt{grid-area:vt}.d.big .r.a .ex{grid-area:ex}
+  .d.big .r.a.lead{box-shadow:inset 0 0 0 1px rgba(230,227,220,.55)}.d.big .r.a.cur{background:rgba(238,234,226,.06)}.d.big .lb{opacity:1}
   .fo.lead{width:auto;padding:0 5px;border:0;background:#e6e3dc;font-size:8px;letter-spacing:.12em;cursor:default}
   .r .er{display:block;font-style:normal;font-size:9.5px;color:#efb1a7;overflow:hidden;text-overflow:ellipsis}
-  .d.side .r.a{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"nm fo" "vb vt" "ex ex";height:auto;row-gap:4px;padding:9px 10px 9px 14px}.d.side .r.a .ex{grid-area:ex}
-  .d.side .r.a .nm{grid-area:nm}.d.side .r.a .fo{grid-area:fo}.d.side .r.a .vb{grid-area:vb;text-align:left}.d.side .r.a .vt{grid-area:vt}
+  .d.side .r.a{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"nm ro" "vb vt" "ex ex";height:auto;row-gap:4px;padding:9px 10px 9px 14px}.d.side .r.a .ex{grid-area:ex}
+  .d.side .r.a .nm{grid-area:nm}.d.side .r.a .ro{grid-area:ro}.d.side .r.a .vb{grid-area:vb;text-align:left}.d.side .r.a .vt{grid-area:vt}
   .d.side .rh.ra{display:none}
   .rh{display:grid;grid-template-columns:minmax(0,1fr) 56px 56px 122px;align-items:center;gap:6px;height:22px;padding:0 8px 0 14px}.rh .v{font-size:9px;font-weight:700;letter-spacing:.16em;color:#5f5f66}
   .nm{display:flex;align-items:center;gap:6px;min-width:0;white-space:nowrap}
@@ -1957,11 +1996,12 @@
     const host = document.createElement('div'); host.id = 'gpz-desk'; host.style.cssText = 'position:fixed;z-index:2147483640;display:none'; // above GP. if they ever meet
     ['keydown', 'keyup', 'keypress'].forEach(t => host.addEventListener(t, e => e.stopPropagation()));
     const R = host.attachShadow({ mode: 'open' });
-    R.innerHTML = `<style>${DCSS}</style><div class="d">
+    R.innerHTML = `<style>${DCSS}</style><div class="scrim"></div><div class="d">
       <div class="mw"><canvas class="moon" width="440" height="440"></canvas></div>
-      <div class="hd" data-a="drag"><i class="dot"></i><div class="tb"><button data-t="acc">Accounts</button><button data-t="pnl">PnL</button></div><div class="sp"></div><button class="fx" data-a="flat"><span data-k="fx">flatten</span></button><button class="x sd" data-a="side" aria-label="Beside the chart" title="Beside the chart">⇤</button><button class="x" data-a="x" aria-label="Close desk">×</button></div>
+      <div class="hd" data-a="drag"><i class="dot"></i><div class="tb"><button data-t="acc">Accounts</button><button data-t="pnl">PnL</button></div><div class="sp"></div><button class="fx" data-a="flat"><span data-k="fx">flatten</span></button><button class="x bg" data-a="big" aria-label="Big view" title="Big view">⤢</button><button class="x sd" data-a="side" aria-label="Beside the chart" title="Beside the chart">⇤</button><button class="x" data-a="x" aria-label="Close desk">×</button></div>
       <div class="top"><span class="o" data-k="open">—</span><span class="t"><small>TODAY</small><span data-k="today">—</span></span></div>
       <div class="cpy" data-k="cpy"><b>COPY</b><button class="sw" data-a="arm" aria-label="Copy on or off"></button><div class="cm"><button data-cm="same">same</button><button data-cm="bal">by bal</button><button data-cm="room" title="Each copy sized by its account's room to the floor">by room</button></div><span class="ld" data-k="ld"></span></div>
+      <div class="so" data-k="so"><b>SORT</b><button data-so="auto">auto</button><button data-so="target">to target</button><button data-so="pnl">pnl</button><button data-so="new">newest</button><button data-so="old">oldest</button></div>
       <div class="rh"><span></span><span class="v">OPEN</span><span class="v">TODAY</span><span></span></div>
       <div class="rh ra"><span></span><span class="v">BALANCE</span><span class="v">TODAY</span><span class="v">COPY</span></div>
       <div class="rows" data-k="rows"></div>
@@ -1970,16 +2010,21 @@
     document.documentElement.appendChild(host);
     moon(R.querySelector('.moon').getContext('2d'), 440, 440, 220, 220, 200, 9, 1);
     const k = n => R.querySelector(`[data-k="${n}"]`);
-    R.querySelector('[data-a=x]').onclick = () => deskToggle(false);
+    R.querySelector('[data-a=x]').onclick = () => { if (DK.big) { DK.side = true; DK.dock = true; DK.x = DK.y = null; return deskBig(false); } deskToggle(false); reflowSoon(); }; // from the big view, back to its bar
     R.querySelector('[data-a=flat]').onclick = () => deskFlatten();
     R.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { DK.tab = b.dataset.t; saveDK(); renderDesk(); });
     R.querySelector('[data-a=arm]').onclick = () => arm(!C.on);
     R.querySelectorAll('[data-cm]').forEach(b => b.onclick = () => { C.mode = b.dataset.cm; saveC(); renderDesk(); });
     R.querySelector('[data-a=side]').onclick = () => { DK.side = !DK.side; DK.x = DK.y = null; DK.dock = true; saveDK(); renderDesk(); layoutCols(); placeShot(); placeDesk(); };
     R.querySelector('[data-a=all]').onclick = () => { DK.all = !DK.all; saveDK(); renderDesk(); placeDesk(); };
+    R.querySelector('[data-a=big]').onclick = () => deskBig(!DK.big);
+    R.querySelectorAll('[data-so]').forEach(b => b.onclick = () => { DK.sort = b.dataset.so; saveDK(); renderDesk(); });
+    R.querySelector('.scrim').onclick = () => deskBig(false);
+    host.addEventListener('keydown', e => { if (e.key === 'Escape' && DK.big) deskBig(false); });
     k('rows').onclick = e => {
       const b = e.target.closest('[data-cut]'); if (b) return deskCut(b.closest('.r').dataset.id, +b.dataset.cut);
       const gh = e.target.closest('.gh'); if (gh) { const lead = copyLeader(), ids = deskRows().filter(r => r.kind === gh.dataset.g && r.id !== lead).map(r => r.id), all = ids.every(id => C.followers[id]); ids.forEach(id => { if (all) delete C.followers[id]; else C.followers[id] = true; }); saveC(); renderDesk(); if (SP) renderShot(); kickFast(); return; }
+      const ld = e.target.closest('[data-ld]'); if (ld) return setLead(ld.dataset.ld);
       const f = e.target.closest('[data-fo]'); if (f) { const id = f.dataset.fo; if (id === copyLeader()) return; C.followers[id] = !C.followers[id]; if (!C.followers[id]) delete C.followers[id]; saveC(); renderDesk(); if (SP) renderShot(); kickFast(); return; }
       const r = e.target.closest('.r.a'); if (r && !r.classList.contains('cur')) switchAcct(r.dataset.id);
     };
@@ -2013,7 +2058,9 @@
     if (!DK.side) document.querySelectorAll('[data-gpz-chartcol]').forEach(e => e.removeAttribute('data-gpz-chartcol'));
     const q = c => DS.R.querySelector(c), hh = [...DS.R.querySelectorAll('.rh,.cpy')].reduce((a, e) => a + e.offsetHeight, 0), want = q('.hd').offsetHeight + q('.top').offsetHeight + hh + q('.rows').scrollHeight + q('.ft').offsetHeight + 2;
     const t = SP && SP.host.style.display !== 'none' ? SP.host.getBoundingClientRect() : null;
-    let x, y, w, h; const ch = DK.side ? chartCol() : null;
+    let x, y, w, h; const big = !!DK.big; DS.R.querySelector('.d').classList.toggle('big', big); DS.host.classList.toggle('big', big);
+    if (big) { st.left = '0px'; st.top = '0px'; st.width = innerWidth + 'px'; st.height = innerHeight + 'px'; return; }
+    const ch = DK.side ? chartCol() : null;
     DS.R.querySelector('.d').classList.toggle('side', !!ch);
     if (ch) { const r = ch.getBoundingClientRect(); x = r.left - DESKW; y = r.top; w = DESKW - 12; h = Math.min(r.height, innerHeight - y - 8, want); } // ends after the last row
     else if (DK.dock && t && t.width > 200 && innerHeight - t.bottom - 16 >= 130) { x = t.left; y = t.bottom + 8; w = t.width; h = Math.min(want, innerHeight - y - 8); }
@@ -2022,6 +2069,8 @@
       x = Math.max(0, Math.min(innerWidth - w, x)); y = Math.max(0, Math.min(innerHeight - h, y)); }
     st.left = Math.round(x) + 'px'; st.top = Math.round(y) + 'px'; st.width = Math.round(w) + 'px'; st.height = Math.round(h) + 'px';
   }
+  function deskBig(v) { if (!v) setTimeout(reflowSoon, 0); return deskBig0(v); }
+  function deskBig0(v) { DK.big = !!v; if (DK.big) DK.tab = 'acc'; saveDK(); renderDesk(); placeDesk(); if (DK.big) DS.host.focus && DS.host.setAttribute('tabindex', '-1'), DS.host.focus(); }
   function deskToggle(v) {
     DK.open = v == null ? !DK.open : !!v; saveDK(); deskHost();
     if (DK.open) { renderDesk(); kickFast(0); }
@@ -2039,7 +2088,8 @@
       if (!(c.daily_reset_at >= d0 - 3 * 36e5) || !isFinite(base)) { const b = DB.dayBase[key]; if (b[c.id] == null) { b[c.id] = eq; save(); } base = b[c.id]; }
       const role = C.leader === c.id && (C.on || Object.keys(C.followers).some(f => C.followers[f])) ? 'lead' : C.followers[c.id] ? 'copy' : '';
       const fl = floorOf(c.id), room = fl ? eq - fl.F : null, roomMax = fl ? Math.max(room, base - fl.F, 1) : null;
-      out.push({ id: c.id, role, bal: cash, eq, u, today: eq - base + paidToday(c.id, d0), n: ps.length, room, roomMax, roomW: fl ? fl.which : '', ps: ps.map(p => ({ long: !/^s/i.test(p.side || ''), q: Math.abs(+p.quantity), sym: p.symbol })),
+      const tg = +c.target_equity, need = c.account_type === 2 && tg > 0 ? Math.max(0, tg - eq) : null, born = Date.parse(c.created_at || '') || (+c.attempt_index || 0);
+      out.push({ id: c.id, role, need, born, bal: cash, eq, u, today: eq - base + paidToday(c.id, d0), n: ps.length, room, roomMax, roomW: fl ? fl.which : '', ps: ps.map(p => ({ long: !/^s/i.test(p.side || ''), q: Math.abs(+p.quantity), sym: p.symbol })),
         kind: c.account_type === 3 ? (/instant/i.test(c.plan_product_type || '') ? 'Instant' : 'Funded') : 'Eval' });
     });
     const rk = r => r.role === 'lead' ? 0 : 1;
@@ -2078,14 +2128,16 @@
       const chip = r.ps.map(p => `<span class="pc${p.long ? '' : ' sh'}">${p.long ? 'LONG' : 'SHORT'} ${trimNum(+fmtQ(p.q, p.sym))} ${shortSym(p.sym)}</span>`).join('') + (r.n ? `<span class="pu ${tone(r.u)}">${fm(r.u, { sign: true })}</span>` : '');
       const rb = r.room != null ? `<div class="rb${r.room / r.roomMax < 0.25 ? ' low' : ''}" title="${r.roomW} room: what the account can lose before its floor"><span>${r.roomW}</span><div class="bar"><i style="width:${Math.max(0, Math.min(100, r.room / r.roomMax * 100)).toFixed(1)}%"></i></div><b>${fm(Math.max(0, r.room))}</b></div>` : '';
       const lk = lockedAcct(r.id), lkTag = lk ? `<i class="tg lkd" title="Zone lock: no trading on this account until Vest's 8pm reset">${LOCKSVG}LOCKED</i>` : '';
-      return `<div class="r a${r.id === cur ? ' cur' : ''}${r.kind !== 'Eval' ? ' fd' : ''}${isL ? ' lead' : ''}${lk ? ' lkd' : ''}" data-id="${r.id}"><div class="nm"><b>${acctShort(r.id).replace(/^Account /, '')}</b><em>${r.kind}</em>${isL ? '<i class="tg lead">LEAD</i>' : ''}${lkTag}${lk ? '' : mark}</div>
+      return `<div class="r a${r.id === cur ? ' cur' : ''}${r.kind !== 'Eval' ? ' fd' : ''}${isL ? ' lead' : ''}${lk ? ' lkd' : ''}" data-id="${r.id}"><div class="nm"><b>${acctShort(r.id).replace(/^Account /, '')}</b><em>${r.kind}${r.need != null ? ' · ' + (r.need > 0 ? fk(r.need) + ' to go' : 'target hit') : ''}</em>${lkTag}${lk ? '' : mark}</div>
         <div class="v vb b">${fk(r.bal)}</div>
         <div class="v vt ${tone(r.today)}">${fm(r.today, { sign: true })}</div>
-        ${isL ? '<span class="fo nil"></span>' : `<button class="fo${on ? ' on' : ''}" data-fo="${r.id}" title="${on ? 'Stop copying to it' : 'Copy to it'}"></button>`}
+        <span class="ro"><button class="lb${isL ? ' on' : ''}" data-ld="${r.id}" title="${isL ? 'Lead account' : 'Make it the lead'}">LEAD</button>${isL ? '<span class="fo nil"></span>' : `<button class="fo${on ? ' on' : ''}" data-fo="${r.id}" title="${on ? 'Stop copying to it' : 'Copy to it'}"></button>`}</span>
         ${chip || rb ? `<div class="ex">${chip ? `<div class="pcs">${chip}</div>` : ''}${rb}</div>` : ''}</div>`;
     };
     const GROUPS = ['Funded', 'Instant', 'Eval'];
-    const accHtml = () => GROUPS.map(g => { const rs = rows.filter(r => r.kind === g); if (!rs.length) return '';
+    const so = DK.sort || 'auto', srt = (a, b) => so === 'target' ? (a.need != null && b.need != null ? a.need - b.need : b.today - a.today) : so === 'pnl' ? b.today - a.today : so === 'new' ? b.born - a.born : so === 'old' ? a.born - b.born : 0;
+    R.querySelectorAll('[data-so]').forEach(b => b.classList.toggle('on', b.dataset.so === so));
+    const accHtml = () => GROUPS.map(g => { const rs = rows.filter(r => r.kind === g).sort((a, b) => (a.id === lead) - (b.id === lead) ? (b.id === lead) - (a.id === lead) : srt(a, b)); if (!rs.length) return '';
       const sub = rs.reduce((a, r) => a + r.today, 0), all = rs.filter(r => r.id !== lead).every(r => C.followers[r.id]);
       return `<div class="gh" data-g="${g}" title="${all ? 'Stop copying to all ' : 'Copy to all '}${g}"><span>${g}<i>${rs.length}</i></span><b class="${tone(sub)}">${fm(sub, { sign: true })}</b></div>` + rs.map(accRow).join(''); }).join('');
     const html = tab === 'acc' ? accHtml() : shown.map(r => {
@@ -2097,7 +2149,7 @@
         <div class="ac">${btn(10, '10')}${btn(20, '20')}${btn(25, '25')}${btn(50, '50')}${btn(100, '×', ' cl')}</div></div>`;
     }).join('');
     if (k('rows').innerHTML !== html) k('rows').innerHTML = html || '<div class="none">' + (tab === 'acc' ? 'reading your accounts' : 'nothing open') + '</div>';
-    const fresh = DK.msg && Date.now() - DK.msgAt < 9000, n = Object.keys(C.followers).filter(f => C.followers[f]).length;
+    const fresh = DK.msg && Date.now() - DK.msgAt < 9000, n = (pruneFollowers(), nFollow());
     const lg = C.log[0], lgFresh = lg && Date.now() - lg.t < 60000;
     const hm = t => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), m = k('m'); m.textContent = fresh ? DK.msg + ' · ' + hm(DK.msgAt) : tab === 'acc' && lgFresh ? lg.msg + ' · ' + hm(lg.t) : C.on ? 'copying ' + n : live.length + ' of ' + rows.length + ' in trade'; m.className = 'm ' + (fresh ? DK.tone : tab === 'acc' && lgFresh && lg.bad ? 'bad' : '');
     k('all').textContent = tab === 'acc' ? '' : DK.all ? 'less' : rows.length > shown.length ? 'all ' + rows.length : '';
@@ -2179,6 +2231,12 @@
     OCOL = null; SHOT.lastH = 0; bookDone = ''; skinKey = ''; tkFit(null);
     document.querySelectorAll('[data-gpz-col],[data-gpz-chartcol]').forEach(e => { e.removeAttribute('data-gpz-col'); e.removeAttribute('data-gpz-chartcol'); });
   }
+  let reflowT = [];
+  function reflow() { if (document.hidden) return; freshLayout(); layoutCols(); placeShot(); placeDesk(); }
+  function reflowSoon() { reflowT.forEach(clearTimeout); reflowT = [0, 120, 450, 1200].map(ms => setTimeout(reflow, ms)); } // Vest often re-renders just after a tab comes back
+  ['focus', 'pageshow', 'resize'].forEach(ev => addEventListener(ev, reflowSoon));
+  ['pushState', 'replaceState'].forEach(m => { const o = history[m]; history[m] = function () { const r = o.apply(this, arguments); setTimeout(reflowSoon, 0); return r; }; });
+  addEventListener('popstate', reflowSoon);
   function snapAll() { // the reset: everything back in its place
     SH.dock = true; SH.x = SH.y = null; SH.on = true; saveSH();
     Object.assign(DK, { open: true, side: true, dock: true, x: null, y: null }); saveDK();
@@ -2186,7 +2244,7 @@
     layoutCols(); placeShot(); placeDesk(); setTimeout(() => { layoutCols(); placeShot(); placeDesk(); }, 300);
     shotMsg('snapped back', 'ok');
   }
-  every(400, () => { if (location.pathname !== lastPath) { lastPath = location.pathname; clearLines(); kickFast(); freshLayout(); } layoutCols(); bookFold(); placeShot(); placeDesk(); document.querySelectorAll('iframe[id^="tradingview_"]').forEach(hookFrame); });
+  every(400, () => { watchPops(); popZ(); if (document.hidden) return; if (location.pathname !== lastPath) { lastPath = location.pathname; clearLines(); kickFast(); freshLayout(); reflowSoon(); } else if (OCOL && !OCOL.isConnected) freshLayout(); layoutCols(); bookFold(); placeShot(); placeDesk(); document.querySelectorAll('iframe[id^="tradingview_"]').forEach(hookFrame); });
 
   // =====================================================================================================
   // Massive skin for all of Vest: its dark theme runs on CSS variables, so one stylesheet recolours the page;
