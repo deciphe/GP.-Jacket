@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.7.1
+// @version      1.7.5
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -44,17 +44,19 @@
   // Switched in the chart menu; while on, it replaces any code typed at checkout.
   const QUOTE_RE = /\/v3\/payments\//;
   const gigaOn = () => { try { return DB.giga !== false; } catch (e) { return false; } };
-  const gigaBody = b => { if (typeof b !== 'string' || !gigaOn()) return null; const j = JSON.parse(b); if (!j || typeof j !== 'object' || Array.isArray(j)) return null;
-    const quote = 'items' in j || 'promotionCodeText' in j; if (!quote || j.promotionCodeText === 'GIGA') return null; j.promotionCodeText = 'GIGA'; return JSON.stringify(j); }; // on means GIGA, whatever code was typed or came with a signup link
+  // on means GIGA everywhere Vest reads a code: the code check, the price quote and the hosted checkout, whatever was typed or came with a signup link
+  const gigaBody = (b, u) => { if (typeof b !== 'string' || !gigaOn()) return null; const j = JSON.parse(b); if (!j || typeof j !== 'object' || Array.isArray(j)) return null; u = String(u || '');
+    if (/\/payments\/promotions\/check/.test(u)) { if (!('code' in j) || j.code === 'GIGA') return null; j.code = 'GIGA'; return JSON.stringify(j); }
+    const quote = 'items' in j || 'promotionCodeText' in j || (/\/payments\/hosted-checkout/.test(u) && 'priceId' in j); if (!quote || j.promotionCodeText === 'GIGA') return null; j.promotionCodeText = 'GIGA'; return JSON.stringify(j); };
   const REF_RE = /"(signup|link)_ref_discount"/;
   const gigaResp = t => { if (!gigaOn() || typeof t !== 'string' || !REF_RE.test(t)) return t; try { const j = JSON.parse(t);
-      const walk = o => { if (!o || typeof o !== 'object') return; for (const k in o) { const v = o[k]; if ((k === 'signup_ref_discount' || k === 'link_ref_discount') && v && typeof v === 'object' && 'code' in v) v.code = 'GIGA'; else walk(v); } };
+      const walk = o => { if (!o || typeof o !== 'object') return; for (const k in o) { const v = o[k]; if ((k === 'signup_ref_discount' || k === 'link_ref_discount') && v && typeof v === 'object' && 'code' in v) { v.code = 'GIGA'; v.valid = true; } else walk(v); } };
       walk(j); return JSON.stringify(j); } catch (e) { return t; } };
   const XRT = Object.getOwnPropertyDescriptor(W.XMLHttpRequest.prototype, 'responseText'), XRS = Object.getOwnPropertyDescriptor(W.XMLHttpRequest.prototype, 'response');
   const gigaCheck = () => {};
   W.XMLHttpRequest.prototype.send = function () { try { if (this.__gpzm !== 'GET' && TRADE_RE.test(this.__gpzu || '')) this.addEventListener('loadend', () => kickFast(250));
-    if (this.__gpzm === 'POST' && QUOTE_RE.test(this.__gpzu || '')) { const nb = gigaBody(arguments[0]); if (nb) arguments[0] = nb; }
-    if (this.__gpzm === 'GET' && /vestmarkets\.com\/v3\//.test(this.__gpzu || '') && gigaOn() && XRT && XRS) { const x = this; let c0, c1; // the referral discount Vest shows at checkout reads GIGA too
+    if (this.__gpzm === 'POST' && QUOTE_RE.test(this.__gpzu || '')) { const nb = gigaBody(arguments[0], this.__gpzu); if (nb) arguments[0] = nb; }
+    if (this.__gpzm === 'GET' && /\/v\d\/(referrals|affiliate|payments|users?|me)\b/.test(this.__gpzu || '') && gigaOn() && XRT && XRS) { const x = this; let c0, c1; // the referral discount Vest shows at checkout reads GIGA too
       Object.defineProperty(x, 'responseText', { configurable: true, get() { const t = XRT.get.call(x); if (t !== c0) { c0 = t; c1 = gigaResp(t); } return c1; } });
       Object.defineProperty(x, 'response', { configurable: true, get() { const r = XRS.get.call(x); return typeof r === 'string' ? x.responseText : r; } }); } } catch (e) {} return XS.apply(this, arguments); };
   const F0 = W.fetch;
@@ -62,7 +64,7 @@
     let trade = false;
     try { const u = (i && i.url) || String(i); if (GATE.test(u)) { offer(new W.Headers((o && o.headers) || (i && i.headers) || {}).get('authorization')); trade = TRADE_RE.test(u) && String((o && o.method) || (i && i.method) || 'GET').toUpperCase() !== 'GET'; } } catch (e) {}
     let giga = false;
-    try { const u = (i && i.url) || String(i); if (o && QUOTE_RE.test(u) && String(o.method || '').toUpperCase() === 'POST') { const nb = gigaBody(o.body); if (nb) { o = Object.assign({}, o, { body: nb }); arguments[1] = o; giga = true; } } } catch (e) {}
+    try { const u = (i && i.url) || String(i); if (o && QUOTE_RE.test(u) && String(o.method || '').toUpperCase() === 'POST') { const nb = gigaBody(o.body, u); if (nb) { o = Object.assign({}, o, { body: nb }); arguments[1] = o; giga = true; } } } catch (e) {}
     const r = F0.apply(this, arguments); if (trade) r.then(() => kickFast(250), () => {});
     if (giga) r.then(res => res.clone().text().then(t => gigaCheck(res.status, t)), () => {});
     return r;
@@ -159,12 +161,12 @@
     for (const k in DB.pay) { const x = DB.pay[k]; if (x.acct !== id || /reject|cancel|fail|declin/i.test(x.st || '')) continue; if (ms(x.c || x.t) >= d0) s += +x.req || +x.amt || 0; }
     return s;
   }
-  function liveRows() {
+  function liveRows(evals) { // evals: the zone counts evaluation accounts too
     if (!L.cap) return [];
     const d0 = vestDay(), key = String(d0);
     if (!DB.dayBase[key]) DB.dayBase = { [key]: {} };
     const rows = [];
-    L.cap.filter(c => c.account_type === 3 && c.status === 2).forEach(c => {
+    L.cap.filter(c => (c.account_type === 3 || (evals && c.account_type === 2)) && c.status === 2).forEach(c => {
       if (!(c.id in L.bal)) return;
       let u = 0, open = 0;
       L.pos.forEach(p => { if ((p.accountId || p.account_id) !== c.id) return; open++; const m = L.mark[p.symbol]; if (m) u += (m - +p.openPrice) * Math.abs(+p.quantity) * (/^s/i.test(p.side || '') ? -1 : 1); });
@@ -221,7 +223,7 @@
   }
   function zoneTick() {
     const z = DB.zone; if (!z) return;
-    liveRows().forEach(r => { if (z.base[r.id] == null) z.base[r.id] = r.eq; z.last[r.id] = r.eq; z.liveSeen = true; });
+    liveRows(true).forEach(r => { if (z.base[r.id] == null) z.base[r.id] = r.eq; z.last[r.id] = r.eq; z.liveSeen = true; });
     // trades closed during the zone, any account
     const nowOpen = {}; L.pos.forEach(p => { nowOpen[p.positionId] = p.accountId || p.account_id; });
     if (L.ok) {
@@ -235,7 +237,7 @@
   async function closedPnl(acct, id) {
     for (let k = 0; k < 3; k++) {
       await new Promise(r => setTimeout(r, 1500 + k * 4000));
-      try { const j = await api(`/v3/positions?account_id=${acct}&limit=25&offset=0`); const p = (j.positions || []).find(x => x.positionId === id); if (p && p.closeDate) { if (DB.zone) { DB.zone.trades.push({ pnl: +p.pnl || 0, fee: +p.fee || 0, sym: String(p.symbol || '').replace(/-USD-PERP$|-PERP$/, '') }); save(); render(); } return; } } catch (e) {}
+      try { const j = await api(`/v3/positions?account_id=${acct}&limit=25&offset=0`); const p = (j.positions || []).find(x => x.positionId === id); if (p && p.closeDate) { if (DB.zone) { DB.zone.trades.push({ acct, pnl: +p.pnl || 0, fee: +p.fee || 0, sym: String(p.symbol || '').replace(/-USD-PERP$|-PERP$/, '') }); save(); render(); } return; } } catch (e) {}
     }
     if (DB.zone) { DB.zone.trades.push({ pnl: null }); save(); }
   }
@@ -767,7 +769,7 @@
   document.addEventListener('visibilitychange', () => { if (!document.hidden) kickFast(0); });
 
   // ---------- the plan: risk-locked size and fee-aware stop / target ----------
-  const SH = Object.assign({ on: true, sl: true, risk: 2, R: 1, tmode: 'R', usd: 0, size: 100, fees: true, chart: true, side: 'long', dock: true, x: null, y: null, addp: 50 }, DB.shot || {});
+  const SH = Object.assign({ on: true, sl: true, tp: true, risk: 2, R: 1, tmode: 'R', usd: 0, size: 100, fees: true, chart: true, side: 'long', dock: true, x: null, y: null, addp: 50 }, DB.shot || {});
   const CTHEMES = [
     { id: 'vest', name: 'Vest', bg: '#121714', up: '#00D98E', upB: '#00D98E', dn: '#E03737', dnB: '#E03737' }, // Vest's own colours, the whole page
     { id: 'massive', name: 'Massive', bg: '#0b0b0b', up: '#dedbd3', upB: '#dedbd3', dn: '#4b4b51', dnB: '#4b4b51' },
@@ -782,6 +784,8 @@
   const FRESH = 3500; // a price older than this never sizes or sends an order
   W.__gpzVest = m => vestSuffix(m);
   W.__gpzSync = () => syncHistory(false);
+  W.__gpzZoneTrade = (acct, pnl) => { if (DB.zone) { DB.zone.trades.push({ acct, pnl }); save(); } };
+  W.__gpzLocked = id => lockedAcct(id);
   W.__gpzPlan = () => { const p = plan(); return { why: p.why, id: p.id, closed: !!p.closed, ok: p.ok }; };
   function plan() {
     const sym = curSymbol(), id = activeAcct(), x = sym && SPEC[sym];
@@ -830,16 +834,20 @@
 
   // ---------- zone lock: the ticket stops taking entries once the session's limit is hit (exits always work) ----------
   const ZL = Object.assign({ loss: 0, n: 0 }, DB.zl || {});
-  function zoneStats() {
+  function zoneStats(acct) {
     const z = DB.zone; if (!z) return null;
-    const tr = (z.trades || []).filter(t => t.pnl != null), sum = tr.reduce((a, t) => a + t.pnl, 0);
+    const tr = (z.trades || []).filter(t => t.pnl != null && (acct == null || t.acct === acct)), sum = tr.reduce((a, t) => a + t.pnl, 0);
     return { sum, lost: tr.filter(t => t.pnl < 0).length, won: tr.filter(t => t.pnl > 0).length };
   }
-  function zoneLocked() {
-    const z = DB.zone, s = zoneStats(); if (!z || !s) return false;
-    if (!z.locked && ((ZL.loss > 0 && s.sum <= -ZL.loss) || (ZL.n > 0 && s.lost >= ZL.n))) { z.locked = Date.now(); save(); }
-    return !!z.locked;
+  // the zone lock is per account: the account that hits the loss (or the losing-trade count) is locked until Vest's
+  // 8pm New York reset, even after the zone ends. Every other account keeps trading.
+  const nextReset = () => vestDay() + 864e5;
+  function lockedAcct(id) {
+    const Z = DB.zlock || (DB.zlock = {}); for (const k in Z) if (Z[k] <= Date.now()) { delete Z[k]; save(); }
+    const z = DB.zone; if (z && id && !Z[id] && (ZL.loss > 0 || ZL.n > 0)) { const s = zoneStats(id); if (s && ((ZL.loss > 0 && s.sum <= -ZL.loss) || (ZL.n > 0 && s.lost >= ZL.n))) { Z[id] = nextReset(); save(); } }
+    return !!Z[id];
   }
+  function zoneLocked() { const z = DB.zone; if (z) for (const t of z.trades || []) if (t.acct) lockedAcct(t.acct); return lockedAcct(activeAcct()); }
 
   // ---------- firing ----------
   const SHOT = { busy: false, msg: '', tone: '', hover: null, visible: false, cool: 0, zopen: false };
@@ -858,9 +866,9 @@
       p = plan(); if (!p.ok) throw new Error(p.why);
       if (myPos(p)) throw new Error('already in ' + shortSym(p.sym));
       const g = p[side];
-      const body = { orderType: 'market', leverage: String(p.lev), side, symbol: p.sym, quantity: p.qtyS, timeInForce: 'IOC', takeProfits: [{ executionType: 'market', triggerPrice: fmtP(g.tp, p.sym) }], stopLosses: SH.sl === false ? [] : [{ executionType: 'market', triggerPrice: fmtP(g.sl, p.sym) }] };
+      const body = { orderType: 'market', leverage: String(p.lev), side, symbol: p.sym, quantity: p.qtyS, timeInForce: 'IOC', takeProfits: SH.tp === false ? [] : [{ executionType: 'market', triggerPrice: fmtP(g.tp, p.sym) }], stopLosses: SH.sl === false ? [] : [{ executionType: 'market', triggerPrice: fmtP(g.sl, p.sym) }] };
       sent = true; await send(p.id, 'POST', '/v3/positions/open', body);
-      shotMsg((side === 'long' ? 'Long ' : 'Short ') + p.qtyS + ' ' + shortSym(p.sym) + (SH.sl === false ? ' · no stop' : ' · stop ' + fmtPx(g.sl, p.sym)), 'ok'); flash(side);
+      shotMsg((side === 'long' ? 'Long ' : 'Short ') + p.qtyS + ' ' + shortSym(p.sym) + (SH.sl === false ? ' · no stop' : ' · stop ' + fmtPx(g.sl, p.sym)) + (SH.tp === false ? ' · no target' : ''), 'ok'); flash(side);
     } catch (e) { if (e.status && e.status < 500 && e.status !== 429) sent = false; shotMsg(e.message, 'bad'); }
     SHOT.cool = Date.now() + (sent ? 2500 : 600); // no second shot until the position list has caught up
     SHOT.busy = false; saveSH(); kickFast(150); setTimeout(renderShot, 2600);
@@ -1131,6 +1139,7 @@
   .ends b{display:block;font-size:13px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
   .ends em{display:block;margin-top:2px;font-style:normal;font-size:11px;font-weight:600;font-variant-numeric:tabular-nums;color:#8b8b92}
   .ends .a em{color:#efb1a7}.ends .b em{color:#bfe6cb}.ends .a em.up{color:#bfe6cb}
+  .ends b[data-k=e2].none{color:#8b8b92;animation:none;letter-spacing:.06em;font-size:11.5px}
   .ends b.none{color:#efb1a7;letter-spacing:.06em;font-size:11.5px;animation:glow 1.6s ease-in-out infinite}
   @keyframes glow{0%,100%{opacity:.55}50%{opacity:1}}
   .ar{display:grid;grid-template-columns:46px minmax(0,1fr);align-items:center;gap:8px}
@@ -1158,6 +1167,12 @@
   .L:active,.S:active,.X:active{transform:scale(.975)}
   /* finish: one focus ring, calm hovers, a soft top light on the fire buttons */
   button:focus-visible,input:focus-visible{outline:2px solid rgba(227,201,142,.65);outline-offset:2px}
+  .s.notp .sr[data-sr=R]>b,.s.notp .pl .tp b{color:#4f4f55}.s.notp .pl .tp .pe{opacity:.35;pointer-events:none}
+  .sw.k-sl,.sw.k-tp,.sw.k-fe{background:#121212;border-color:rgba(238,234,226,.12);box-shadow:inset 0 1px 2px rgba(0,0,0,.5)}
+  .sw.k-sl:after,.sw.k-tp:after,.sw.k-fe:after{background:#46464c;box-shadow:0 1px 2px rgba(0,0,0,.6)}
+  .sw.k-sl.on{background:linear-gradient(180deg,rgba(232,152,140,.26),rgba(232,152,140,.12));border-color:rgba(239,177,167,.55)}.sw.k-sl.on:after{background:#f6cfc8;box-shadow:0 0 0 1px rgba(232,152,140,.5),0 0 10px rgba(232,152,140,.55)}
+  .sw.k-tp.on{background:linear-gradient(180deg,rgba(159,215,178,.26),rgba(159,215,178,.12));border-color:rgba(191,230,203,.55)}.sw.k-tp.on:after{background:#d9f2e1;box-shadow:0 0 0 1px rgba(159,215,178,.5),0 0 10px rgba(159,215,178,.55)}
+  .sw.k-fe.on{background:linear-gradient(180deg,rgba(227,201,142,.26),rgba(227,201,142,.12));border-color:rgba(236,214,166,.55)}.sw.k-fe.on:after{background:#f3e4c2;box-shadow:0 0 0 1px rgba(227,201,142,.5),0 0 10px rgba(227,201,142,.5)}
   .c,.ls,.ldd,.ib,.sw{transition:background .15s,border-color .15s,color .15s,transform .1s}.c:active,.ls:active,.ib:active{transform:scale(.97)}
   .L,.S{box-shadow:inset 0 1px 0 rgba(255,255,255,.14)}.S{box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
   .L[disabled],.S[disabled]{opacity:.32;cursor:not-allowed;box-shadow:none}
@@ -1261,12 +1276,12 @@
         <button class="ls" data-a="zend" hidden>end</button></div>
       <div class="pv" data-v="plan">
         <div class="adh" data-k="adh" hidden><span data-k="adt">—</span><button data-a="addback">back</button></div>
-        <div class="pl"><div class="sl"><small>STOP<button class="sw sm" data-t="sl" title="Stop loss on or off" aria-label="Stop loss on or off"></button></small><b data-k="slv">—</b><em data-k="slp">—</em><div class="pe"><input class="n" data-n="rusd" inputmode="decimal" placeholder="$ stop" aria-label="Dollar stop"></div></div><div class="tp"><small>TARGET</small><b data-k="tpv">—</b><em data-k="tpp">—</em><div class="pe"><button class="c pass" data-a="pass" title="Pass line">PASS</button><input class="n" data-n="usd" inputmode="decimal" placeholder="$ gain" aria-label="Dollar target"></div></div></div>
+        <div class="pl"><div class="sl"><small>STOP<button class="sw sm k-sl" data-t="sl" title="Stop loss on or off" aria-label="Stop loss on or off"></button></small><b data-k="slv">—</b><em data-k="slp">—</em><div class="pe"><input class="n" data-n="rusd" inputmode="decimal" placeholder="$ stop" aria-label="Dollar stop"></div></div><div class="tp"><small>TARGET<button class="sw sm k-tp" data-t="tp" title="Target on or off" aria-label="Target on or off"></button></small><b data-k="tpv">—</b><em data-k="tpp">—</em><div class="pe"><button class="c pass" data-a="pass" title="Pass line">PASS</button><input class="n" data-n="usd" inputmode="decimal" placeholder="$ gain" aria-label="Dollar target"></div></div></div>
         <div class="bm" data-k="bm0">${BEAM}</div>
         ${slider('risk', 'RISK', 0.25, 3, 0.05, [[0.25, '.25'], [0.5, '.5%'], [1, '1%'], [2, '2%'], [3, '3%']])}
         ${slider('R', 'REWARD', RLO, RHI, 0.05, [[0.5, '.5R'], [1, '1R'], [2, '2R'], [3, '3R']])}
         ${slider('size', 'SIZE', 5, 100, 1, [[25, '25%'], [50, '50%'], [75, '75%'], [100, 'max']])}
-        <div class="bal"><div class="bb"><i data-k="fb" style="width:0"></i></div><div class="bt"><span>fees <b data-k="fe">—</b><button class="sw" data-t="fees" title="Fees inside the risk" aria-label="Fees inside the risk"></button></span><span data-k="qz"></span></div></div>
+        <div class="bal"><div class="bb"><i data-k="fb" style="width:0"></i></div><div class="bt"><span>fees <b data-k="fe">—</b><button class="sw k-fe" data-t="fees" title="Fees inside the risk" aria-label="Fees inside the risk"></button></span><span data-k="qz"></span></div></div>
         <div class="ld"><button class="ldd" data-a="ldd" data-k="ldd" title="Loadouts"></button><div class="ll" data-k="ll" hidden></div><button class="ls" data-a="lsave" title="Save loadout" data-k="lsv">+</button>
           <div class="ln" data-k="ln" hidden><input data-k="lname" maxlength="18" placeholder="name it" aria-label="Loadout name"><button class="ls on" data-a="lok">save</button><button class="ls" data-a="lno">×</button></div></div>
       </div>
@@ -1287,7 +1302,7 @@
       <div class="go" data-v="go4" hidden><button class="L" data-a="addgo"><span data-k="addq">Add</span><small data-kk="add"></small></button><button class="X" data-a="close2">Close<small data-kk="close"></small></button></div>
       <div class="kp" data-k="kp" hidden><div class="kh"><span>KEYS</span><button class="sw" data-kt="keys" aria-label="Keyboard shortcuts on or off"></button></div>
         <div class="kr"><span>Long</span><button data-kb="long"></button></div><div class="kr"><span>Short</span><button data-kb="short"></button></div><div class="kr"><span>Close</span><button data-kb="close"></button></div></div>
-      <div class="go" data-v="go3" hidden><div class="lk"><i></i><b>LOCKED</b><span data-k="lk"></span><button data-a="zend2">end zone</button></div></div>
+      <div class="go" data-v="go3" hidden><div class="lk"><i></i><b>LOCKED</b><span data-k="lk"></span></div></div>
     </div>`;
     document.documentElement.appendChild(host);
     const peek = document.createElement('div'); peek.id = 'gpz-peek'; peek.style.cssText = 'position:fixed;z-index:2147483639;display:none';
@@ -1374,7 +1389,7 @@
     on('zone', () => { SHOT.zopen = !SHOT.zopen; renderShot(); });
     on('zgo', () => { SHOT.zopen = false; if (!DB.zone) zoneStart(); renderShot(); });
     const end = () => { SHOT.zopen = false; if (DB.zone) zoneEnd(); renderShot(); };
-    on('zend', end); on('zend2', end);
+    on('zend', end);
     // drag to float anywhere; double-click the header to dock it back over Vest's ticket
     const hd = R.querySelector('[data-a=drag]');
     hd.addEventListener('pointerdown', e => {
@@ -1453,6 +1468,8 @@
   function placeShot() {
     const S = shotHost(), on = SH.on && IS_TRADE() && !!AUTH;
     if (on && vestModal()) { SHOT.visible = false; S.host.style.display = 'none'; S.peek.style.display = 'none'; if (DS) DS.host.style.display = 'none'; return; }
+    { const id = activeAcct(); if (on && L.capAt && id && !capAcctOld(id)) { // the Primary account can't trade: Vest's own panel shows, GP. waits for a trading account
+      SHOT.visible = false; S.host.style.display = 'none'; S.peek.style.display = 'none'; tkFit(null); return; } }
     const card = IS_TRADE() ? vestTicket() : null; let r = card && card.getBoundingClientRect();
     if (r && r.width > 200 && r.height > 300) SHOT.lastH = r.height;
     else if (IS_TRADE()) { const oc = orderCol(); if (oc) { const q = oc.getBoundingClientRect(); if (q.width > 200) r = { left: q.left, top: q.top, right: q.right, width: q.width, height: Math.min(q.height, SHOT.lastH || 640) }; } } // Vest swapped its ticket out: stay where it was
@@ -1512,7 +1529,7 @@
     if (!pos) SHOT.adding = false; const adding = !!pos && !!SHOT.adding;
     R.querySelector('[data-v=plan]').hidden = !!pos && !adding; R.querySelector('[data-v=pos]').hidden = !pos || adding;
     R.querySelector('[data-v=go]').hidden = !!pos || locked; R.querySelector('[data-v=go2]').hidden = !pos || adding; R.querySelector('[data-v=go3]').hidden = !locked; R.querySelector('[data-v=go4]').hidden = !adding;
-    box.classList.toggle('in', !!pos && !adding); box.classList.toggle('nosl', SH.sl === false && !(pos && !adding)); box.classList.toggle('add', adding); k('adh').hidden = !adding;
+    box.classList.toggle('in', !!pos && !adding); box.classList.toggle('nosl', SH.sl === false && !(pos && !adding)); box.classList.toggle('add', adding); box.classList.toggle('notp', SH.tp === false && !(pos && !adding)); k('adh').hidden = !adding;
     if (pos && !adding) {
       const t = tradeOf(pos), sym = pos.symbol, slP = t.sl ? +t.sl.triggerPrice : null, tpP = t.tp ? +t.tp.triggerPrice : null;
       box.classList.toggle('neg', t.u < 0);
@@ -1528,7 +1545,7 @@
       { const a = addPlan(SH.addp), b = k('addx'); if (a) { b.textContent = +a.qs > 0 ? '+ ' + a.qs + ' ' + shortSym(a.sym) + (a.capped ? ' · all the margin left' : '') : 'no free margin'; b.disabled = !(+a.qs > 0) || !!SHOT.busy; } }
       k('e1').textContent = slP != null ? fmtPx(slP, sym) : 'NO STOP'; k('e1').className = slP != null ? '' : 'none';
       const slUsd = slP != null ? t.at(slP) : 0; k('e1s').textContent = slP != null ? fm(slUsd, { sign: true }) + (t.m ? ' · ' + pts(t.m - slP) + ' pts' : '') : ''; k('e1s').className = slUsd > 0 ? 'up' : '';
-      k('e2').textContent = tpP != null ? fmtPx(tpP, sym) : '—'; k('e2s').textContent = tpP != null ? (t.m ? pts(tpP - t.m) + ' pts · ' : '') + fm(t.at(tpP), { sign: true }) : '';
+      k('e2').textContent = tpP != null ? fmtPx(tpP, sym) : 'NO TARGET'; k('e2').className = tpP != null ? '' : 'none'; k('e2s').textContent = tpP != null ? (t.m ? pts(tpP - t.m) + ' pts · ' : '') + fm(t.at(tpP), { sign: true }) : '';
       R.querySelector('[data-a=addstop]').hidden = slP != null; R.querySelector('[data-a=half]').hidden = R.querySelector('[data-a=be]').hidden = slP == null;
       R.querySelectorAll('[data-v=pos] .c').forEach(c => { const tag = c.dataset.cut ? 'cut' + c.dataset.cut : c.dataset.lim ? 'lim' + c.dataset.lim : c.dataset.a; c.classList.toggle('busy', SHOT.busy === tag); c.disabled = !!SHOT.busy; });
       const lh = t.scales.map(l => `<span class="lg">${legFixed(l) ? Math.round(Math.abs(+l.quantity) / t.q * 100) + '% · ' : ''}${fmtPx(l.triggerPrice, sym)}<button data-id="${esc(l.id)}" title="Remove">×</button></span>`).join('');
@@ -1568,6 +1585,7 @@
         k('slp').innerHTML = p.dSL ? pts(p.dSL) + ' pts <i>· ' + fmtPx(p[side].sl, p.sym) + '</i>' : '—';
         if (SH.sl === false) { k('slv').textContent = 'NO STOP'; k('slp').textContent = 'risk is the size'; }
         k('tpp').innerHTML = p.dTP ? pts(p.dTP) + ' pts <i>· ' + fmtPx(p[side].tp, p.sym) + '</i>' : '—';
+        if (SH.tp === false) { k('tpv').textContent = 'NO TARGET'; k('tpp').textContent = 'open'; k('tpv').className = ''; }
         if (p.dSL) setBeam(k('bm0'), { a: -p.dSL, b: p.dTP, stop: -p.dSL, tgt: p.dTP, price: 0, legs: p.dPass && SH.tmode !== 'pass' && p.dPass < p.dTP ? [p.dPass] : [] });
         const share = p.risk > 0 ? p.fees / p.risk : 0, hot = share >= 0.4;
         k('fb').style.width = Math.min(100, share * 100) + '%'; k('fb').classList.toggle('hot', hot);
@@ -1577,7 +1595,7 @@
       const cool = Date.now() < SHOT.cool;
       const L1 = R.querySelector('[data-a=long]'), S1 = R.querySelector('[data-a=short]');
       L1.disabled = S1.disabled = !p.ok || !!SHOT.busy || cool; L1.classList.toggle('busy', SHOT.busy === 'long'); S1.classList.toggle('busy', SHOT.busy === 'short');
-      if (locked) k('lk').textContent = fm(zb.zs.sum, { sign: true }) + ' · ' + zb.zs.lost + 'L';
+      if (locked) { const id = activeAcct(), as = zoneStats(id) || { sum: 0, lost: 0 }; k('lk').textContent = acctShort(id).replace(/^Account /, '#') + ' · ' + fm(as.sum, { sign: true }) + ' · until 8pm reset'; }
     }
     if (adding) { // the whole trade after the add, at its own stop and target
       const t = tradeOf(pos), sym = pos.symbol, aq = p.qty > 0 ? +fmtQ(p.qty, sym) : 0, Q = t.q + aq, m = t.m || t.op, avg = (t.op * t.q + m * aq) / Q;
@@ -1703,11 +1721,11 @@
     }
     if (!p.qty || !p.dSL) return clearLines();
     const side = SH.side || 'long', g = p[side];
-    chLine('tp', g.tp, (SH.tmode === 'pass' ? 'PASS  +' : 'TP  +') + fm(p.reward) + '  ·  ' + pts(p.dTP) + ' pts', MINT, 2, { move: targetFromLine });
+    if (SH.tp !== false) chLine('tp', g.tp, (SH.tmode === 'pass' ? 'PASS  +' : 'TP  +') + fm(p.reward) + '  ·  ' + pts(p.dTP) + ' pts', MINT, 2, { move: targetFromLine });
     if (SH.sl !== false) chLine('sl', g.sl, 'SL  −' + fm(p.risk).replace('−', '') + '  ·  ' + pts(p.dSL) + ' pts', ROSE, 2, { move: sizeFromStop });
     chLine('en', p.px, (side === 'long' ? 'long ' : 'short ') + p.qtyS + '  ·  ' + p.lev + 'x', 'rgba(230,227,220,0.32)', 1);
-    const keep = ['tp', 'en', ...(SH.sl !== false ? ['sl'] : []), ...dllKeys(p, side)];
-    if (p.passNeed > 0 && SH.tmode !== 'pass') { chLine('pass', g.pass, 'PASS  +' + fm(p.passNeed) + '  ·  ' + pts(p.dPass) + ' pts', 'rgba(227,201,142,0.6)', 2); keep.push('pass'); }
+    const keep = ['en', ...(SH.tp !== false ? ['tp'] : []), ...(SH.sl !== false ? ['sl'] : []), ...dllKeys(p, side)];
+    if (p.passNeed > 0 && SH.tmode !== 'pass' && SH.tp !== false) { chLine('pass', g.pass, 'PASS  +' + fm(p.passNeed) + '  ·  ' + pts(p.dPass) + ' pts', 'rgba(227,201,142,0.6)', 2); keep.push('pass'); }
     clearLines(keep);
   }
 
@@ -1777,6 +1795,7 @@
     const lq = Math.abs(+lp.quantity), okey = lp.positionId + '|' + f;
     if (!fp) {
       if (C.opened[okey]) return; // already copied this trade once (its own stop or target may have closed it): don't re-enter
+      if (lockedAcct(f)) { C.err[f] = 'zone locked until 8pm reset'; return; }
       const want = sizeFor(f, lq, sym); if (!(want > 0)) { C.err[f] = 'too small to hold any ' + shortSym(sym); return; }
       hold(4000); C.opened[okey] = Date.now(); PENDING[key] = { at: Date.now(), lead: lp.positionId }; saveC();
       const lev = Math.min(+lp.leverage || 1e9, maxLev(sym, f) || 1e9);
@@ -1899,6 +1918,8 @@
   .dl{display:block;margin-left:6px;flex:none}.dl path{fill:none;stroke-width:1.4;stroke-linejoin:round;stroke-linecap:round}
   .gh{display:flex;justify-content:space-between;align-items:center;padding:9px 10px 5px 14px;font-size:9.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#6f6f75;cursor:pointer;border-bottom:1px solid rgba(238,234,226,.05)}.gh:hover{color:#c9c7c2}
   .gh i{font-style:normal;margin-left:6px;color:#55555b}.gh b{letter-spacing:0;font-size:11px;font-weight:600}
+  .tg.lkd{display:inline-flex;align-items:center;gap:4px;font-style:normal;font-size:8px;font-weight:700;letter-spacing:.12em;padding:2px 6px 2px 5px;border-radius:5px;margin-left:6px;color:#efb1a7;background:rgba(232,152,140,.1);box-shadow:inset 0 0 0 1px rgba(232,152,140,.28)}
+  .r.lkd{background:repeating-linear-gradient(135deg,rgba(232,152,140,.035) 0 6px,transparent 6px 12px)}.r.lkd .v,.r.lkd .nm b,.r.lkd .nm em{opacity:.45}.r.lkd .fo{opacity:.35}
   .tg.lead{font-style:normal;font-size:8px;font-weight:700;letter-spacing:.12em;padding:1px 5px;border-radius:4px;background:#e6e3dc;color:#0b0b0b;margin-left:6px}
   .r.a.lead{box-shadow:inset 2px 0 0 #e6e3dc}.fo.nil{border:0;cursor:default}
   .cr{font-style:normal;font-size:9.5px;font-weight:700;margin-left:6px}.cr.ok{color:#9fd7b2}.cr.bad{color:#efb1a7}
@@ -2036,6 +2057,7 @@
     const W = 46, H = 14, lo = Math.min(0, ...a), hi = Math.max(0, ...a), sp = hi - lo || 1, X = i => (i / (a.length - 1) * W).toFixed(1), Y = x => (H - 1 - (x - lo) / sp * (H - 2)).toFixed(1);
     return `<svg class="dl" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true"><path d="M0 ${Y(0)}H${W}" stroke="rgba(238,234,226,.12)" stroke-dasharray="2 2"/><path d="${a.map((x, i) => (i ? 'L' : 'M') + X(i) + ' ' + Y(x)).join('')}" stroke="${v >= 0 ? '#9fd7b2' : '#e8988c'}"/></svg>`;
   }
+  const LOCKSVG = '<svg width="9" height="10" viewBox="0 0 9 10" aria-hidden="true"><rect x="0.5" y="4.2" width="8" height="5.3" rx="1.4" fill="currentColor"/><path d="M2.4 4.4V3a2.1 2.1 0 0 1 4.2 0v1.4" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>';
   function renderDesk() {
     if (!DK.open || !DS) return; const { R, k } = DS;
     const rows = deskRows(), live = rows.filter(r => r.n), shown = DK.all ? rows : rows.filter(r => r.n || r.role); dayLine(rows);
@@ -2055,7 +2077,8 @@
       const mark = e ? `<i class="cr bad" title="${esc(e)}">✕</i>` : crOk && cr.ok ? `<i class="cr ok" title="last copy landed">✓ ${cr.ms}ms</i>` : '';
       const chip = r.ps.map(p => `<span class="pc${p.long ? '' : ' sh'}">${p.long ? 'LONG' : 'SHORT'} ${trimNum(+fmtQ(p.q, p.sym))} ${shortSym(p.sym)}</span>`).join('') + (r.n ? `<span class="pu ${tone(r.u)}">${fm(r.u, { sign: true })}</span>` : '');
       const rb = r.room != null ? `<div class="rb${r.room / r.roomMax < 0.25 ? ' low' : ''}" title="${r.roomW} room: what the account can lose before its floor"><span>${r.roomW}</span><div class="bar"><i style="width:${Math.max(0, Math.min(100, r.room / r.roomMax * 100)).toFixed(1)}%"></i></div><b>${fm(Math.max(0, r.room))}</b></div>` : '';
-      return `<div class="r a${r.id === cur ? ' cur' : ''}${r.kind !== 'Eval' ? ' fd' : ''}${isL ? ' lead' : ''}" data-id="${r.id}"><div class="nm"><b>${acctShort(r.id).replace(/^Account /, '')}</b><em>${r.kind}</em>${isL ? '<i class="tg lead">LEAD</i>' : ''}${mark}</div>
+      const lk = lockedAcct(r.id), lkTag = lk ? `<i class="tg lkd" title="Zone lock: no trading on this account until Vest's 8pm reset">${LOCKSVG}LOCKED</i>` : '';
+      return `<div class="r a${r.id === cur ? ' cur' : ''}${r.kind !== 'Eval' ? ' fd' : ''}${isL ? ' lead' : ''}${lk ? ' lkd' : ''}" data-id="${r.id}"><div class="nm"><b>${acctShort(r.id).replace(/^Account /, '')}</b><em>${r.kind}</em>${isL ? '<i class="tg lead">LEAD</i>' : ''}${lkTag}${lk ? '' : mark}</div>
         <div class="v vb b">${fk(r.bal)}</div>
         <div class="v vt ${tone(r.today)}">${fm(r.today, { sign: true })}</div>
         ${isL ? '<span class="fo nil"></span>' : `<button class="fo${on ? ' on' : ''}" data-fo="${r.id}" title="${on ? 'Stop copying to it' : 'Copy to it'}"></button>`}
@@ -2068,7 +2091,7 @@
     const html = tab === 'acc' ? accHtml() : shown.map(r => {
       const b = DK.busy[r.id] || DK.busy.all, dis = !r.n || b ? ' disabled' : '';
       const btn = (p, lbl, cls) => `<button class="k${cls || ''}${DK.busy[r.id] === p ? ' busy' : ''}" data-cut="${p}" title="${p >= 100 ? 'Close' : 'Cut ' + p + '%'}"${dis}>${lbl}</button>`;
-      return `<div class="r${r.kind !== 'Eval' ? ' fd' : ''}" data-id="${r.id}"><div class="nm"><b>${acctShort(r.id).replace(/^Account /, '')}</b>${r.role ? `<i class="tg ${r.role}">${r.role === 'lead' ? 'LEAD' : 'COPY'}</i>` : `<em>${r.kind}</em>`}${spark(r.id, r.today)}</div>
+      return `<div class="r${r.kind !== 'Eval' ? ' fd' : ''}" data-id="${r.id}"><div class="nm"><b>${acctShort(r.id).replace(/^Account /, '')}</b>${r.role ? `<i class="tg ${r.role}">${r.role === 'lead' ? 'LEAD' : 'COPY'}</i>` : `<em>${r.kind}</em>`}${lockedAcct(r.id) ? `<i class="tg lkd" title="Zone lock until Vest's 8pm reset">${LOCKSVG}LOCKED</i>` : ''}${spark(r.id, r.today)}</div>
         <div class="v vo ${r.n ? tone(r.u) : 'dim'}">${r.n ? fm(r.u, { sign: true }) : '—'}</div>
         <div class="v vt ${tone(r.today)}">${fm(r.today, { sign: true })}</div>
         <div class="ac">${btn(10, '10')}${btn(20, '20')}${btn(25, '25')}${btn(50, '50')}${btn(100, '×', ' cl')}</div></div>`;
