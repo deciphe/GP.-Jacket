@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.8.6
+// @version      1.8.7
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -2365,7 +2365,8 @@
   // chart colours: the canvas and candles, picked from the chart chip
   if (DB.cthV !== 1) { DB.cthV = 1; DB.skin = false; DB.cthPaint = true; save(); } // Vest's own colours are the default
   if (DB.cthV !== 2) { DB.cthV = 2; if (DB.skin === false) DB.cth = 'vest'; save(); } // the look and the chart's colours are picked apart now
-  let CTH_FRAME = '';
+  let CTH_FRAME = '', CTH_HOLD = 0; // after a load or a pick, your set is held while Vest restores its saved chart layout
+  const sameColors = () => { const r = readChart(); if (!r) return true; const c = chartColors(), g = k => toHex(c[k]); return toHex(r.bg) === g('paneProperties.background') && toHex(r.up) === g('mainSeriesProperties.candleStyle.upColor') && toHex(r.dn) === g('mainSeriesProperties.candleStyle.downColor'); };
   function cTheme() { return allThemes().find(t => t.id === DB.cth) || CTHEMES[0]; }
   function chartColors() { return cTheme().id === 'vest' ? Object.assign({}, VEST_CHART) : skinOverrides(); }
   function skinOverrides() {
@@ -2422,13 +2423,14 @@
     if (!html.classList.contains('dark') && on) return;
     if (DB.cthPaint) { // a colour set was just picked: paint the chart once, then it is yours to change in the chart's own settings
       if (!paintChart(f, on, true)) return; // not ready yet: tried again on the next pass
-      DB.cthPaint = false; save(true); skinKey = [f.id, sym, on].join('|'); skinTimers.forEach(clearTimeout); // Vest re-applies its own colours as the chart settles: paint again after it
+      DB.cthPaint = false; CTH_HOLD = Date.now() + 25000; save(true); skinKey = [f.id, sym, on].join('|'); skinTimers.forEach(clearTimeout); // Vest re-applies its own colours as the chart settles: paint again after it
       skinTimers = [setTimeout(() => paintChart(f, DB.skin !== false, true), 1500), setTimeout(() => paintChart(f, DB.skin !== false, true), 4000)]; return;
     }
     if (f.id !== CTH_FRAME) { // a new chart: your picked set goes back on once, then it is yours to change in the chart's own settings
-      if (!paintChart(f, on, true)) return; CTH_FRAME = f.id; skinKey = [f.id, sym, on].join('|'); skinTimers.forEach(clearTimeout);
+      if (!paintChart(f, on, true)) return; CTH_FRAME = f.id; CTH_HOLD = Date.now() + 25000; skinKey = [f.id, sym, on].join('|'); skinTimers.forEach(clearTimeout);
       skinTimers = [setTimeout(() => paintChart(f, DB.skin !== false, true), 1500), setTimeout(() => paintChart(f, DB.skin !== false, true), 4000)]; return;
     }
+    if (Date.now() < CTH_HOLD && !sameColors()) paintChart(f, on, true); // Vest put its saved colours back: yours go on again
     const key = [f.id, sym, on].join('|'); if (key === skinKey) return;
     if (paintChart(f, on, false)) skinKey = key; // the frame's own dark and Vest's lines only: the candles are left alone
   }
