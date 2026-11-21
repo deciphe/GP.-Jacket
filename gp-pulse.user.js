@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.7.9
+// @version      1.8.0
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -2235,6 +2235,8 @@
       d.addEventListener('pointerdown', () => { CHDOWN = true; if (SHOT.kpOff) SHOT.kpOff(); }, true); ['pointerup', 'pointercancel'].forEach(t => d.addEventListener(t, () => { CHDOWN = false; }, true)); } catch (e) {}
   }
   if (DK.open) setTimeout(() => deskToggle(true), 1200);
+  // a cleaner Vest: no market-category rail beside the chart, no Feedback tab
+  (function clean() { const root = document.documentElement; if (!root) return setTimeout(clean, 30); if (document.getElementById('gpz-clean')) return; const st = document.createElement('style'); st.id = 'gpz-clean'; st.textContent = 'aside.h-full:has(> ul.space-y-2),aside.h-full:has(> ul.space-y-2) + div.w-px,div[class^="PostHogSurvey"]{display:none!important}'; root.appendChild(st); })();
   let lastPath = location.pathname;
   function freshLayout() { // forget what was measured on the old page: Vest builds a new one
     OCOL = null; SHOT.lastH = 0; bookDone = ''; skinKey = ''; tkFit(null);
