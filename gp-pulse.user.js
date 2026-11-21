@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.8.8
+// @version      1.8.9
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -2365,8 +2365,8 @@
     try { const proto = ch && Object.getPrototypeOf(ch); if (!proto || proto === Object.prototype || typeof proto.createOrderLine !== 'function') return; if (!proto.__gpzWrapped) { Object.defineProperty(proto, '__gpzWrapped', { value: 1 }); ['createOrderLine', 'createPositionLine'].forEach(m => { const o = proto[m]; if (typeof o === 'function') proto[m] = function () { return wrapLine(o.apply(this, arguments)); }; }); } } catch (e) {}
   }
   // chart colours: the canvas and candles, picked from the chart chip
-  if (DB.cthV !== 1) { DB.cthV = 1; DB.skin = false; DB.cthPaint = true; save(); } // Vest's own colours are the default
-  if (DB.cthV !== 2) { DB.cthV = 2; if (DB.skin === false) DB.cth = 'vest'; save(); } // the look and the chart's colours are picked apart now
+  if (!DB.cthV) { DB.cthV = 1; DB.skin = false; DB.cthPaint = true; save(); } // Vest's own colours are the default
+  if (DB.cthV < 2) { DB.cthV = 2; if (DB.skin === false) DB.cth = 'vest'; save(); } // the look and the chart's colours are picked apart now
   let CTH_FRAME = '', CTH_HOLD = 0; // after a load or a pick, your set is held while Vest restores its saved chart layout
   const sameColors = () => { const r = readChart(); if (!r) return true; const c = chartColors(), g = k => toHex(c[k]); return toHex(r.bg) === g('paneProperties.background') && toHex(r.up) === g('mainSeriesProperties.candleStyle.upColor') && toHex(r.dn) === g('mainSeriesProperties.candleStyle.downColor'); };
   function cTheme() { return allThemes().find(t => t.id === DB.cth) || CTHEMES[0]; }
