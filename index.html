@@ -5,36 +5,37 @@
 <meta name="description" content="GP. Entry for Vest. Risk-locked one-click ticket, trade managed from the chart, desk, copier, Zone.">
 <meta property="og:title" content="GP. Entry"><meta name="theme-color" content="#0b0b0b">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,500..800&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#0b0b0b;--cr:#e6e3dc;--dim:#8a877f;--mute:#4a4843;--mint:#9fd7b2;--rose:#e8988c}
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{background:var(--bg);color:var(--cr);font-family:Manrope,Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+html,body{background:var(--bg);color:var(--cr);font-family:Inter,system-ui,sans-serif;font-optical-sizing:auto;-webkit-font-smoothing:antialiased}
 a{color:inherit;text-decoration:none}
-.top{position:fixed;inset:0 0 auto;display:flex;justify-content:space-between;align-items:center;padding:24px clamp(16px,4vw,48px);z-index:9;mix-blend-mode:difference}
-.top b{font-size:17px;font-weight:800;letter-spacing:-.03em}.top b i{font-style:normal;color:#5a5852}
-.top span{font-size:11px;font-weight:800;letter-spacing:.24em;color:var(--dim);text-transform:uppercase}
-.hero{position:relative;min-height:100svh;display:flex;flex-direction:column;justify-content:center;padding:0 clamp(16px,6vw,96px);overflow:hidden}
-.moon{position:absolute;right:-12vmin;top:6vmin;width:78vmin;height:78vmin;border-radius:50%;background:radial-gradient(circle,rgba(230,227,220,.34) 1.3px,transparent 1.9px) 0 0/9px 9px;-webkit-mask:radial-gradient(circle at 34% 32%,#000 0,rgba(0,0,0,.65) 40%,rgba(0,0,0,.12) 64%,transparent 71%);mask:radial-gradient(circle at 34% 32%,#000 0,rgba(0,0,0,.65) 40%,rgba(0,0,0,.12) 64%,transparent 71%);animation:drift 40s ease-in-out infinite alternate}
-@keyframes drift{to{transform:translate(-2vmin,1.5vmin) rotate(4deg)}}
-.hz{position:absolute;left:0;right:0;bottom:22vh;height:1px;background:linear-gradient(90deg,transparent,rgba(230,227,220,.3),transparent)}
-h1{position:relative;font-size:clamp(76px,17vw,250px);font-weight:800;letter-spacing:-.065em;line-height:.86}
-h1 i{font-style:normal;color:#3a3935}
-.sub{position:relative;margin-top:28px;display:flex;flex-wrap:wrap;gap:10px 28px;font-size:clamp(14px,1.4vw,17px);font-weight:700;color:var(--dim)}
-.sub b{color:var(--cr)}
-.cta{position:relative;margin-top:44px;display:flex;flex-wrap:wrap;align-items:center;gap:14px 22px}
-.btn{display:inline-flex;align-items:center;gap:12px;height:58px;padding:0 30px;border-radius:14px;background:var(--mint);color:#0b0b0b;font-weight:800;font-size:16px;letter-spacing:-.01em;transition:transform .2s,box-shadow .2s}
-.btn:hover{transform:translateY(-2px);box-shadow:0 14px 40px rgba(159,215,178,.25)}
-.cta small{font-size:12px;font-weight:700;color:var(--mute);letter-spacing:.04em}.cta small a{color:var(--dim);border-bottom:1px solid #2a2927}
-.scroll{position:absolute;left:50%;bottom:28px;transform:translateX(-50%);font-size:10px;font-weight:800;letter-spacing:.3em;color:var(--mute)}
+.top,.bot{position:absolute;left:clamp(16px,3.4vw,66px);right:clamp(16px,3.4vw,66px);display:flex;justify-content:space-between;align-items:center;z-index:3;font-size:clamp(10px,.9vw,15px);font-weight:600;letter-spacing:.2em;color:#6f6c66;text-transform:uppercase}
+.top{top:clamp(20px,3.6vw,64px)}.bot{bottom:clamp(20px,3.6vw,64px)}
+.top b{color:var(--cr);letter-spacing:-.02em;text-transform:none;font-size:1.35em;font-weight:700}
+.bot a:hover{color:var(--cr)}
+.hero{position:relative;height:100svh;min-height:560px;overflow:hidden}
+.hero canvas{position:absolute;inset:0;width:100%;height:100%}
+.moonc{animation:breathe 11s ease-in-out infinite;-webkit-mask-image:linear-gradient(115deg,rgba(0,0,0,.6) 35%,#000 50%,rgba(0,0,0,.6) 65%);mask-image:linear-gradient(115deg,rgba(0,0,0,.6) 35%,#000 50%,rgba(0,0,0,.6) 65%);-webkit-mask-size:320% 100%;mask-size:320% 100%}
+@keyframes breathe{0%,100%{opacity:.8;-webkit-mask-position:100% 0;mask-position:100% 0}50%{opacity:1;-webkit-mask-position:0 0;mask-position:0 0}}
+.hw{position:absolute;left:0;right:0;top:var(--wy,30%);text-align:center;font-weight:700;letter-spacing:-.055em;line-height:1;z-index:2}
+.hw span{color:var(--cr)}.hw i{font-style:normal;color:#4a4843}
+.hw.r span{color:var(--rose)}
+.hw.r{transform:scaleY(-1);opacity:.13;-webkit-mask-image:linear-gradient(0deg,#000 0,transparent 70%);mask-image:linear-gradient(0deg,#000 0,transparent 70%);filter:blur(.6px);pointer-events:none}
+.ln{position:absolute;left:0;right:0;text-align:center;z-index:2;display:flex;flex-direction:column;align-items:center;gap:18px}
+.ln p{font-size:clamp(16px,1.35vw,24px);font-weight:600;color:#8a877f;letter-spacing:-.01em}.ln p b{color:var(--cr);font-weight:600}
+.btn{display:inline-flex;align-items:center;gap:12px;height:54px;padding:0 28px;border-radius:12px;background:var(--cr);color:#0b0b0b;font-weight:700;font-size:15px;letter-spacing:-.01em;transition:transform .2s,box-shadow .2s}
+.btn:hover{transform:translateY(-2px);box-shadow:0 14px 40px rgba(230,227,220,.15)}
+.ln small{font-size:12px;font-weight:600;color:#4a4843;letter-spacing:.06em}.ln small a{color:#8a877f}
 /* the stills */
 .show{position:relative;padding:12vh 0 8vh}
 .stage{position:relative;width:min(1400px,94vw);margin:0 auto;aspect-ratio:16/9;border-radius:22px;overflow:hidden;background:#111;box-shadow:0 0 0 1px rgba(230,227,220,.1),0 60px 140px rgba(0,0,0,.8)}
 .stage img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transform:scale(1.035);transition:opacity .9s ease,transform 6s ease-out}
 .stage img.on{opacity:1;transform:scale(1)}
 .cap{width:min(1400px,94vw);margin:34px auto 0;display:grid;grid-template-columns:1fr auto;align-items:end;gap:20px}
-.cap h2{font-size:clamp(52px,9vw,128px);font-weight:800;letter-spacing:-.06em;line-height:.9;transition:opacity .4s}
-.cap h2 em{font-style:normal;color:var(--mint)}
+.cap h2{font-size:clamp(52px,9vw,128px);font-weight:700;letter-spacing:-.055em;line-height:.9;transition:opacity .4s}
+.cap h2 em{font-style:normal;color:#4a4843}
 .cap p{font-size:12px;font-weight:800;letter-spacing:.22em;color:var(--dim);text-transform:uppercase;margin-top:12px}
 .nav{display:flex;align-items:center;gap:10px}
 .nav button{all:unset;cursor:pointer;width:48px;height:48px;border-radius:50%;display:grid;place-items:center;box-shadow:0 0 0 1px rgba(230,227,220,.18);font-size:18px;color:var(--cr);transition:background .2s}
@@ -48,7 +49,7 @@ h1 i{font-style:normal;color:#3a3935}
 @keyframes fill{to{width:100%}}
 .paused .bar i.on b{animation-play-state:paused}
 .foot{padding:16vh clamp(16px,6vw,96px) 10vh;display:grid;gap:30px;justify-items:start}
-.foot h3{font-size:clamp(44px,7vw,96px);font-weight:800;letter-spacing:-.06em;line-height:.92}
+.foot h3{font-size:clamp(44px,7vw,96px);font-weight:700;letter-spacing:-.055em;line-height:.92}
 .foot h3 i{font-style:normal;color:#3a3935}
 .end{display:flex;justify-content:space-between;padding:26px clamp(16px,4vw,48px);border-top:1px solid #1c1b19;font-size:11px;font-weight:800;letter-spacing:.24em;color:var(--mute)}
 
@@ -91,12 +92,11 @@ kbd{font:inherit;color:var(--cr);padding:.35em .6em;border-radius:6px;box-shadow
 .sw{display:flex;gap:1em;align-items:center;padding-top:1.1em;border-top:1px solid #232220}.sw span{display:flex;align-items:center;gap:.5em;font-size:.75em;font-weight:800;letter-spacing:.14em;color:var(--dim)}.sw i{width:1.9em;height:1.2em;border-radius:4px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.15)}.sw b{margin-left:auto;color:var(--mint);font-weight:800}
 @media (max-width:640px){.cap{grid-template-columns:1fr}.stage{border-radius:14px}.hz{bottom:14vh}}
 </style></head><body>
-<div class="top"><b>GIGAPROP<i>.</i></b><span>for Vest</span></div>
-<section class="hero"><div class="moon"></div><div class="hz"></div>
-  <h1>GP.<br>Entry<i>.</i></h1>
-  <div class="sub"><span><b>Risk</b> locked</span><span><b>One</b> click</span><span><b>Trim</b> · add · close</span><span><b>Desk</b> · copy · zone</span></div>
-  <div class="cta"><a class="btn" href="https://raw.githubusercontent.com/deciphe/gp-pulse/main/gp-pulse.user.js">Install ↓</a><small>needs <a href="https://www.tampermonkey.net/" rel="noopener">Tampermonkey</a> · next.vestmarkets.com</small></div>
-  <div class="scroll">SCROLL</div>
+<section class="hero" id="hero"><canvas class="moonc" id="mc"></canvas><canvas id="fx"></canvas>
+  <div class="top"><b>GP.</b><span>gigaprop.xyz</span></div>
+  <div class="hw" id="w1"><span>GP.</span><i>ENTRY</i></div>
+  <div class="ln" id="ln"><p><b>Trade the plan.</b></p><a class="btn" href="https://raw.githubusercontent.com/deciphe/gp-pulse/main/gp-pulse.user.js">Install ↓</a><small>Tampermonkey · <a href="https://next.vestmarkets.com" rel="noopener">next.vestmarkets.com</a></small></div>
+  <div class="bot"><span>for vest</span><a href="#show">every feature ↓</a></div>
 </section>
 <section class="show" id="show">
   <div class="stage" id="stage">
@@ -136,6 +136,36 @@ kbd{font:inherit;color:var(--cr);padding:.35em .6em;border-radius:6px;box-shadow
 </section>
 <section class="foot"><h3>Trade the plan<i>.</i><br>Nothing else<i>.</i></h3><a class="btn" href="https://raw.githubusercontent.com/deciphe/gp-pulse/main/gp-pulse.user.js">Install GP. Entry ↓</a></section>
 <div class="end"><span>GIGAPROP.XYZ</span><span>NOT AFFILIATED WITH VEST</span></div>
+<script>
+(() => {
+  const H = document.getElementById('hero'), mc = document.getElementById('mc'), fx = document.getElementById('fx'), w1 = document.getElementById('w1'), ln = document.getElementById('ln');
+  function moon(x, cx, cy, R, step, hz, flip, tint, alpha, u) {
+    for (let yy = -R; yy <= R; yy += step) for (let xx = -R; xx <= R; xx += step) { if (Math.hypot(xx, yy) > R) continue;
+      const lx = (xx + R * .34) / R, ly = (yy + R * .42) / R, lit = Math.max(0, 1 - Math.hypot(lx, ly) * .72), cr = Math.sin(xx * .021 / u) * Math.cos(yy * .017 / u) * .18 + Math.sin((xx + yy) * .009 / u) * .12;
+      const v = Math.max(0, Math.min(1, lit + cr * lit)), r = step * .42 * Math.pow(v, 1.1); if (r < .35) continue;
+      const py = flip ? 2 * hz - (cy + yy) : cy + yy; if (!flip && py > hz - 2 * u) continue; if (flip && py < hz + 2 * u) continue;
+      const fade = flip ? Math.max(0, 1 - (py - hz) / (R * 1.1)) : 1; x.fillStyle = `rgba(${tint},${(alpha * (.35 + .65 * v) * fade).toFixed(3)})`; x.beginPath(); x.arc(cx + xx, py, r, 0, 7); x.fill(); } }
+  function draw() {
+    const W = H.clientWidth, Ht = H.clientHeight, d = Math.min(2, devicePixelRatio || 1), wide = W / Ht > 1.2, u = Math.min(W, Ht) / 1000;
+    const hz = Ht * (wide ? .5 : .46), u0 = Math.min(W, Ht) / 1080, fs = Math.round((wide ? 132 : 150) * u0 * (W < 700 ? .62 : 1)); w1.style.fontSize = fs + 'px'; const wy = wide ? hz - 380 * u0 : hz * .3;
+    w1.style.top = wy + 'px'; ln.style.top = 'auto'; ln.style.bottom = Math.round((wide ? 120 : 110) * u0 + 40) + 'px';
+    [mc, fx].forEach(c => { c.width = W * d; c.height = Ht * d; });
+    const m = mc.getContext('2d'); m.setTransform(d, 0, 0, d, 0, 0); const uu = Math.min(W, Ht) / 1080, Rm = (wide ? 430 : 360) * uu, cx = W * (wide ? .72 : .66), cy = hz - Rm * .38, stp = Math.max(6, 8 * uu);
+    moon(m, cx, cy, Rm, stp, hz, false, '230,227,220', .36, uu);
+    const x = fx.getContext('2d'); x.setTransform(d, 0, 0, d, 0, 0);
+    let sd = 11; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+    const N = 150, pts = []; let v = 0; for (let i = 0; i < N; i++) { v += (rnd() - .46) * 1.2; pts.push(v); }
+    const lo = Math.min(...pts), hi = Math.max(...pts), x0 = W * .08, x1 = W * (wide ? .6 : .92), amp = (wide ? .11 : .1) * Ht, px = i => x0 + (x1 - x0) * i / (N - 1), py = i => hz - .045 * Ht - (pts[i] - lo) / (hi - lo) * amp;
+    const g = x.createLinearGradient(x0, 0, x1, 0); g.addColorStop(0, 'rgba(230,227,220,0)'); g.addColorStop(.4, 'rgba(230,227,220,.5)'); g.addColorStop(1, 'rgba(230,227,220,1)');
+    x.lineWidth = Math.max(1.4, 2.2 * u); x.lineJoin = 'round'; x.strokeStyle = g; x.beginPath(); pts.forEach((_, i) => i ? x.lineTo(px(i), py(i)) : x.moveTo(px(i), py(i))); x.stroke();
+    const ex = px(N - 1), ey = py(N - 1); x.fillStyle = '#e6e3dc'; x.beginPath(); x.arc(ex, ey, 5 * Math.max(.7, u), 0, 7); x.fill(); x.globalAlpha = .22; x.beginPath(); x.arc(ex, ey, 15 * Math.max(.7, u), 0, 7); x.fill(); x.globalAlpha = 1;
+    const gh = x.createLinearGradient(0, 0, W, 0); gh.addColorStop(0, 'rgba(230,227,220,0)'); gh.addColorStop(.5, 'rgba(230,227,220,.32)'); gh.addColorStop(1, 'rgba(230,227,220,0)'); x.fillStyle = gh; x.fillRect(0, hz - .6, W, 1.2);
+    for (let i = 0; i < 240; i++) { x.fillStyle = `rgba(230,227,220,${(rnd() * .16).toFixed(3)})`; x.beginPath(); x.arc(rnd() * W, rnd() * Ht, rnd() * 1.2 + .3, 0, 7); x.fill(); }
+    const vg = x.createRadialGradient(W * .55, hz, Math.min(W, Ht) * .25, W * .5, hz, Math.max(W, Ht) * .85); vg.addColorStop(0, 'rgba(11,11,11,0)'); vg.addColorStop(1, 'rgba(11,11,11,.85)'); x.fillStyle = vg; x.fillRect(0, 0, W, Ht);
+  }
+  let t = 0; addEventListener('resize', () => { clearTimeout(t); t = setTimeout(draw, 120); }); (document.fonts ? document.fonts.ready : Promise.resolve()).then(draw); draw();
+})();
+</script>
 <script>
 const S = [
  ['Risk<em>.</em>', 'stop in dollars · fees inside'],
