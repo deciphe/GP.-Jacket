@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.8.7
+// @version      1.8.8
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -102,6 +102,8 @@
   function fromOtherTab(nv) {
     if (!nv || typeof nv !== 'object') return; clearTimeout(saveT);
     ['pill', 'giga', 'gigaSkip'].forEach(k => { if (k in nv) DB[k] = nv[k]; });
+    { const was = JSON.stringify([DB.cth, DB.cthc, DB.cthd, DB.skin]); ['cth', 'cthc', 'cthd', 'cthV', 'skin', 'lst', 'abe', 'atr'].forEach(k => { if (k in nv) DB[k] = nv[k]; else delete DB[k]; }); // chart colours and switches picked in another tab: taken here too, so this tab never saves its old ones back
+      if (JSON.stringify([DB.cth, DB.cthc, DB.cthd, DB.skin]) !== was) try { CTH_FRAME = ''; skinKey = ''; applySkin(); } catch (e) {} }
     try { if (nv.copier && C) { SYNC_C.forEach(k => { if (k in nv.copier) C[k] = nv.copier[k]; }); DB.copier = C; } } catch (e) {}
     try { placePill(); } catch (e) {} try { renderDesk(); } catch (e) {} try { if (SP) renderShot(); } catch (e) {}
   }
