@@ -1,13 +1,14 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.8.0
+// @version      1.8.5
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
 // @run-at       document-start
 // @grant        GM_getValue
 // @grant        GM_setValue
+// @grant        GM_addValueChangeListener
 // @grant        unsafeWindow
 // @homepageURL  https://github.com/deciphe/gp-pulse
 // @updateURL    https://raw.githubusercontent.com/deciphe/gp-pulse/main/gp-pulse.user.js
@@ -96,6 +97,15 @@
   const DB = Object.assign({ purch: {}, pay: {}, aff: {}, wd: {}, full: 0, win: 'today', zone: null, zones: [], name: '', hero: '', layout: 'land', dayBase: {} }, GM_getValue('pulse', {}) || {});
   let saveT = 0;
   const save = now => { clearTimeout(saveT); if (now) GM_setValue('pulse', DB); else saveT = setTimeout(() => GM_setValue('pulse', DB), 800); };
+  // another Vest tab saved: take its copier choices and switches, so an older tab never writes stale ones back over yours
+  const SYNC_C = ['on', 'leader', 'pick', 'followers', 'mode', 'owned', 'opened', 'share', 'pre'];
+  function fromOtherTab(nv) {
+    if (!nv || typeof nv !== 'object') return; clearTimeout(saveT);
+    ['pill', 'giga', 'gigaSkip'].forEach(k => { if (k in nv) DB[k] = nv[k]; });
+    try { if (nv.copier && C) { SYNC_C.forEach(k => { if (k in nv.copier) C[k] = nv.copier[k]; }); DB.copier = C; } } catch (e) {}
+    try { placePill(); } catch (e) {} try { renderDesk(); } catch (e) {} try { if (SP) renderShot(); } catch (e) {}
+  }
+  try { if (typeof GM_addValueChangeListener === 'function') GM_addValueChangeListener('pulse', (k, o, nv, remote) => { if (remote) fromOtherTab(nv); }); } catch (e) {}
 
   async function syncHistory(full) {
     const P = await pages('/v3/payments/purchases', 'items', 'nextCursor', x => DB.purch[x.purchaseId || x.id], full);
@@ -302,6 +312,8 @@
   .p{position:relative;display:inline-flex;align-items:center;gap:10px;height:34px;padding:0 15px 0 13px;border-radius:8px;border:1px solid rgba(238,234,226,.12);background:#0b0b0b;color:#eeeae2;font:700 13px Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;cursor:pointer;white-space:nowrap;transition:border-color .4s,background .4s,opacity .4s}
   .p:hover{border-color:rgba(238,234,226,.32);background:#101010}
   .p.open{opacity:.45}
+  .rs{display:inline-flex;align-items:center;gap:7px;height:34px;margin-right:8px;padding:0 13px 0 11px;border-radius:8px;border:1px solid rgba(238,234,226,.12);background:#0b0b0b;color:#c9c7c2;font:700 12.5px Inter,system-ui,sans-serif;letter-spacing:-.01em;-webkit-font-smoothing:antialiased;cursor:pointer;white-space:nowrap}
+  .rs:hover{border-color:rgba(238,234,226,.32);color:#eeeae2}.rs svg{flex:none}.rs.ok{border-color:rgba(159,215,178,.6);color:#bfe6cb}
   .dot{position:relative;flex:none;width:8px;height:8px;border-radius:50%;background:#e6e3dc;animation:br 7s ease-in-out infinite}
   .dot:after{content:"";position:absolute;inset:-6px;border-radius:50%;border:1px solid rgba(230,227,220,.55);animation:ring 7s ease-out infinite}
   @keyframes br{0%,100%{transform:scale(.62);opacity:.5}42%{transform:scale(1.06);opacity:1}}
@@ -320,8 +332,9 @@
     if (PILL) return PILL;
     const host = document.createElement('div'); host.id = 'gpz-home';
     const R = host.attachShadow({ mode: 'open' });
-    R.innerHTML = `<style>${PCSS}</style><button class="p wait" aria-label="Open GP. Entry"><i class="dot"></i><b>GP.</b><span class="v" data-k="a">—</span><span class="l" data-k="al">spent today</span><i class="s" data-k="sep" hidden></i><span class="v" data-k="b" hidden></span><span class="l" data-k="bl" hidden>live</span></button>`;
+    R.innerHTML = `<style>${PCSS}</style><button class="rs" data-a="rs" title="Put the ticket and the desk back in place"><svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M2.5 8a5.5 5.5 0 1 0 1.7-3.98" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M2.2 2.2v3.6h3.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>reset</button><button class="p wait" aria-label="Open GP. Entry"><i class="dot"></i><b>GP.</b><span class="v" data-k="a">—</span><span class="l" data-k="al">spent today</span><i class="s" data-k="sep" hidden></i><span class="v" data-k="b" hidden></span><span class="l" data-k="bl" hidden>live</span></button>`;
     R.querySelector('.p').onclick = e => { e.stopPropagation(); OPEN ? closePanel() : openPanel(); };
+    R.querySelector('.rs').onclick = e => { e.stopPropagation(); const b = e.currentTarget; snapAll(); b.classList.add('ok'); setTimeout(() => b.classList.remove('ok'), 1200); };
     PILL = { host, R, btn: R.querySelector('.p'), k: n => R.querySelector(`[data-k="${n}"]`) };
     return PILL;
   }
@@ -332,7 +345,7 @@
   }
   function placePill() {
     if (!document.body) return;
-    const P = pill(), s = slot();
+    const P = pill(), s = slot(); P.btn.hidden = DB.pill !== true; // the spend pill is a choice in Settings; reset stays
     if (s) { if (P.host.parentElement !== s) { P.host.style.cssText = 'margin-right:4px;flex:none'; s.insertBefore(P.host, s.firstChild); } }
     else if (P.host.parentElement !== document.body) { P.host.style.cssText = 'position:fixed;left:14px;bottom:14px;z-index:2147483645'; document.body.appendChild(P.host); }
   }
@@ -712,10 +725,15 @@
   }
 
   // ---------- writes: the account's own token, an Idempotency-Key on every order ----------
-  async function acctToken(id) {
+  // only a live sign-in token can mint account tokens: an account's own token never can, and Vest swaps the sign-in token every 15 minutes
+  const userTok = () => { const c = AUTH && claims(AUTH); return c && c.userId && !c.accountId && (!c.exp || c.exp * 1000 > Date.now() + 5000) ? AUTH : null; };
+  async function freshTok(not, ms) { const t0 = Date.now(); while (Date.now() - t0 < ms) { const u = userTok(); if (u && u !== not) return u; await sleep(120); } return userTok() !== not ? userTok() : null; }
+  async function acctToken(id, again) {
     const a = ACCT[id]; if (a && a.exp - Date.now() > 60000) return a.tok;
-    if (!AUTH) throw new Error('waiting for Vest sign-in');
-    const r = await F0.call(W, API + '/v3/auth/account-token', { method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json', Authorization: AUTH }, body: JSON.stringify({ accountId: id }) });
+    const tok = userTok() || await freshTok(null, 4000);
+    if (!tok) throw new Error('waiting for Vest sign-in');
+    const r = await F0.call(W, API + '/v3/auth/account-token', { method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json', Authorization: tok }, body: JSON.stringify({ accountId: id }) });
+    if (r.status === 401 && !again) { if (AUTH === tok) AUTH = null; if (await freshTok(tok, 6000)) return acctToken(id, true); } // Vest just renewed its sign-in: wait for the new one, once
     if (!r.ok) throw new Error('Vest refused an account token (' + r.status + ')');
     const j = await r.json(); ACCT[id] = { tok: j.accessToken, exp: +j.accessExpiresAtMs || Date.now() + 6e5 }; return j.accessToken;
   }
@@ -776,6 +794,11 @@
     { id: 'paper', name: 'Paper', light: true, scale: '#2b2b2e', bg: '#d8d8d8', grid: 'rgba(55,55,57,0.08)', text: '#4a4a4d', up: '#fdfdfd', upB: '#373739', upW: '#373739', dn: '#373739', dnB: '#373739', dnW: '#373739' },
     { id: 'pastel', name: 'Pastel', light: true, scale: '#2a2d36', bg: '#d1d4dc', grid: 'rgba(27,30,40,0.07)', text: '#4a4d57', up: '#a5d6a7', upB: '#1b5e20', upW: '#1b5e20', dn: '#faa1a4', dnB: '#801922', dnW: '#801922' },
     { id: 'night', name: 'Night', bg: '#000000', grid: 'rgba(255,255,255,0.05)', text: '#8b8b92', up: '#163918', upB: '#81c784', upW: '#81c784', dn: '#481015', dnB: '#f7525f', dnW: '#f7525f' }];
+  const hex6 = v => /^#[0-9a-f]{6}$/i.test(v || '') ? v : null;
+  const myTheme = (c, id, name) => { const bg = hex6(c.bg) || '#121714', up = hex6(c.up) || '#00D98E', dn = hex6(c.dn) || '#E03737', n = parseInt(bg.slice(1), 16), lum = (0.299 * (n >> 16) + 0.587 * (n >> 8 & 255) + 0.114 * (n & 255)) / 255;
+    return Object.assign({ id, name, mine: true, bg, up, dn, upB: up, dnB: dn, upW: up, dnW: dn }, lum > 0.55 ? { light: true, scale: '#2b2b2e' } : {}); };
+  const allThemes = () => CTHEMES.concat((Array.isArray(DB.cthc) ? DB.cthc : []).map(c => myTheme(c, c.id, c.name)), DB.cthd ? [myTheme(DB.cthd, 'draft', 'Edit')] : []);
+  const ctgHtml = () => allThemes().filter(t => t.id !== 'draft').map(t => `<button data-cth="${esc(t.id)}" title="${esc(t.name)}"><span class="sw3"><i style="background:${t.bg}"></i><i style="background:${t.up};box-shadow:inset 0 0 0 1px ${t.upB}"></i><i style="background:${t.dn};box-shadow:inset 0 0 0 1px ${t.dnB}"></i></span><small>${esc(t.name)}</small>${t.mine ? `<em data-cdel="${esc(t.id)}" title="Delete">×</em>` : ''}</button>`).join('');
   SH.keys = Object.assign({ on: false, long: 'Alt+KeyB', short: 'Alt+KeyS', close: 'Alt+KeyX' }, SH.keys || {}); // keyboard shortcuts: off until switched on
   SH.chart = true;
   const saveSH = () => { DB.shot = SH; save(); };
@@ -1021,6 +1044,8 @@
   .ctm{position:absolute;top:44px;right:18px;z-index:31;display:flex;flex-direction:column;gap:2px;width:190px;padding:5px;border-radius:12px;border:1px solid rgba(238,234,226,.14);background:#101010;box-shadow:0 22px 50px -16px rgba(0,0,0,.9);animation:lin .18s ease-out}.ctm[hidden]{display:none}
   .ctm button{display:flex;align-items:center;gap:10px;height:28px;padding:0 10px;border:0;border-radius:8px;background:none;color:#c9c7c2;font:600 12px Inter,system-ui,sans-serif;cursor:pointer;text-align:left}
   .ctm button:hover{background:rgba(238,234,226,.06);color:#f1f1f3}.ctm button.on{background:rgba(238,234,226,.08);color:#f1f1f3}
+  .ctg button{position:relative}.ctg em{position:absolute;top:1px;right:3px;font-style:normal;font-size:11px;line-height:1;color:#6f6f75;display:none;padding:2px}.ctg button:hover em{display:block}.ctg em:hover{color:#e8988c}
+  .cted{display:flex;gap:2px;padding:3px 1px 2px}.cted label{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 2px;border-radius:8px;cursor:pointer;position:relative}.cted label:hover{background:rgba(238,234,226,.06)}.cted input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;border:0;padding:0}.cted i{width:22px;height:14px;border-radius:4px;box-shadow:inset 0 0 0 1px rgba(238,234,226,.18)}.cted small{font-size:9px;font-weight:700;letter-spacing:.12em;color:#8b8b92}.cted button:disabled{opacity:.35;cursor:default}.cted button{flex:1.2;justify-content:center;height:auto!important;color:#9fd7b2!important}
   .ctg{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px;padding:0 1px}.ctg .sw3{gap:1px;padding:2px}.ctg .sw3 i{width:6px;height:12px}.ctg .sw3 i:first-child{width:9px}.ctg button{flex-direction:column;justify-content:center;gap:5px;height:auto!important;padding:7px 2px!important}.ctg small{font-size:9.5px;font-weight:600;color:#8b8b92}.ctg button.on small{color:#f1f1f3}.ctm{width:236px!important}
   .ctt{padding:6px 10px 6px;font-size:13px;font-weight:800;color:#f1f1f3;border-bottom:1px solid rgba(238,234,226,.08);margin-bottom:2px}.ctm{max-height:min(560px,calc(100vh - 140px));overflow-y:auto;scrollbar-width:none}.cth{padding:6px 10px 3px;font-size:9.5px;font-weight:700;letter-spacing:.16em;color:#6f6f75}.ctr{display:flex;gap:2px}.ctr button{flex:1;justify-content:center;padding:0 6px}
   .sw3{display:inline-flex;gap:2px;padding:2px;border-radius:6px;background:rgba(238,234,226,.06)}.sw3 i{width:10px;height:14px;border-radius:2px}.sw3 i:first-child{width:14px}
@@ -1268,7 +1293,7 @@
       <div class="mw"><canvas class="moon" width="660" height="660"></canvas></div>
       <div class="hd" data-a="drag"><i class="dot"></i><div class="brand">GP.<span>SHOT</span></div><div class="sp"></div>
         <button class="ib" data-a="zone" title="Zone"><i></i><span data-k="zc">zone</span></button><button class="ib gr" data-a="cth" title="Settings" aria-label="Settings"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v2.6M12 18.9v2.6M4.6 4.6l1.9 1.9M17.5 17.5l1.9 1.9M2.5 12h2.6M18.9 12h2.6M4.6 19.4l1.9-1.9M17.5 6.5l1.9-1.9"/></svg><i class="cs" data-k="cts" hidden></i></button><button class="ib" data-a="copy" title="Copier"><i></i><span data-k="cp">desk</span></button><button class="ib" data-a="vest" title="Vest's ticket">Vest</button></div>
-      <div class="ctm" data-k="ctm" hidden><div class="ctt">Settings</div><span class="cth">LOOK</span><div class="ctr"><button data-look="vest">Vest</button><button data-look="gp">GP.</button></div><span class="cth">CHART</span><div class="ctg">${CTHEMES.map(t => `<button data-cth="${t.id}" title="${t.name}"><span class="sw3"><i style="background:${t.bg}"></i><i style="background:${t.up};box-shadow:inset 0 0 0 1px ${t.upB}"></i><i style="background:${t.dn};box-shadow:inset 0 0 0 1px ${t.dnB}"></i></span><small>${t.name}</small></button>`).join('')}</div><span class="cth">LINES</span><div class="ctr"><button data-lst="0">solid</button><button data-lst="2">dashed</button><button data-lst="1">dotted</button></div><span class="cth">CODE GIGA AT CHECKOUT</span><div class="ctr"><button data-giga="1" title="GIGA goes on every account you buy, in place of any other code">on</button><button data-giga="0">off</button></div><span class="cth">TRADE</span><div class="ctr"><button data-am="abe" title="Stop to break even once the trade reaches +1R">auto BE at 1R</button><button data-am="atr" title="After +1R the stop locks profit in 0.5R steps">trail 0.5R</button></div><span class="cth">TOOLS</span><div class="ctr"><button data-a="keys" title="Keyboard shortcuts">keys</button><button data-a="snap" title="Put the ticket, the desk and the chart back in place">reset layout</button></div></div>
+      <div class="ctm" data-k="ctm" hidden><div class="ctt">Settings</div><span class="cth">LOOK</span><div class="ctr"><button data-look="vest">Vest</button><button data-look="gp">GP.</button></div><span class="cth">CHART</span><div class="ctg" data-k="ctg"></div><div class="cted"><label title="Background"><input type="color" data-cc="bg"><i></i><small>BG</small></label><label title="Up candles"><input type="color" data-cc="up"><i></i><small>UP</small></label><label title="Down candles"><input type="color" data-cc="dn"><i></i><small>DOWN</small></label><button data-a="csave" title="Save these colours as a set">save</button></div><span class="cth">LINES</span><div class="ctr"><button data-lst="0">solid</button><button data-lst="2">dashed</button><button data-lst="1">dotted</button></div><span class="cth">CODE GIGA AT CHECKOUT</span><div class="ctr"><button data-giga="1" title="GIGA goes on every account you buy, in place of any other code">on</button><button data-giga="0">off</button></div><span class="cth">TRADE</span><div class="ctr"><button data-am="abe" title="Stop to break even once the trade reaches +1R">auto BE at 1R</button><button data-am="atr" title="After +1R the stop locks profit in 0.5R steps">trail 0.5R</button></div><span class="cth">GP. PILL</span><div class="ctr"><button data-pil="1">on</button><button data-pil="0">off</button></div><span class="cth">TOOLS</span><div class="ctr"><button data-a="keys" title="Keyboard shortcuts">keys</button><button data-a="snap" title="Put the ticket, the desk and the chart back in place">reset layout</button></div></div>
       <div class="mk"><b><em data-k="px">—</em><i class="fr" data-k="fr"></i></b><span data-k="ac">—</span></div>
       <div class="mst"><div class="msg" data-k="msg"></div></div>
       <div class="lvp" data-k="lvp" hidden><div class="lvh"><span>LEVERAGE</span><b data-k="lvv">—</b></div><input type="range" data-k="lvr" min="1" max="50" step="1" aria-label="Leverage"><div class="lvf"><span>1x</span><button data-a="levmax">max <span data-k="lvm"></span></button></div></div>
@@ -1364,9 +1389,15 @@
     on('cth', () => { ctm.hidden = !ctm.hidden; renderShot(); });
     R.querySelectorAll('[data-look]').forEach(b => b.onclick = () => { DB.skin = b.dataset.look !== 'vest'; save(true); ctm.hidden = true; skinKey = ''; vestPanels(); applySkin(); renderShot(); drawChart(); });
     R.querySelectorAll('[data-am]').forEach(b => b.onclick = () => { DB[b.dataset.am] = !DB[b.dataset.am]; save(true); renderShot(); });
+    R.querySelectorAll('[data-pil]').forEach(b => b.onclick = () => { DB.pill = b.dataset.pil === '1'; save(true); ctm.hidden = true; placePill(); if (!DB.pill && OPEN) closePanel(); renderShot(); });
     R.querySelectorAll('[data-giga]').forEach(b => b.onclick = () => { DB.giga = b.dataset.giga === '1'; DB.gigaSkip = 0; save(true); ctm.hidden = true; renderShot(); });
     R.querySelectorAll('[data-lst]').forEach(b => b.onclick = () => { DB.lst = +b.dataset.lst; save(true); ctm.hidden = true; renderShot(); drawChart(); });
-    R.querySelectorAll('[data-cth]').forEach(b => b.onclick = () => { DB.cth = b.dataset.cth; DB.cthPaint = true; save(true); ctm.hidden = true; skinKey = ''; applySkin(); renderShot(); });
+    const paintNow = () => { DB.cthPaint = true; save(true); skinKey = ''; applySkin(); renderShot(); };
+    k('ctg').addEventListener('click', e => { const d = e.target.closest('[data-cdel]'); if (d) { e.stopPropagation(); DB.cthc = (DB.cthc || []).filter(c => c.id !== d.dataset.cdel); if (DB.cth === d.dataset.cdel) DB.cth = 'vest'; paintNow(); return; }
+      const b = e.target.closest('[data-cth]'); if (!b) return; DB.cth = b.dataset.cth; ctm.hidden = true; paintNow(); });
+    R.querySelectorAll('[data-cc]').forEach(inp => inp.oninput = () => { const t = cTheme(), d = { bg: t.bg, up: t.up, dn: t.dn }; d[inp.dataset.cc] = inp.value; DB.cthd = d; DB.cth = 'draft'; paintNow(); });
+    on('csave', () => { const t = cTheme(), L = Array.isArray(DB.cthc) ? DB.cthc : []; if (L.length >= 10) L.shift(); let n = 1; while (L.some(c => c.name === 'Mine ' + n)) n++;
+      const c = { id: 'u' + Date.now().toString(36), name: 'Mine ' + n, bg: hex6(t.bg) || '#121714', up: hex6(t.up) || '#00D98E', dn: hex6(t.dn) || '#E03737' }; L.push(c); DB.cthc = L; DB.cth = c.id; delete DB.cthd; paintNow(); });
     R.addEventListener('pointerdown', e => { if (!ctm.hidden && !e.composedPath().some(n => n === ctm || (n.dataset && n.dataset.a === 'cth'))) { ctm.hidden = true; renderShot(); } });
     const kp = k('kp');
     on('snap', () => { k('ctm').hidden = true; snapAll(); });
@@ -1588,10 +1619,14 @@
         const lg = { long: K.long, short: K.short, close: K.close, add: pos && (/^l/i.test(pos.side) ? K.long : K.short) };
         R.querySelectorAll('[data-kk]').forEach(m => { const v = K.on && lg[m.dataset.kk] ? keyName(lg[m.dataset.kk]) : ''; m.textContent = v; m.hidden = !v; }); }
       { const t = cTheme(); k('cts').style.background = t.id === 'massive' ? '#e6e3dc' : t.id === 'vest' ? '#00D98E' : t.bg; R.querySelector('[data-a=cth]').classList.toggle('on', !k('ctm').hidden);
+        { const g = k('ctg'), h = ctgHtml(); if (g.__h !== h) { g.innerHTML = h; g.__h = h; } }
         R.querySelectorAll('[data-cth]').forEach(b => b.classList.toggle('on', b.dataset.cth === t.id));
+        R.querySelectorAll('[data-cc]').forEach(inp => { const v = hex6(t[inp.dataset.cc]) || '#000000'; if (inp !== R.activeElement && inp.value !== v.toLowerCase()) inp.value = v.toLowerCase(); inp.nextElementSibling.style.background = v; });
+        { const sv = R.querySelector('[data-a=csave]'); sv.disabled = !(t.id === 'draft' || !t.mine); }
         R.querySelectorAll('[data-look]').forEach(b => b.classList.toggle('on', (b.dataset.look === 'vest') === (DB.skin === false)));
         R.querySelectorAll('[data-lst]').forEach(b => b.classList.toggle('on', +b.dataset.lst === lineStyle()));
         R.querySelectorAll('[data-giga]').forEach(b => b.classList.toggle('on', (b.dataset.giga === '1') === (DB.giga !== false)));
+        R.querySelectorAll('[data-pil]').forEach(b => b.classList.toggle('on', (b.dataset.pil === '1') === (DB.pill === true)));
         R.querySelectorAll('[data-am]').forEach(b => b.classList.toggle('on', !!DB[b.dataset.am])); }
       const side = SH.side || 'long';
       R.querySelectorAll('[data-sd]').forEach(b => b.classList.toggle('on', b.dataset.sd === side));
@@ -1891,7 +1926,7 @@
   // ---------- GP. Desk: every account's open and today PnL, closed whole or in part with one click ----------
   // Docks under the ticket (over Vest's Account Health card); drag it out to float, double-click its header to dock it back.
   // A cut on a copy follower moves its share down first, so the copier keeps the smaller size instead of topping it back up.
-  // A cut on the leader is mirrored by the copier on every follower.
+  // A cut on the leader is copied on every follower.
   if (DB.deskV !== 2) { DB.desk = Object.assign({}, DB.desk, { open: true, side: true }); DB.deskV = 2; } // the desk loads open, at the chart's left
   const DK = Object.assign({ open: true, dock: true, side: true, all: false, tab: 'acc', x: null, y: null, sort: 'auto', big: false }, DB.desk || {});
   DK.busy = {}; DK.msg = ''; DK.tone = ''; DK.msgAt = 0;
@@ -2157,7 +2192,7 @@
         <div class="v vt ${tone(r.today)}">${fm(r.today, { sign: true })}</div>
         <div class="ac">${btn(10, '10')}${btn(20, '20')}${btn(25, '25')}${btn(50, '50')}${btn(100, '×', ' cl')}</div></div>`;
     }).join('');
-    if (k('rows').innerHTML !== html) k('rows').innerHTML = html || '<div class="none">' + (tab === 'acc' ? 'reading your accounts' : 'nothing open') + '</div>';
+    const rowsEl = k('rows'); if (rowsEl.__h !== html) rowsEl.__h = html, rowsEl.innerHTML = html || '<div class="none">' + (tab === 'acc' ? 'reading your accounts' : 'nothing open') + '</div>';
     const fresh = DK.msg && Date.now() - DK.msgAt < 9000, n = (pruneFollowers(), nFollow());
     const lg = C.log[0], lgFresh = lg && Date.now() - lg.t < 60000;
     const hm = t => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), m = k('m'); m.textContent = fresh ? DK.msg + ' · ' + hm(DK.msgAt) : tab === 'acc' && lgFresh ? lg.msg + ' · ' + hm(lg.t) : C.on ? 'copying ' + n : live.length + ' of ' + rows.length + ' in trade'; m.className = 'm ' + (fresh ? DK.tone : tab === 'acc' && lgFresh && lg.bad ? 'bad' : '');
@@ -2250,7 +2285,7 @@
   addEventListener('popstate', reflowSoon);
   function snapAll() { // the reset: everything back in its place
     SH.dock = true; SH.x = SH.y = null; SH.on = true; saveSH();
-    Object.assign(DK, { open: true, side: true, dock: true, x: null, y: null }); saveDK();
+    Object.assign(DK, { open: true, side: true, dock: true, big: false, tab: 'acc', x: null, y: null }); saveDK();
     DB.colF = null; save(true); freshLayout(); deskHost(); renderDesk();
     layoutCols(); placeShot(); placeDesk(); setTimeout(() => { layoutCols(); placeShot(); placeDesk(); }, 300);
     shotMsg('snapped back', 'ok');
@@ -2325,7 +2360,7 @@
   if (DB.cthV !== 1) { DB.cthV = 1; DB.skin = false; DB.cthPaint = true; save(); } // Vest's own colours are the default
   if (DB.cthV !== 2) { DB.cthV = 2; if (DB.skin === false) DB.cth = 'vest'; save(); } // the look and the chart's colours are picked apart now
   let CTH_FRAME = '';
-  function cTheme() { return CTHEMES.find(t => t.id === DB.cth) || CTHEMES[0]; }
+  function cTheme() { return allThemes().find(t => t.id === DB.cth) || CTHEMES[0]; }
   function chartColors() { return cTheme().id === 'vest' ? Object.assign({}, VEST_CHART) : skinOverrides(); }
   function skinOverrides() {
     const o = { 'paneProperties.backgroundType': 'solid', 'paneProperties.background': MS.bg, 'paneProperties.backgroundGradientStartColor': MS.bg, 'paneProperties.backgroundGradientEndColor': MS.bg,
