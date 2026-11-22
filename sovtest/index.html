@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Sovereign Terminal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@500;600&family=Geist+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ground:#0b0b0c;--surface:#0e0e0f;--raised:#141415;--line:rgba(238,235,229,.07);--line-2:rgba(238,235,229,.14);
+  --ink:#eeebe5;--ink-2:#c3c0b9;--mute:#8a877f;--faint:#55534e;
+  --up:#7fd1ae;--down:#e88f86;--accent:#8fd3c4;--pool:#a9a3d6;
+  --sans:"Geist","Inter",ui-sans-serif,system-ui,sans-serif;--mono:"Geist Mono",ui-monospace,"SF Mono",Menlo,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--ground);color:var(--ink);font:500 13px/1.45 var(--sans);-webkit-font-smoothing:antialiased;overflow:hidden}
+a{color:inherit;text-decoration:none}
+.lbl{font:600 10.5px/1 var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--mute)}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+.app{height:100vh;display:grid;grid-template-rows:44px 1fr 112px;grid-template-columns:392px 1fr 300px;grid-template-areas:"top top top" "acc chart map" "acc tape tape"}
+
+/* top bar */
+.top{grid-area:top;display:flex;align-items:center;gap:28px;padding:0 20px;border-bottom:1px solid var(--line)}
+.mark{display:flex;align-items:center;font:600 12px/1 var(--sans);letter-spacing:.32em}
+.tk{display:flex;gap:22px;margin-left:12px}
+.tk span{display:flex;gap:8px;align-items:baseline;font:500 12px var(--mono)}
+.tk em{font-style:normal;color:var(--mute);font-family:var(--sans);font-weight:600;font-size:10.5px;letter-spacing:.14em}
+.up{color:var(--up)}.dn{color:var(--down)}
+.top .r{margin-left:auto;display:flex;align-items:center;gap:22px}
+.live{display:flex;align-items:center;gap:8px}
+.live b{width:6px;height:6px;border-radius:50%;background:var(--up);box-shadow:0 0 0 3px rgba(127,209,174,.14);animation:pulse 2.4s ease-in-out infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 6px rgba(127,209,174,0)}}
+.sim{white-space:nowrap;padding:5px 8px;border:1px solid var(--line-2);border-radius:6px}
+
+/* access */
+.acc{grid-area:acc;border-right:1px solid var(--line);padding:26px 28px 24px;display:flex;flex-direction:column;position:relative;overflow:hidden}
+.boot{font:500 11.5px/1.85 var(--mono);color:var(--faint);min-height:150px}
+.boot div{white-space:pre;opacity:0;transform:translateY(3px);transition:opacity .25s,transform .25s}
+.boot div.on{opacity:1;transform:none}
+.boot .ok{color:var(--up)}.boot .lk{color:var(--down)}.boot .w{color:var(--ink-2)}
+.gate{margin-top:auto;opacity:0;transform:translateY(8px);transition:opacity .6s cubic-bezier(.2,.9,.25,1),transform .6s cubic-bezier(.2,.9,.25,1)}
+.gate.on{opacity:1;transform:none}
+.state{display:flex;align-items:center;justify-content:space-between;padding-bottom:16px;border-bottom:1px solid var(--line)}
+.state .lk{display:flex;align-items:center;gap:8px;color:var(--down)}
+.state .lk b{width:7px;height:7px;border:1.5px solid var(--down);border-radius:2px}
+h1{margin:26px 0 0;font:600 34px/1.04 var(--sans);letter-spacing:-.035em;max-width:320px}
+h1 span{color:var(--faint)}
+.plan{margin-top:24px;display:flex;align-items:baseline;gap:10px}
+.plan b{font:600 13px var(--sans)}
+.plan .p{margin-left:auto;font:600 13px var(--mono)}
+.plan s{font:500 12px var(--mono);color:var(--faint)}
+.btns{margin-top:18px;display:grid;gap:8px}
+.btn{height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-radius:10px;font:600 13px var(--sans);transition:background .12s,border-color .12s,color .12s}
+.btn.p{background:var(--ink);color:var(--ground)}
+.btn.p:hover{background:#fff}
+.btn.s{border:1px solid var(--line-2);color:var(--ink-2)}
+.btn.s:hover{border-color:rgba(238,235,229,.3);color:var(--ink)}
+.btn .k{font:500 11px var(--mono);opacity:.55}
+.key{margin-top:16px;display:flex;align-items:center;gap:14px;padding:12px 14px;border:1px dashed var(--line-2);border-radius:10px;cursor:pointer;user-select:none;transition:border-color .12s}
+.key:hover{border-color:var(--accent)}
+.key code{font:600 15px var(--mono);letter-spacing:.14em;color:var(--accent)}
+.key span{color:var(--mute);font-size:12px}
+.key em{margin-left:auto;font-style:normal}
+.foot{margin-top:18px;display:flex;justify-content:space-between;color:var(--faint);font-size:12px}
+.foot a:hover{color:var(--ink)}
+
+.lvls{margin-top:26px;display:grid;gap:0;opacity:0;transition:opacity .6s}
+.lvls.on{opacity:1}
+.lv{display:grid;grid-template-columns:1fr auto 86px;align-items:center;height:34px;border-top:1px solid var(--line);font:500 12px var(--mono)}
+.lv:last-child{border-bottom:1px solid var(--line)}
+.lv .d{text-align:right;color:var(--mute)}
+.lv .d.near{color:var(--ink)}
+/* chart */
+.chart{grid-area:chart;position:relative;overflow:hidden}
+.chart canvas{position:absolute;inset:0;width:100%;height:100%}
+.legend{position:absolute;left:18px;top:14px;display:flex;gap:18px;align-items:baseline;pointer-events:none}
+.legend .s{font:600 13px var(--sans)}
+.legend .o{font:500 11.5px var(--mono);color:var(--mute)}
+.legend .o b{font-weight:500;color:var(--ink-2)}
+
+/* gamma map */
+.map{grid-area:map;border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.mh{padding:14px 16px 12px;border-bottom:1px solid var(--line)}
+.mh .row{display:flex;justify-content:space-between;align-items:baseline}
+.net{margin-top:12px;font:600 22px var(--mono);letter-spacing:-.02em}
+.tabs{display:flex;gap:14px}
+.tabs button{all:unset;cursor:pointer;font:600 10.5px var(--sans);letter-spacing:.14em;color:var(--faint);padding-bottom:3px;border-bottom:1px solid transparent}
+.tabs button.on{color:var(--ink);border-color:var(--ink)}
+.lad{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center;padding:6px 0}
+.lr{display:grid;grid-template-columns:64px 1fr;align-items:stretch;height:24px;font:500 11.5px var(--mono)}
+.lr .st{display:flex;align-items:center;justify-content:flex-end;padding-right:10px;color:var(--mute)}
+.lr .v{display:flex;align-items:center;justify-content:space-between;padding:0 12px;margin:1px 10px 1px 0;border-radius:4px;transition:background .25s,color .25s}
+.lr .v i{font-style:normal;font:600 9.5px var(--sans);letter-spacing:.12em;opacity:.8}
+.lr.px .st{color:var(--ink)}
+.lr.px .v{box-shadow:inset 0 0 0 1px var(--line-2)}
+
+/* tape */
+.tape{grid-area:tape;border-top:1px solid var(--line);display:grid;grid-template-rows:38px 1fr;min-width:0;overflow:hidden}
+.th{display:flex;align-items:center;gap:18px;padding:0 18px;border-bottom:1px solid var(--line)}
+.th .sum{color:var(--ink-2);font-size:12.5px}
+.th .sum b{font:500 12px var(--mono)}
+.strip{position:relative;overflow:hidden}
+.flow{position:absolute;left:0;top:0;bottom:0;display:flex;align-items:center;gap:0;white-space:nowrap;will-change:transform}
+.pr{display:flex;align-items:baseline;gap:10px;padding:0 22px;border-right:1px solid var(--line);font:500 11.5px var(--mono);color:var(--mute);height:40px;align-items:center}
+.pr .t{color:var(--faint)}
+.pr .sy{color:var(--ink);font-weight:600}
+.pr .ty{font:600 9.5px var(--sans);letter-spacing:.14em}
+.pr .pm{color:var(--ink)}
+
+@media (max-width:1100px){.app{grid-template-columns:360px 1fr 0}.map{display:none}}
+@media (max-width:760px){
+  html,body{height:auto;overflow:visible}
+  .app{height:auto;display:flex;flex-direction:column}
+  .top{height:44px;padding:0 16px;gap:14px}.tk,.top .r .clock{display:none}.top{overflow:hidden}.legend{flex-direction:column;gap:4px}
+  .acc{border:0;padding:22px 16px 26px;order:2}
+  .boot{min-height:0;font-size:11px}
+  .gate{margin-top:22px}
+  h1{font-size:30px}
+  .chart{height:340px;order:1;border-bottom:1px solid var(--line)}
+  .map{display:flex;order:3;border:0;border-top:1px solid var(--line)}
+  .lad{flex:none}
+  .tape{order:4;height:112px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="mark">SOVEREIG<span style="letter-spacing:0">N</span><span style="color:var(--accent);letter-spacing:0;margin-left:.08em">.</span></div>
+    <div class="tk">
+      <span><em>NQ</em><b id="tNQ">–</b><b id="cNQ" class="up">–</b></span>
+      <span><em>ES</em><b id="tES">–</b><b id="cES" class="up">–</b></span>
+      <span><em>NET GEX</em><b id="tG">–</b></span>
+    </div>
+    <div class="r">
+      <span class="live lbl"><b></b><span id="sess">LIVE</span></span>
+      <span class="lbl num clock" id="clk">–</span>
+      <span class="lbl sim">Simulated data</span>
+    </div>
+  </header>
+
+  <aside class="acc">
+    <div class="boot" id="boot"></div>
+    <div class="lvls" id="lvls"></div>
+    <div class="gate" id="gate">
+      <div class="state"><span class="lbl">Terminal access</span><span class="lbl lk"><b></b>Locked</span></div>
+      <h1>See where price is forced to go.<span> Every level, live.</span></h1>
+      <div class="plan"><b>Sovereign Pro</b><span class="lbl">3 days free</span><span class="p">$200<span class="lbl"> / mo</span></span><s>$250</s></div>
+      <div class="btns">
+        <a class="btn p" href="https://whop.com/the-sovereign-analyst/products/sovereign-analyst-pro/" target="_blank" rel="noopener">Start 3 days free<span class="k">↗</span></a>
+        <a class="btn s" href="https://whop.com/the-sovereign-analyst/products/sovereign-analyst-pro/" target="_blank" rel="noopener">Sign in with Whop<span class="k">↗</span></a>
+      </div>
+      <div class="key" id="key" title="Copy code"><code>SAPRO50</code><span>50% off month one</span><em class="lbl" id="keyS">Copy</em></div>
+      <div class="foot"><span>Cancel any time in Whop</span><a href="https://thesovereignanalyst.com/" target="_blank" rel="noopener">thesovereignanalyst.com ↗</a></div>
+    </div>
+  </aside>
+
+  <main class="chart" id="chart">
+    <canvas id="cv"></canvas>
+    <div class="legend"><span class="s">NQ · 5m</span><span class="o" id="ohlc"></span></div>
+  </main>
+
+  <section class="map">
+    <div class="mh">
+      <div class="row"><span class="lbl">Gamma map</span><div class="tabs" id="tabs"><button>0DTE</button><button>Week</button><button class="on">All</button></div></div>
+      <div class="net num" id="net">–</div>
+    </div>
+    <div class="lad" id="lad"></div>
+  </section>
+
+  <section class="tape">
+    <div class="th"><span class="lbl">Flow</span><span class="sum" id="sum"></span></div>
+    <div class="strip"><div class="flow" id="flow"></div></div>
+  </section>
+</div>
+
+<script>
+(() => {
+'use strict';
+// ---------- seeded randomness ----------
+let seed = 7;
+const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+const nrm = () => { let u = 0, v = 0; while (!u) u = rnd(); while (!v) v = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(6.283 * v); };
+const $ = id => document.getElementById(id);
+const MINUS = '−';
+const fmtP = p => p.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtM = (v, sign) => { const a = Math.abs(v), s = v < 0 ? MINUS : (sign ? '+' : '');
+  return s + '$' + (a >= 1000 ? (a / 1000).toFixed(1) + 'B' : a >= 1 ? a.toFixed(1) + 'M' : Math.round(a * 1000) + 'K'); };
+
+// ---------- levels (illustrative) ----------
+const CALL = 25600, ZERO = 25400, PUT = 25150, POOL = 25310, STEP = 25;
+const gex = (s, t) => 620 * Math.exp(-(((s - CALL) / 85) ** 2)) + 190 * Math.tanh((s - ZERO) / 110) - 470 * Math.exp(-(((s - PUT) / 75) ** 2))
+  + 60 * Math.sin(s / 37 + t * .0004) * Math.exp(-(((s - ZERO) / 300) ** 2));
+
+// ---------- price: tick random walk with clustered volatility, fat tails, soft walls ----------
+const TICKS = 12, N = 96;
+let p = 25455, reg = 1, tgt = 25455, bars = [], cur = null, sub = 0;
+function tick() {
+  if (rnd() < .02) tgt = ZERO + nrm() * 120;
+  reg = Math.max(.4, Math.min(3, reg * Math.exp(nrm() * .22) + (1 - reg) * .05)); if (rnd() < .012) reg *= 1.9;
+  const fat = rnd() < .04 ? 3 : 1;
+  p += nrm() * fat * 3.1 * reg + (tgt - p) * .006;
+  if (p > CALL) p -= (p - CALL) * (.25 + rnd() * .5);
+  if (p < PUT) p += (PUT - p) * (.25 + rnd() * .5);
+  p = Math.round(p * 4) / 4;
+  if (!cur) cur = { o: p, h: p, l: p, c: p };
+  cur.h = Math.max(cur.h, p); cur.l = Math.min(cur.l, p); cur.c = p;
+  if (++sub >= TICKS) { bars.push(cur); if (bars.length > N) bars.shift(); cur = null; sub = 0; }
+}
+for (let i = 0; i < N * TICKS; i++) tick();
+const open0 = bars[0].o;
+
+// ---------- chart ----------
+const cv = $('cv'), cx = cv.getContext('2d');
+let W = 0, H = 0, dpr = 1, mouse = null;
+function size() { const r = cv.getBoundingClientRect(); dpr = Math.min(2, window.devicePixelRatio || 1); W = r.width; H = r.height; cv.width = W * dpr; cv.height = H * dpr; cx.setTransform(dpr, 0, 0, dpr, 0, 0); }
+new ResizeObserver(size).observe(cv); size();
+cv.addEventListener('mousemove', e => { const r = cv.getBoundingClientRect(); mouse = { x: e.clientX - r.left, y: e.clientY - r.top }; });
+cv.addEventListener('mouseleave', () => mouse = null);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const C = { up: css('--up'), dn: css('--down'), ac: css('--accent'), pool: css('--pool'), ink: css('--ink'), mute: css('--mute'), faint: css('--faint') };
+const rgba = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${n >> 8 & 255},${n & 255},${a})`; };
+
+function draw(t) {
+  if (!W) return;
+  cx.clearRect(0, 0, W, H);
+  const AX = 74, top = 54, bot = H - 28, hi = CALL + 70, lo = PUT - 70;
+  const y = v => top + (hi - v) / (hi - lo) * (bot - top);
+  const pw = W - AX, all = cur ? bars.concat([cur]) : bars, gap = W > 600 ? 178 : 120, cw = (pw - gap) / (N + 1);
+
+  // halftone gamma field: rows are price, columns are time, dot size is |gamma|
+  const rows = Math.floor((bot - top) / 9), cols = Math.floor(pw / 9);
+  for (let r = 0; r <= rows; r++) {
+    const yy = top + r * 9, s = hi - (yy - top) / (bot - top) * (hi - lo);
+    const g = gex(s, t), a = Math.min(1, Math.abs(g) / 620);
+    if (a < .06) continue;
+    cx.fillStyle = rgba(g > 0 ? C.up : C.dn, .07 + a * .2);
+    for (let c = 0; c < cols; c++) {
+      const fade = c / cols, rr = a * 2.4 * (.35 + .65 * fade) * (.85 + .15 * Math.sin(c * .7 + r * 1.3 + t * .0012));
+      if (rr < .35) continue;
+      cx.beginPath(); cx.arc(c * 9 + 4.5, yy, rr, 0, 6.283); cx.fill();
+    }
+  }
+
+  // price grid
+  cx.font = '500 11px ' + css('--mono'); cx.textBaseline = 'middle'; cx.textAlign = 'left';
+  for (let v = Math.ceil(lo / 50) * 50; v <= hi; v += 50) { if ([CALL, ZERO, POOL, PUT].some(L => Math.abs(y(L) - y(v)) < 14 && L !== v)) continue;
+    cx.fillStyle = 'rgba(238,235,229,.035)'; cx.fillRect(0, Math.round(y(v)), pw, 1);
+    cx.fillStyle = C.faint; cx.fillText(v.toLocaleString('en-US'), pw + 12, y(v));
+  }
+
+  // levels
+  const lvl = (v, col, name, val, dash) => { if (W < 600) val = '';
+    const yy = Math.round(y(v)) + .5;
+    cx.strokeStyle = rgba(col, .55); cx.lineWidth = 1; cx.setLineDash(dash); cx.beginPath(); cx.moveTo(0, yy); cx.lineTo(pw, yy); cx.stroke(); cx.setLineDash([]);
+    cx.font = '600 9.5px ' + css('--sans'); const lab = name, lw = cx.measureText(lab).width;
+    cx.font = '500 11px ' + css('--mono'); const vw = cx.measureText(val).width;
+    const bw = lw + vw + (val ? 30 : 20), bx = pw - gap + 14;
+    cx.fillStyle = 'rgba(11,11,12,.9)'; rr(bx, yy - 11, bw, 22, 5); cx.fill();
+    cx.strokeStyle = rgba(col, .4); rr(bx, yy - 11, bw, 22, 5); cx.stroke();
+    cx.fillStyle = col; cx.font = '600 9.5px ' + css('--sans'); cx.fillText(lab, bx + 10, yy + .5);
+    cx.fillStyle = C.ink; cx.font = '500 11px ' + css('--mono'); cx.fillText(val, bx + 20 + lw, yy + .5);
+    cx.fillStyle = col; cx.fillText(v.toLocaleString('en-US'), pw + 12, yy);
+  };
+  lvl(CALL, C.up, 'CALL WALL', fmtM(gex(CALL, t), true), [5, 4]);
+  lvl(ZERO, C.ac, 'ZERO γ', 'FLIP', [2, 4]);
+  lvl(POOL, C.pool, 'DARK POOL', '$412M', [1, 3]);
+  lvl(PUT, C.dn, 'PUT WALL', fmtM(gex(PUT, t), true), [5, 4]);
+
+  // candles
+  const body = Math.max(2, cw * .62);
+  all.forEach((b, i) => {
+    const x = Math.round((i + .5) * cw), u = b.c >= b.o, col = u ? C.ink : '#4b4a47';
+    cx.fillStyle = u ? 'rgba(238,235,229,.55)' : '#5d5b57';
+    cx.fillRect(x, Math.round(y(b.h)), 1, Math.max(1, Math.round(y(b.l) - y(b.h))));
+    const y0 = y(Math.max(b.o, b.c)), y1 = y(Math.min(b.o, b.c));
+    cx.fillStyle = u ? C.ink : '#2a2927';
+    cx.fillRect(Math.round(x - body / 2 + .5), Math.round(y0), Math.round(body), Math.max(1, Math.round(y1 - y0)));
+    if (!u) { cx.strokeStyle = '#5d5b57'; cx.strokeRect(Math.round(x - body / 2 + .5) + .5, Math.round(y0) + .5, Math.round(body) - 1, Math.max(1, Math.round(y1 - y0)) - 1); }
+  });
+
+  // last price
+  const last = all[all.length - 1].c, ly = Math.round(y(last)) + .5, lx = Math.round((all.length - .5) * cw);
+  cx.strokeStyle = 'rgba(238,235,229,.28)'; cx.setLineDash([1, 3]); cx.beginPath(); cx.moveTo(lx + 6, ly); cx.lineTo(pw, ly); cx.stroke(); cx.setLineDash([]);
+  cx.fillStyle = C.ink; rr(pw + 4, ly - 10, AX - 8, 20, 4); cx.fill();
+  cx.fillStyle = '#0b0b0c'; cx.font = '600 11px ' + css('--mono'); cx.fillText(fmtP(last), pw + 10, ly + .5);
+
+  // crosshair
+  if (mouse && mouse.x < pw && mouse.y > top && mouse.y < bot) {
+    cx.strokeStyle = 'rgba(238,235,229,.22)'; cx.setLineDash([3, 3]);
+    cx.beginPath(); cx.moveTo(mouse.x + .5, 0); cx.lineTo(mouse.x + .5, H); cx.moveTo(0, mouse.y + .5); cx.lineTo(pw, mouse.y + .5); cx.stroke(); cx.setLineDash([]);
+    const v = hi - (mouse.y - top) / (bot - top) * (hi - lo), g = gex(v, t);
+    cx.fillStyle = '#232325'; rr(pw + 4, mouse.y - 10, AX - 8, 20, 4); cx.fill();
+    cx.fillStyle = C.ink; cx.font = '500 11px ' + css('--mono'); cx.fillText(fmtP(Math.round(v * 4) / 4), pw + 10, mouse.y + .5);
+    const tx = 'GEX ' + fmtM(g, true), tw = cx.measureText(tx).width + 18, bx = Math.min(mouse.x + 12, pw - tw - 6);
+    cx.fillStyle = 'rgba(20,20,21,.94)'; rr(bx, mouse.y - 30, tw, 20, 4); cx.fill();
+    cx.fillStyle = g > 0 ? C.up : C.dn; cx.fillText(tx, bx + 9, mouse.y - 19.5);
+  }
+
+  // legend
+  const lb = all[all.length - 1];
+  $('ohlc').innerHTML = `O <b>${fmtP(lb.o)}</b>  H <b>${fmtP(lb.h)}</b>  L <b>${fmtP(lb.l)}</b>  C <b>${fmtP(lb.c)}</b>`;
+}
+function rr(x, y, w, h, r) { cx.beginPath(); cx.roundRect ? cx.roundRect(x, y, w, h, r) : cx.rect(x, y, w, h); }
+
+// ---------- gamma ladder ----------
+const lad = $('lad'), ROWS = 25; let ladRows = [];
+for (let i = 0; i < ROWS; i++) { const d = document.createElement('div'); d.className = 'lr'; d.innerHTML = '<span class="st"></span><span class="v"><i></i><b></b></span>'; lad.appendChild(d); ladRows.push(d); }
+let mode = 2; const MODE_K = [.42, .7, 1];
+$('tabs').querySelectorAll('button').forEach((b, i) => b.onclick = () => { mode = i; $('tabs').querySelectorAll('button').forEach((x, j) => x.classList.toggle('on', j === i)); });
+function ladder(t) {
+  const last = (cur || bars[bars.length - 1]).c, mid = Math.round(last / STEP) * STEP, h = Math.floor(ROWS / 2), k = MODE_K[mode];
+  const vals = ladRows.map((_, i) => { const s = mid + (h - i) * STEP; return [s, gex(s, t) * k * (1 + .06 * Math.sin(s * .13 + t * .0007))]; });
+  const ref = 620 * k;
+  vals.forEach(([s, g], i) => {
+    const row = ladRows[i], st = row.children[0], v = row.children[1], a = Math.pow(Math.min(1, Math.abs(g) / ref), .75);
+    st.textContent = s.toLocaleString('en-US');
+    row.classList.toggle('px', s === mid);
+    v.style.background = a < .04 ? 'transparent' : rgba(g > 0 ? C.up : C.dn, (.03 + .8 * a).toFixed(3));
+    v.style.color = a > .55 ? '#0b0b0c' : a > .15 ? (g > 0 ? '#bfe6d4' : '#f4c4be') : C.faint;
+    v.style.fontWeight = a > .55 ? 600 : 500;
+    v.children[0].textContent = s === CALL ? 'CALL WALL' : s === PUT ? 'PUT WALL' : s === ZERO ? 'ZERO γ' : s === mid ? 'PRICE' : '';
+    v.children[1].textContent = fmtM(g, true);
+  });
+  let net = 0; for (let s = PUT - 300; s <= CALL + 300; s += STEP) net += gex(s, t) * k;
+  net = net * .12;
+  $('net').textContent = fmtM(net, true); $('net').className = 'net num ' + (net >= 0 ? 'up' : 'dn');
+  $('tG').textContent = fmtM(net, true); $('tG').className = net >= 0 ? 'up' : 'dn';
+}
+
+// ---------- top bar ----------
+let es = 6842.5;
+function topbar() {
+  const last = (cur || bars[bars.length - 1]).c, ch = (last - open0) / open0 * 100;
+  $('tNQ').textContent = fmtP(last); $('cNQ').textContent = (ch >= 0 ? '+' : MINUS) + Math.abs(ch).toFixed(2) + '%'; $('cNQ').className = ch >= 0 ? 'up' : 'dn';
+  es = Math.round((6842.5 * (1 + ch / 100 * .82) + nrm() * .25) * 4) / 4;
+  const ce = (es - 6842.5) / 6842.5 * 100;
+  $('tES').textContent = fmtP(es); $('cES').textContent = (ce >= 0 ? '+' : MINUS) + Math.abs(ce).toFixed(2) + '%'; $('cES').className = ce >= 0 ? 'up' : 'dn';
+}
+function clock() {
+  const d = new Date(), f = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, weekday: 'short' }).formatToParts(d);
+  const g = n => (f.find(x => x.type === n) || {}).value, hh = +g('hour') % 24, mm = +g('minute'), wd = g('weekday');
+  $('clk').textContent = `${String(hh).padStart(2, '0')}:${g('minute')}:${g('second')} ET`;
+  const m = hh * 60 + mm, wk = !['Sat', 'Sun'].includes(wd);
+  $('sess').textContent = wk && m >= 570 && m < 960 ? 'Regular session' : wk || (wd === 'Sun' && m >= 1080) ? 'Overnight' : 'Weekend';
+}
+
+// ---------- flow tape (illustrative) ----------
+const flow = $('flow'), TYPES = ['SWEEP', 'BLOCK', 'SPLIT', 'SWEEP'], EXP = ['0DTE', '0DTE', '1DTE', 'WEEK', 'MONTH'];
+let off = 0, callsP = 0, putsP = 0, soldC = 0, soldP = 0;
+function print() {
+  const last = (cur || bars[bars.length - 1]).c, call = rnd() < .52, sym = rnd() < .7 ? 'NQ' : 'ES';
+  const strike = sym === 'NQ' ? Math.round((last + (call ? 1 : -1) * Math.abs(nrm()) * 120) / 25) * 25 : Math.round((es + (call ? 1 : -1) * Math.abs(nrm()) * 25) / 5) * 5;
+  const prem = Math.exp(nrm() * .9) * .6, sold = rnd() < .58;
+  if (call) { callsP += prem; if (sold) soldC += prem; } else { putsP += prem; if (sold) soldP += prem; }
+  const d = new Date(), t = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(d);
+  const el = document.createElement('div'); el.className = 'pr';
+  el.innerHTML = `<span class="t">${t}</span><span class="sy">${sym}</span><span>${strike.toLocaleString('en-US')}<span class="${call ? 'up' : 'dn'}">${call ? 'C' : 'P'}</span></span><span>${EXP[Math.floor(rnd() * EXP.length)]}</span><span class="ty">${TYPES[Math.floor(rnd() * TYPES.length)]}</span><span class="pm">${fmtM(prem)}</span><span class="ty">${sold ? 'SOLD' : 'BOUGHT'}</span>`;
+  flow.appendChild(el);
+  const side = (s, p) => p / s > .55 ? 'mostly sold' : p / s < .45 ? 'mostly bought' : 'split';
+  $('sum').innerHTML = `<b class="up">${fmtM(callsP)}</b> calls · ${side(callsP, soldC)}  ·  <b class="dn">${fmtM(putsP)}</b> puts · ${side(putsP, soldP)}`;
+}
+for (let i = 0; i < 14; i++) print();
+callsP *= 40; soldC *= 40; putsP *= 40; soldP *= 40; // session totals so far
+
+// ---------- boot ----------
+const LOG = [
+  ['w', 'sovereign / terminal 3.0'],
+  ['', 'handshake ............. ', 'ok', 'ok'],
+  ['', 'gamma engines ......... ', 'ok', '5 / 5'],
+  ['', 'expiries .............. ', 'ok', '0DTE → monthly'],
+  ['', 'dark pool ............. ', 'ok', 'linked'],
+  ['', 'level refresh ......... ', 'ok', '30s'],
+  ['', 'session key ........... ', 'lk', 'required'],
+];
+const boot = $('boot');
+LOG.forEach((l, i) => { const d = document.createElement('div'); d.innerHTML = l[0] === 'w' ? `<span class="w">&gt; ${l[1]}</span>` : `&gt; ${l[1]}<span class="${l[2]}">${l[3]}</span>`; boot.appendChild(d); setTimeout(() => d.classList.add('on'), 180 + i * 170); });
+setTimeout(() => { $('lvls').classList.add('on'); $('gate').classList.add('on'); }, 180 + LOG.length * 170 + 120);
+const LV = [['Call wall', CALL, 'up'], ['Zero <span style="text-transform:none">\u03B3</span>', ZERO, ''], ['Dark pool', POOL, ''], ['Put wall', PUT, 'dn']];
+$('lvls').innerHTML = LV.map(l => `<div class="lv"><span class="lbl ${l[2]}" style="${l[2] ? '' : l[1] === ZERO ? 'color:var(--accent)' : 'color:var(--pool)'}">${l[0]}</span><span>${l[1].toLocaleString('en-US')}</span><span class="d"></span></div>`).join('');
+function lvls() { const last = (cur || bars[bars.length - 1]).c; [...$('lvls').children].forEach((r, i) => { const d = LV[i][1] - last, el = r.children[2]; el.textContent = Math.abs(d) < 12 ? 'testing' : (d > 0 ? '+' : MINUS) + Math.abs(d).toFixed(2); el.classList.toggle('near', Math.abs(d) < 40); }); }
+
+$('key').onclick = () => { try { navigator.clipboard.writeText('SAPRO50'); } catch (e) {} $('keyS').textContent = 'Copied'; $('keyS').style.color = 'var(--accent)'; setTimeout(() => { $('keyS').textContent = 'Copy'; $('keyS').style.color = ''; }, 1400); };
+
+// ---------- loop ----------
+let lt = 0, lp = 0, lw = 0, lastT = performance.now();
+function loop(t) {
+  const dt = Math.min(64, t - lastT); lastT = t;
+  if (t - lt > 260) { tick(); lt = t; }
+  if (t - lw > 900) { ladder(t); topbar(); clock(); lvls(); lw = t; }
+  if (t - lp > 1500 + rnd() * 1200) { print(); lp = t; }
+  off -= dt * .035;
+  const first = flow.firstElementChild;
+  if (first && -off > first.offsetWidth) { off += first.offsetWidth; first.remove(); }
+  flow.style.transform = `translateX(${off.toFixed(1)}px)`;
+  draw(t);
+  requestAnimationFrame(loop);
+}
+ladder(0); topbar(); clock(); lvls(); requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
