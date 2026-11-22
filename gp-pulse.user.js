@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.8.9
+// @version      1.9.0
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -2469,6 +2469,25 @@
   every(700, vestPanels);
   function toggleSkin() { DB.skin = DB.skin === false; save(true); skinKey = ''; applySkin(); if (P) render(); }
   every(1000, applySkin);
+  // code GIGA: a small switch in Vest's footer, right after Online. It sits in the row, so it never covers anything.
+  const gigaChip = () => {
+    let el = document.getElementById('gpz-giga');
+    if (!el || !el.isConnected) {
+      const o = [...document.querySelectorAll('a,span,p,button')].find(e => e.childElementCount === 0 && e.textContent.trim() === 'Online' && e.getBoundingClientRect().top > innerHeight * .6);
+      if (!o) return;
+      if (el) el.remove();
+      el = document.createElement('button'); el.id = 'gpz-giga'; el.type = 'button'; el.title = 'Code GIGA at checkout';
+      el.style.cssText = 'all:unset;display:inline-flex;align-items:center;gap:6px;margin-left:16px;font:600 11px/1 Manrope,Inter,system-ui,sans-serif;letter-spacing:.08em;cursor:pointer;vertical-align:middle;white-space:nowrap';
+      el.innerHTML = '<i style="width:6px;height:6px;border-radius:50%;box-sizing:border-box"></i><span>GIGA</span>';
+      el.onclick = e => { e.preventDefault(); e.stopPropagation(); DB.giga = DB.giga === false; DB.gigaSkip = 0; save(true); gigaChip(); try { renderShot(); } catch (x) {} };
+      o.insertAdjacentElement('afterend', el);
+    }
+    const on = DB.giga !== false, d = el.firstChild;
+    el.style.color = on ? '#9fd7b2' : '#6f6f76';
+    d.style.background = on ? '#9fd7b2' : 'none'; d.style.border = on ? '0' : '1.5px solid #6f6f76';
+    el.dataset.on = on ? '1' : '0';
+  };
+  every(1000, gigaChip);
 
   // ---------- start ----------
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && OPEN) closePanel(); });
