@@ -1,9 +1,9 @@
 <!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>GP. Entry</title>
-<meta name="description" content="GP. Entry for Vest. Risk-locked one-click ticket, trade managed from the chart, desk, copier, Zone.">
-<meta property="og:title" content="GP. Entry"><meta name="theme-color" content="#0b0b0b">
+<title>GIGAPROP.</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0b0b0b">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,500..800&display=swap" rel="stylesheet">
 <style>
@@ -28,117 +28,17 @@ a{color:inherit;text-decoration:none}
 .btn{display:inline-flex;align-items:center;gap:12px;height:54px;padding:0 28px;border-radius:12px;background:var(--cr);color:#0b0b0b;font-weight:700;font-size:15px;letter-spacing:-.01em;transition:transform .2s,box-shadow .2s}
 .btn:hover{transform:translateY(-2px);box-shadow:0 14px 40px rgba(230,227,220,.15)}
 .ln small{font-size:12px;font-weight:600;color:#4a4843;letter-spacing:.06em}.ln small a{color:#8a877f}
-/* the stills */
-.show{position:relative;padding:12vh 0 8vh}
-.stage{position:relative;width:min(1400px,94vw);margin:0 auto;aspect-ratio:16/9;border-radius:22px;overflow:hidden;background:#111;box-shadow:0 0 0 1px rgba(230,227,220,.1),0 60px 140px rgba(0,0,0,.8)}
-.stage img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transform:scale(1.035);transition:opacity .9s ease,transform 6s ease-out}
-.stage img.on{opacity:1;transform:scale(1)}
-.cap{width:min(1400px,94vw);margin:34px auto 0;display:grid;grid-template-columns:1fr auto;align-items:end;gap:20px}
-.cap h2{font-size:clamp(52px,9vw,128px);font-weight:700;letter-spacing:-.055em;line-height:.9;transition:opacity .4s}
-.cap h2 em{font-style:normal;color:#4a4843}
-.cap p{font-size:12px;font-weight:800;letter-spacing:.22em;color:var(--dim);text-transform:uppercase;margin-top:12px}
-.nav{display:flex;align-items:center;gap:10px}
-.nav button{all:unset;cursor:pointer;width:48px;height:48px;border-radius:50%;display:grid;place-items:center;box-shadow:0 0 0 1px rgba(230,227,220,.18);font-size:18px;color:var(--cr);transition:background .2s}
-.nav button:hover{background:rgba(230,227,220,.08)}
-.nav span{font-size:12px;font-weight:800;letter-spacing:.18em;color:var(--dim);min-width:64px;text-align:center;font-variant-numeric:tabular-nums}
-.bar{width:min(1400px,94vw);margin:26px auto 0;display:flex;gap:4px}
-.bar i{flex:1;height:3px;border-radius:2px;background:rgba(230,227,220,.1);overflow:hidden;cursor:pointer}
-.bar i b{display:block;height:100%;width:0;background:var(--cr)}
-.bar i.done b{width:100%;background:#5a5852}
-.bar i.on b{animation:fill var(--t) linear forwards}
-@keyframes fill{to{width:100%}}
-.paused .bar i.on b{animation-play-state:paused}
-.foot{padding:16vh clamp(16px,6vw,96px) 10vh;display:grid;gap:30px;justify-items:start}
-.foot h3{font-size:clamp(44px,7vw,96px);font-weight:700;letter-spacing:-.055em;line-height:.92}
-.foot h3 i{font-style:normal;color:#3a3935}
-.end{display:flex;justify-content:space-between;padding:26px clamp(16px,4vw,48px);border-top:1px solid #1c1b19;font-size:11px;font-weight:800;letter-spacing:.24em;color:var(--mute)}
-
-.stage{background:#0e0e0d}
-.stage::before{content:"";position:absolute;right:-8%;top:-30%;width:60%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,rgba(230,227,220,.16) 1.2px,transparent 1.8px) 0 0/8px 8px;-webkit-mask:radial-gradient(circle at 35% 40%,#000 0,rgba(0,0,0,.5) 45%,transparent 70%);mask:radial-gradient(circle at 35% 40%,#000 0,rgba(0,0,0,.5) 45%,transparent 70%)}
-.sl{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;transform:translateY(18px) scale(.98);transition:opacity .7s ease,transform .9s cubic-bezier(.2,1,.3,1);pointer-events:none}
-.sl.on{opacity:1;transform:none}
-.card{position:relative;background:#151514;border-radius:22px;padding:34px 36px;box-shadow:0 0 0 1px rgba(230,227,220,.08),0 40px 90px rgba(0,0,0,.55);font-size:clamp(9px,1.45vw,20px)}
-.w5{width:min(30em,78%)}.w6{width:min(36em,86%)}.pad{padding:40px}
-.lab{font-size:.75em;font-weight:800;letter-spacing:.24em;color:var(--dim)}
-.big{font-size:4.6em;font-weight:800;letter-spacing:-.055em;line-height:1;margin:.18em 0 .5em;font-variant-numeric:tabular-nums}.big small{font-size:.38em;letter-spacing:.02em;color:var(--dim)}.big em{font-style:normal}
-.mint{color:var(--mint)}.rose{color:var(--rose)}.cr{color:var(--cr)}
-.row{display:grid;grid-template-columns:4.2em 1fr 3.4em;align-items:center;gap:1em}.k{font-size:.72em;font-weight:800;letter-spacing:.2em;color:var(--dim)}.v{font-weight:800;font-size:1.15em;text-align:right}
-.tk{position:relative;height:4px;border-radius:2px;background:#2a2927}.tk b{position:absolute;inset:0 auto 0 0;background:var(--cr);border-radius:2px}.tk i{position:absolute;top:50%;width:1.4em;height:1.4em;margin:-.7em 0 0 -.7em;border-radius:50%;background:var(--cr);box-shadow:0 0 0 5px rgba(230,227,220,.12)}
-.rosek b,.rosek i{background:var(--rose)}
-.facts,.pr{display:flex;gap:2em;margin-top:1.6em;padding-top:1.2em;border-top:1px solid #232220}.facts span,.pr span{font-size:.8em;font-weight:700;color:var(--dim);display:flex;flex-direction:column;gap:.25em}.facts b,.pr b{font-size:1.35em;color:var(--cr);font-weight:800}
-.chart{position:relative;width:min(900px,80%);aspect-ratio:600/340;border-radius:18px;background:#121211;box-shadow:0 0 0 1px rgba(230,227,220,.08),0 40px 90px rgba(0,0,0,.55);font-size:clamp(8px,1.2vw,16px)}
-.chart svg{position:absolute;inset:0;width:100%;height:100%}.pl{fill:none;stroke:var(--cr);stroke-width:2.4;vector-effect:non-scaling-stroke}
-.ln{stroke-width:1.6;stroke-dasharray:8 6;vector-effect:non-scaling-stroke}.ln.mint{stroke:var(--mint)}.ln.rose{stroke:var(--rose)}.ln.cr{stroke:#8a877f;stroke-dasharray:none}.ln.dim{opacity:.3}
-.tag{position:absolute;right:4%;padding:.45em .8em;border-radius:7px;font-weight:800;font-size:1em;background:#0b0b0b;transform:translateY(-50%)}.tag.mint{color:var(--mint);box-shadow:0 0 0 1.5px var(--mint),0 0 30px rgba(159,215,178,.25)}.tag.rose{color:var(--rose);box-shadow:0 0 0 1.5px var(--rose)}.tag.cr{color:var(--cr);box-shadow:0 0 0 1px #4a4843}.tag.ghost{opacity:.35}
-.arrow{position:absolute;right:13%;color:var(--mint);font-size:2.2em;font-weight:800}
-.chip{position:absolute;padding:.5em 1em;border-radius:8px;font-weight:800;font-size:.95em;background:var(--cr);color:#0b0b0b}
-.btns{display:grid;grid-template-columns:1fr 1fr;gap:.8em}.btns span{display:grid;place-items:center;height:3.6em;border-radius:14px;font-size:1.6em;font-weight:800;color:#0b0b0b}.bl{background:var(--mint)}.bs{background:var(--rose)}
-.keys{display:flex;justify-content:space-between;margin-top:1.6em;font-size:.85em;font-weight:800;color:var(--dim)}.keys span{display:flex;align-items:center;gap:.35em}
-kbd{font:inherit;color:var(--cr);padding:.35em .6em;border-radius:6px;box-shadow:0 0 0 1px #3a3935,0 3px 0 #2a2927}
-.bank{border:1px solid #2a2927;border-radius:14px;padding:1em;text-align:center;margin-bottom:1em}.bank small{display:block;font-size:.7em;font-weight:800;letter-spacing:.22em;color:var(--dim)}.bank b{font-size:2.6em;font-weight:800;letter-spacing:-.04em}
-.chips{display:grid;grid-template-columns:repeat(4,1fr);gap:.5em}.chips span{text-align:center;padding:.75em 0;border-radius:10px;box-shadow:0 0 0 1px #2a2927;font-weight:800;color:#bdbab3}.chips .on{background:var(--cr);color:#0b0b0b}.chips .x{color:var(--rose);box-shadow:0 0 0 1px rgba(232,152,140,.4)}
-.pill{display:inline-block;padding:.6em 1em;border-radius:10px;font-weight:800;margin-bottom:1.4em}.pill.mint{box-shadow:0 0 0 1px rgba(159,215,178,.5);background:rgba(159,215,178,.07)}
-.desk{padding:24px 26px}.dh{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:.8em}.dh span{font-size:.75em;font-weight:800;letter-spacing:.22em;color:var(--dim)}.dh b{font-size:2.2em;letter-spacing:-.04em}
-.dr{display:grid;grid-template-columns:auto 1fr auto;gap:.2em 1em;align-items:baseline;padding:.9em .8em;border-radius:12px}.dr.lead{background:rgba(230,227,220,.05);box-shadow:inset 3px 0 0 var(--cr)}.dr span{font-weight:800;font-size:1.15em}.dr span i{font-style:normal;font-size:.6em;letter-spacing:.14em;background:var(--cr);color:#0b0b0b;border-radius:4px;padding:.15em .45em;margin-left:.5em;vertical-align:.2em}.dr em{font-style:normal;font-size:.8em;font-weight:700;color:var(--dim)}.dr b{font-weight:800;font-size:1.1em}
-.dr .db{grid-column:1/-1;height:4px;border-radius:2px;background:#232220;margin-top:.5em;overflow:hidden;display:block}.dr .db u{display:block;height:100%;background:var(--mint);opacity:.7}.dr .db.warn u{background:var(--rose)}
-.copy{display:grid;grid-template-columns:1fr .8fr 1fr;align-items:center;width:min(980px,84%);font-size:clamp(9px,1.4vw,19px)}.copy svg{width:100%;height:16em}.copy path{fill:none;stroke:var(--mint);stroke-width:1.6;stroke-dasharray:4 6;vector-effect:non-scaling-stroke;opacity:.7}
-.node{background:#151514;border-radius:16px;padding:1.1em 1.3em;box-shadow:0 0 0 1px rgba(230,227,220,.08),0 20px 50px rgba(0,0,0,.5);display:flex;flex-direction:column;gap:.25em}.node.lead{box-shadow:0 0 0 1.5px var(--cr),0 20px 50px rgba(0,0,0,.5)}.node small{font-size:.7em;font-weight:800;letter-spacing:.22em;color:var(--dim)}.node b{font-size:1.8em;font-weight:800;letter-spacing:-.03em}.node em{font-style:normal;font-size:.8em;font-weight:800;color:var(--mint)}
-.fol{display:grid;gap:1.6em}
-.lock{margin-top:1.6em;border-radius:14px;padding:1.2em;text-align:center;background:repeating-linear-gradient(135deg,rgba(232,152,140,.07) 0 8px,transparent 8px 16px);box-shadow:0 0 0 1px rgba(232,152,140,.35)}.lock b{display:block;font-size:2em;font-weight:800;letter-spacing:.02em;color:var(--rose)}.lock small{font-size:.7em;font-weight:800;letter-spacing:.22em;color:var(--dim)}
-.wm{font-size:1.25em;font-weight:800;letter-spacing:-.03em;margin-bottom:1.2em}.wm i{font-style:normal;color:#5a5852}.wm small{font-size:.5em;letter-spacing:.3em;color:var(--dim);margin-left:.4em}
-.pg{display:grid;grid-template-columns:1fr 1fr;gap:1.5em}.pg small{font-size:.8em;font-weight:700;color:var(--dim)}.huge{display:block;font-size:4.4em;font-weight:800;letter-spacing:-.06em;line-height:1}.huge span{font-size:.45em;color:var(--dim)}.mid{display:block;font-size:2.6em;font-weight:800;letter-spacing:-.05em;margin-top:.15em}
-.cert .huge{font-size:5.4em}.who{font-size:1.6em;font-weight:800;margin-top:.2em;color:#bdbab3}
-.sets{display:grid;grid-template-columns:repeat(4,1fr);gap:.6em;margin:1em 0 1.2em}.sets span{display:flex;flex-direction:column;align-items:center;gap:.5em;padding:.9em .4em;border-radius:12px}.sets span.on{background:rgba(230,227,220,.07);box-shadow:0 0 0 1px rgba(230,227,220,.25)}.sets i{display:inline-block;width:1.2em;height:1.9em;border-radius:3px;margin:0 1px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}.sets small{font-size:.8em;font-weight:800;color:#bdbab3}
-.sw{display:flex;gap:1em;align-items:center;padding-top:1.1em;border-top:1px solid #232220}.sw span{display:flex;align-items:center;gap:.5em;font-size:.75em;font-weight:800;letter-spacing:.14em;color:var(--dim)}.sw i{width:1.9em;height:1.2em;border-radius:4px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.15)}.sw b{margin-left:auto;color:var(--mint);font-weight:800}
-@media (max-width:640px){.cap{grid-template-columns:1fr}.stage{border-radius:14px}.hz{bottom:14vh}}
+.hw{top:auto}.soon{position:absolute;left:0;right:0;text-align:center;z-index:2;font-size:clamp(11px,.95vw,15px);font-weight:600;letter-spacing:.3em;color:#6f6c66;text-transform:uppercase}
 </style></head><body>
 <section class="hero" id="hero"><canvas class="moonc" id="mc"></canvas><canvas id="fx"></canvas>
-  <div class="top"><b>GP.</b><span>gigaprop.xyz</span></div>
-  <div class="hw" id="w1"><span>GP.</span><i>ENTRY</i></div>
-  <div class="ln" id="ln"><p><b>Trade the plan.</b></p><a class="btn" href="https://raw.githubusercontent.com/deciphe/gp-pulse/main/gp-pulse.user.js">Install ↓</a><small>Tampermonkey · <a href="https://next.vestmarkets.com" rel="noopener">next.vestmarkets.com</a></small></div>
-  <div class="bot"><span>for vest</span><a href="#show">every feature ↓</a></div>
+<div class="top"><b>GP.</b><span>gigaprop.xyz</span></div>
+<div class="hw" id="w1"><span>GIGAPROP</span><i>.</i></div>
+<div class="soon" id="sn">in the works</div>
+<div class="bot"><span>for vest</span><span>soon</span></div>
 </section>
-<section class="show" id="show">
-  <div class="stage" id="stage">
-  <!-- 1 risk -->
-  <div class="sl"><div class="card w5"><div class="lab">STOP</div><div class="big rose">−$100.00</div><div class="row"><span class="k">RISK</span><div class="tk"><b style="width:62%"></b><i style="left:62%"></i></div><span class="v">2%</span></div><div class="facts"><span><b>$5,000</b> account</span><span><b>$12.65</b> fees inside</span></div></div></div>
-  <!-- 2 pass -->
-  <div class="sl"><div class="chart"><svg viewBox="0 0 600 340" preserveAspectRatio="none"><path class="pl" d="M0 300 C60 290 90 270 140 262 S220 250 260 230 S330 200 370 190 S440 150 470 120"/><line class="ln mint" x1="0" y1="60" x2="600" y2="60"/><line class="ln rose" x1="0" y1="310" x2="600" y2="310"/><line class="ln cr" x1="0" y1="226" x2="600" y2="226"/></svg><span class="tag mint" style="top:17.6%">TP · PASS +$500.00</span><span class="tag cr" style="top:66.5%">LONG 1.250</span><span class="tag rose" style="top:91.2%">SL −$100.00</span><span class="chip on" style="left:24px;top:24px">PASS</span></div></div>
-  <!-- 3 size -->
-  <div class="sl"><div class="card w5"><div class="lab">SIZE</div><div class="big">1.250 <small>NDX</small></div><div class="row"><span class="k">SIZE</span><div class="tk"><b style="width:50%"></b><i style="left:50%"></i></div><span class="v">50%</span></div><div class="facts"><span><b>$31.6K</b> notional</span><span><b>50x</b> max lev</span></div></div></div>
-  <!-- 4 one click -->
-  <div class="sl"><div class="card w5 pad"><div class="btns"><span class="bl">Long</span><span class="bs">Short</span></div><div class="keys"><span><kbd>Alt</kbd><kbd>B</kbd></span><span><kbd>Alt</kbd><kbd>S</kbd></span><span><kbd>Alt</kbd><kbd>X</kbd> close</span></div></div></div>
-  <!-- 5 drag -->
-  <div class="sl"><div class="chart"><svg viewBox="0 0 600 340" preserveAspectRatio="none"><path class="pl" d="M0 280 C80 270 140 250 200 240 S300 200 360 150 S450 110 520 90"/><line class="ln cr" x1="0" y1="230" x2="600" y2="230"/><line class="ln rose dim" x1="0" y1="310" x2="600" y2="310"/><line class="ln mint" x1="0" y1="230" x2="600" y2="230" style="stroke-dasharray:3 6"/></svg><span class="tag rose ghost" style="top:91.2%">SL −$100.00</span><span class="arrow" style="top:72%">↑</span><span class="tag mint" style="top:67.6%">SL $0.00 · BE</span></div></div>
-  <!-- 6 trim -->
-  <div class="sl"><div class="card w5"><div class="lab">OPEN</div><div class="big mint">+$148.00</div><div class="bank"><small>BANKED</small><b>$126.10</b></div><div class="chips"><span class="on">25%</span><span>50%</span><span>add</span><span class="x">close</span></div></div></div>
-  <!-- 7 add -->
-  <div class="sl"><div class="card w5"><div class="lab">LONG NDX</div><div class="big">1.250 <em class="mint">→ 1.750</em></div><div class="pill mint">+ 0.500 NDX · margin left</div><div class="row"><span class="k">ADD</span><div class="tk"><b style="width:40%"></b><i style="left:40%"></i></div><span class="v">40%</span></div></div></div>
-  <!-- 8 desk -->
-  <div class="sl"><div class="card w6 desk"><div class="dh"><span>ACCOUNTS</span><b class="mint">+$655.91</b></div>
-    <div class="dr lead"><span>#172 <i>LEAD</i></span><em>Eval · $5K</em><b class="mint">+$341.60</b><div class="db"><u style="width:84%"></u></div></div>
-    <div class="dr"><span>#141</span><em>Funded · $10K</em><b class="mint">+$220.00</b><div class="db"><u style="width:72%"></u></div></div>
-    <div class="dr"><span>#171</span><em>Eval · $5K</em><b class="mint">+$62.10</b><div class="db"><u style="width:58%"></u></div></div>
-    <div class="dr"><span>#166</span><em>Eval · $5K</em><b class="rose">−$40.00</b><div class="db warn"><u style="width:22%"></u></div></div></div></div>
-  <!-- 9 copy -->
-  <div class="sl"><div class="copy"><div class="node lead"><small>LEAD</small><b>#172</b><em>LONG 1.250 NDX</em></div><svg viewBox="0 0 200 300"><path d="M0 150 C100 150 100 40 200 40"/><path d="M0 150 L200 150"/><path d="M0 150 C100 150 100 260 200 260"/></svg><div class="fol"><div class="node"><b>#141</b><em>LONG 1.250</em></div><div class="node"><b>#171</b><em>LONG 1.250</em></div><div class="node"><b>#88</b><em>LONG 1.250</em></div></div></div></div>
-  <!-- 10 zone -->
-  <div class="sl"><div class="card w5"><div class="lab">ZONE · STOP THE SESSION AT</div><div class="big rose">−$100.00</div><div class="row"><span class="k">LOSS</span><div class="tk rosek"><b style="width:33%"></b><i style="left:33%"></i></div><span class="v">33%</span></div><div class="lock"><b>LOCKED</b><small>UNTIL THE 8PM RESET</small></div></div></div>
-  <!-- 11 pulse -->
-  <div class="sl"><div class="card w6 pulse"><div class="wm">GIGAPROP<i>.</i> <small>PULSE</small></div><div class="pg"><div><small>Spent today</small><b class="huge">$76<span>.00</span></b></div><div><small>Live accounts</small><b class="mint mid">+$655.91</b></div></div><div class="pr"><span><b>$394.71</b>payouts</span><span><b>$356.25</b>affiliate</span><span><b class="mint">+$318.71</b>net</span></div></div></div>
-  <!-- 12 proof -->
-  <div class="sl"><div class="card w6 cert"><div class="wm">GIGAPROP<i>.</i> <small>ZONE</small></div><b class="huge cr">+$69.92</b><div class="who">@trader</div><div class="pr"><span><b>1h 12m</b>in the zone</span><span><b>3 · 2 won</b>trades</span><span><b>$28.50</b>spent</span></div></div></div>
-  <!-- 13 yours -->
-  <div class="sl"><div class="card w5"><div class="lab">CHART</div><div class="sets"><span><i style="background:#121714"></i><i style="background:#00d98e"></i><i style="background:#e03737"></i><small>Vest</small></span><span><i style="background:#0b0b0b"></i><i style="background:#dedbd3"></i><i style="background:#4b4b51"></i><small>Massive</small></span><span><i style="background:#000"></i><i style="background:#163918"></i><i style="background:#481015"></i><small>Night</small></span><span class="on"><i style="background:#fff"></i><i style="background:#d1d4dc"></i><i style="background:#5d606b"></i><small>Mine 1</small></span></div><div class="sw"><span><i style="background:#fff"></i>BG</span><span><i style="background:#d1d4dc"></i>UP</span><span><i style="background:#5d606b"></i>DOWN</span><b>save</b></div></div></div>
-  </div>
-  <div class="cap"><div><h2 id="h"></h2><p id="p"></p></div><div class="nav"><button id="pv" aria-label="Previous">←</button><span id="n"></span><button id="nx" aria-label="Next">→</button></div></div>
-  <div class="bar" id="bar"></div>
-</section>
-<section class="foot"><h3>Trade the plan<i>.</i><br>Nothing else<i>.</i></h3><a class="btn" href="https://raw.githubusercontent.com/deciphe/gp-pulse/main/gp-pulse.user.js">Install GP. Entry ↓</a></section>
-<div class="end"><span>GIGAPROP.XYZ</span><span>NOT AFFILIATED WITH VEST</span></div>
 <script>
 (() => {
-  const H = document.getElementById('hero'), mc = document.getElementById('mc'), fx = document.getElementById('fx'), w1 = document.getElementById('w1'), ln = document.getElementById('ln');
+  const H = document.getElementById('hero'), mc = document.getElementById('mc'), fx = document.getElementById('fx'), w1 = document.getElementById('w1'), sn = document.getElementById('sn');
   function moon(x, cx, cy, R, step, hz, flip, tint, alpha, u) {
     for (let yy = -R; yy <= R; yy += step) for (let xx = -R; xx <= R; xx += step) { if (Math.hypot(xx, yy) > R) continue;
       const lx = (xx + R * .34) / R, ly = (yy + R * .42) / R, lit = Math.max(0, 1 - Math.hypot(lx, ly) * .72), cr = Math.sin(xx * .021 / u) * Math.cos(yy * .017 / u) * .18 + Math.sin((xx + yy) * .009 / u) * .12;
@@ -146,53 +46,15 @@ kbd{font:inherit;color:var(--cr);padding:.35em .6em;border-radius:6px;box-shadow
       const py = flip ? 2 * hz - (cy + yy) : cy + yy; if (!flip && py > hz - 2 * u) continue; if (flip && py < hz + 2 * u) continue;
       const fade = flip ? Math.max(0, 1 - (py - hz) / (R * 1.1)) : 1; x.fillStyle = `rgba(${tint},${(alpha * (.35 + .65 * v) * fade).toFixed(3)})`; x.beginPath(); x.arc(cx + xx, py, r, 0, 7); x.fill(); } }
   function draw() {
-    const W = H.clientWidth, Ht = H.clientHeight, d = Math.min(2, devicePixelRatio || 1), wide = W / Ht > 1.2, u = Math.min(W, Ht) / 1000;
-    const hz = Ht * (wide ? .5 : .46), u0 = Math.min(W, Ht) / 1080, fs = Math.round((wide ? 132 : 150) * u0 * (W < 700 ? .62 : 1)); w1.style.fontSize = fs + 'px'; const wy = wide ? hz - 380 * u0 : hz * .3;
-    w1.style.top = wy + 'px'; ln.style.top = 'auto'; ln.style.bottom = Math.round((wide ? 120 : 110) * u0 + 40) + 'px';
+    const W = H.clientWidth, Ht = H.clientHeight, d = Math.min(2, devicePixelRatio || 1), wide = W / Ht > 1.2, u0 = Math.min(W, Ht) / 1080, hz = Ht * (wide ? .56 : .52);
+    const fs = Math.round((wide ? 150 : 170) * u0 * (W < 700 ? .55 : 1)); w1.style.fontSize = fs + 'px'; w1.style.top = (hz - fs * 1.35) + 'px'; sn.style.top = (hz + 36 * Math.max(.7, u0)) + 'px';
     [mc, fx].forEach(c => { c.width = W * d; c.height = Ht * d; });
-    const m = mc.getContext('2d'); m.setTransform(d, 0, 0, d, 0, 0); const uu = Math.min(W, Ht) / 1080, Rm = (wide ? 430 : 360) * uu, cx = W * (wide ? .72 : .66), cy = hz - Rm * .38, stp = Math.max(6, 8 * uu);
-    moon(m, cx, cy, Rm, stp, hz, false, '230,227,220', .36, uu);
-    const x = fx.getContext('2d'); x.setTransform(d, 0, 0, d, 0, 0);
-    let sd = 11; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
-    const N = 150, pts = []; let v = 0; for (let i = 0; i < N; i++) { v += (rnd() - .46) * 1.2; pts.push(v); }
-    const lo = Math.min(...pts), hi = Math.max(...pts), x0 = W * .08, x1 = W * (wide ? .6 : .92), amp = (wide ? .11 : .1) * Ht, px = i => x0 + (x1 - x0) * i / (N - 1), py = i => hz - .045 * Ht - (pts[i] - lo) / (hi - lo) * amp;
-    const g = x.createLinearGradient(x0, 0, x1, 0); g.addColorStop(0, 'rgba(230,227,220,0)'); g.addColorStop(.4, 'rgba(230,227,220,.5)'); g.addColorStop(1, 'rgba(230,227,220,1)');
-    x.lineWidth = Math.max(1.4, 2.2 * u); x.lineJoin = 'round'; x.strokeStyle = g; x.beginPath(); pts.forEach((_, i) => i ? x.lineTo(px(i), py(i)) : x.moveTo(px(i), py(i))); x.stroke();
-    const ex = px(N - 1), ey = py(N - 1); x.fillStyle = '#e6e3dc'; x.beginPath(); x.arc(ex, ey, 5 * Math.max(.7, u), 0, 7); x.fill(); x.globalAlpha = .22; x.beginPath(); x.arc(ex, ey, 15 * Math.max(.7, u), 0, 7); x.fill(); x.globalAlpha = 1;
+    const m = mc.getContext('2d'); m.setTransform(d, 0, 0, d, 0, 0); const Rm = (wide ? 430 : 360) * u0, stp = Math.max(6, 8 * u0); moon(m, W * (wide ? .72 : .66), hz - Rm * .38, Rm, stp, hz, false, '230,227,220', .36, u0);
+    const x = fx.getContext('2d'); x.setTransform(d, 0, 0, d, 0, 0); let sd = 11; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
     const gh = x.createLinearGradient(0, 0, W, 0); gh.addColorStop(0, 'rgba(230,227,220,0)'); gh.addColorStop(.5, 'rgba(230,227,220,.32)'); gh.addColorStop(1, 'rgba(230,227,220,0)'); x.fillStyle = gh; x.fillRect(0, hz - .6, W, 1.2);
-    for (let i = 0; i < 240; i++) { x.fillStyle = `rgba(230,227,220,${(rnd() * .16).toFixed(3)})`; x.beginPath(); x.arc(rnd() * W, rnd() * Ht, rnd() * 1.2 + .3, 0, 7); x.fill(); }
+    for (let i = 0; i < 240; i++) { x.fillStyle = 'rgba(230,227,220,' + (rnd() * .16).toFixed(3) + ')'; x.beginPath(); x.arc(rnd() * W, rnd() * Ht, rnd() * 1.2 + .3, 0, 7); x.fill(); }
     const vg = x.createRadialGradient(W * .55, hz, Math.min(W, Ht) * .25, W * .5, hz, Math.max(W, Ht) * .85); vg.addColorStop(0, 'rgba(11,11,11,0)'); vg.addColorStop(1, 'rgba(11,11,11,.85)'); x.fillStyle = vg; x.fillRect(0, 0, W, Ht);
   }
   let t = 0; addEventListener('resize', () => { clearTimeout(t); t = setTimeout(draw, 120); }); (document.fonts ? document.fonts.ready : Promise.resolve()).then(draw); draw();
 })();
-</script>
-<script>
-const S = [
- ['Risk<em>.</em>', 'stop in dollars · fees inside'],
- ['Pass<em>.</em>', 'one tap · tp on the pass'],
- ['Size<em>.</em>', 'margin · max leverage'],
- ['One click<em>.</em>', 'long · short · close'],
- ['Drag<em>.</em>', 'tp · sl · right on the chart'],
- ['Trim<em>.</em>', 'bank it · 25 · 50 · limits'],
- ['Add<em>.</em>', 'size in on the move'],
- ['Desk<em>.</em>', 'every account · dll · one click'],
- ['Copy<em>.</em>', 'lead · followers · vest to vest'],
- ['Zone<em>.</em>', 'your stop · locked till reset'],
- ['Pulse<em>.</em>', 'spend · payouts · live pnl'],
- ['Proof<em>.</em>', 'every zone · a certificate'],
- ['Yours<em>.</em>', 'chart colours · saved sets']];
-const T = 4200, st = document.getElementById('stage'), bar = document.getElementById('bar'), sh = document.getElementById('show'), SL = [...st.querySelectorAll('.sl')];
-document.documentElement.style.setProperty('--t', T + 'ms');
-S.forEach((_, i) => { const b = document.createElement('i'); b.innerHTML = '<b></b>'; b.onclick = () => go(i); bar.appendChild(b); });
-let k = 0, tm = 0, seen = false;
-function go(i) { k = (i + S.length) % S.length; SL.forEach((e, j) => e.classList.toggle('on', j === k)); [...bar.children].forEach((e, j) => { e.classList.remove('on'); void e.offsetWidth; e.classList.toggle('done', j < k); if (j === k) e.classList.add('on'); });
-  document.getElementById('h').innerHTML = S[k][1]; document.getElementById('p').textContent = S[k][2]; document.getElementById('n').textContent = String(k + 1).padStart(2, '0') + ' / ' + S.length;
-  clearTimeout(tm); if (seen && !sh.classList.contains('paused')) tm = setTimeout(() => go(k + 1), T); }
-document.getElementById('pv').onclick = () => go(k - 1); document.getElementById('nx').onclick = () => go(k + 1);
-addEventListener('keydown', e => { if (e.key === 'ArrowRight') go(k + 1); if (e.key === 'ArrowLeft') go(k - 1); });
-st.onmouseenter = () => { sh.classList.add('paused'); clearTimeout(tm); }; st.onmouseleave = () => { sh.classList.remove('paused'); go(k); };
-let x0 = null; st.addEventListener('touchstart', e => x0 = e.touches[0].clientX, { passive: true }); st.addEventListener('touchend', e => { if (x0 == null) return; const d = e.changedTouches[0].clientX - x0; if (Math.abs(d) > 40) go(k + (d < 0 ? 1 : -1)); x0 = null; });
-new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting && !seen) { seen = true; go(k); } }), { threshold: .3 }).observe(st);
-go(0);
-</script>
-</body></html>
+</script></body></html>
