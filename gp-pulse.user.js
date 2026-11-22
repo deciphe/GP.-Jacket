@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.9.4
+// @version      1.9.5
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -1757,11 +1757,13 @@
   function dllKeys(p, side) {
     const id = p && p.id, sym = p && p.sym, m = sym && L.mark[sym], fl = id && floorOf(id), cash = id != null ? cashOf(id) : null;
     if (!fl || !m || cash == null) return [];
-    let E = cash, Q = 0;
-    L.pos.filter(x => accOf(x) === id).forEach(x => { const q = Math.abs(+x.quantity) * (/^s/i.test(x.side || '') ? -1 : 1), mk = L.mark[x.symbol]; if (mk) E += (mk - +x.openPrice) * q; if (x.symbol === sym) Q += q; });
+    // Vest's fail price counts the fee to close: equity at price X, less every close fee, touches the floor
+    const fee = s => (SPEC[s] && +SPEC[s].takerFee) || 0, f = fee(sym);
+    let E = cash, Q = 0, other = 0;
+    L.pos.filter(x => accOf(x) === id).forEach(x => { const q = Math.abs(+x.quantity) * (/^s/i.test(x.side || '') ? -1 : 1), mk = L.mark[x.symbol]; if (mk) E += (mk - +x.openPrice) * q; if (x.symbol === sym) Q += q; else if (mk) other += Math.abs(q) * mk * fee(x.symbol); });
     if (!Q && side && p.qty > 0) Q = side === 'long' ? p.qty : -p.qty;
     const room = E - fl.F; if (!Q || !(room > 0)) return [];
-    const px = m - room / Q; if (!(px > 0)) return [];
+    const px = (m * Q - room + other) / (Q - Math.abs(Q) * f); if (!(px > 0)) return [];
     chLine('dll', px, fl.which + '  −' + fm(room).replace('−', '') + '  ·  ' + pts(Math.abs(m - px)) + ' pts', 'rgba(239,177,167,0.55)', 2);
     return ['dll'];
   }
