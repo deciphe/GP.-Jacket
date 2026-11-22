@@ -49,13 +49,13 @@ a{color:inherit;text-decoration:none}
 .pr .ty{font:600 9.5px var(--sans);letter-spacing:.14em}
 
 /* ---------- the fog, with one lens cut through it ---------- */
-.fog{position:fixed;inset:0;background:rgba(10,10,11,.42);
+.fog{position:fixed;left:0;top:0;width:400vmax;height:400vmax;margin:-200vmax 0 0 -200vmax;background:rgba(10,10,11,.42);will-change:transform;pointer-events:none;
   -webkit-backdrop-filter:blur(9px) saturate(.4) brightness(.5);backdrop-filter:blur(9px) saturate(.4) brightness(.5);
-  -webkit-mask:radial-gradient(circle var(--r) at var(--mx) var(--my),transparent 62%,#000 100%);mask:radial-gradient(circle var(--r) at var(--mx) var(--my),transparent 62%,#000 100%)}
-.shade{position:fixed;inset:0;pointer-events:none;-webkit-mask:radial-gradient(circle var(--r) at var(--mx) var(--my),transparent 62%,#000 100%);mask:radial-gradient(circle var(--r) at var(--mx) var(--my),transparent 62%,#000 100%);background:
+  -webkit-mask:radial-gradient(circle var(--r) at 50% 50%,transparent 62%,#000 100%);mask:radial-gradient(circle var(--r) at 50% 50%,transparent 62%,#000 100%)}
+.shade{position:fixed;inset:0;pointer-events:none;background:
   linear-gradient(90deg,rgba(10,10,11,.92) 0%,rgba(10,10,11,.6) 34%,rgba(10,10,11,0) 62%),
   linear-gradient(0deg,rgba(10,10,11,.96) 0%,rgba(10,10,11,.5) 30%,rgba(10,10,11,0) 55%)}
-.ring{position:fixed;left:var(--mx);top:var(--my);width:calc(var(--r)*2*.82);height:calc(var(--r)*2*.82);transform:translate(-50%,-50%);border-radius:50%;border:1px solid rgba(238,235,229,.1);pointer-events:none}
+.ring{position:fixed;left:0;top:0;width:calc(var(--r)*2*.82);height:calc(var(--r)*2*.82);margin:calc(var(--r)*-.82) 0 0 calc(var(--r)*-.82);will-change:transform;border-radius:50%;border:1px solid rgba(238,235,229,.1);pointer-events:none}
 .ring::before,.ring::after{content:"";position:absolute;background:rgba(238,235,229,.35)}
 .ring::before{left:50%;top:-6px;width:1px;height:12px}
 .ring::after{top:50%;right:-6px;width:12px;height:1px}
@@ -121,8 +121,8 @@ a{color:inherit;text-decoration:none}
   <div class="tape"><div class="flow" id="flow"></div></div>
 </div>
 
-<div class="fog"></div>
 <div class="shade"></div>
+<div class="fog" id="fog"></div>
 <div class="ring" id="ring"></div>
 
 <div class="gate">
@@ -179,7 +179,7 @@ const open0 = bars[0].o, last = () => (cur || bars[bars.length - 1]).c;
 const cv = $('cv'), cx = cv.getContext('2d');
 let W = 0, H = 0;
 function size() { const r = cv.getBoundingClientRect(), d = Math.min(2, devicePixelRatio || 1); W = r.width; H = r.height; cv.width = W * d; cv.height = H * d; cx.setTransform(d, 0, 0, d, 0, 0); }
-new ResizeObserver(size).observe(cv); size();
+new ResizeObserver(() => { size(); draw(performance.now()); }).observe(cv); size();
 const css = n => getComputedStyle(root).getPropertyValue(n).trim();
 const C = { up: css('--up'), dn: css('--down'), ac: css('--accent'), pool: css('--pool'), ink: css('--ink'), faint: css('--faint') }, MONO = css('--mono'), SANS = css('--sans');
 const rgba = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${n >> 8 & 255},${n & 255},${a})`; };
@@ -200,7 +200,7 @@ function draw(t) {
     if (a < .06) continue;
     cx.fillStyle = rgba(g > 0 ? C.up : C.dn, .07 + a * .2);
     for (let c = 0, cols = Math.floor(pw / 9); c < cols; c++) {
-      const rad = a * 2.4 * (.35 + .65 * c / cols) * (.85 + .15 * Math.sin(c * .7 + r * 1.3 + t * .0012));
+      const rad = a * 2.4 * (.35 + .65 * c / cols) * (.85 + .15 * Math.sin(c * .7 + r * 1.3));
       if (rad < .35) continue; cx.beginPath(); cx.arc(c * 9 + 4.5, yy, rad, 0, 6.283); cx.fill();
     }
   }
@@ -276,18 +276,18 @@ for (let i = 0; i < 16; i++) print();
 
 // ---------- the lens ----------
 let lens = { x: innerWidth * .62, y: innerHeight * .4 }, aim = null, idle = 0;
-addEventListener('pointermove', e => { aim = { x: e.clientX, y: e.clientY }; idle = performance.now(); });
+addEventListener('pointermove', e => { aim = { x: e.clientX, y: e.clientY }; idle = performance.now(); lensAt(idle); }, { passive: true });
 addEventListener('pointerleave', () => aim = null);
+const fogEl = $('fog'), ringEl = $('ring');
 function lensAt(t) {
   const W2 = innerWidth, H2 = innerHeight, auto = !aim || t - idle > 2600;
-  const tx = auto ? W2 * (W2 < 760 ? .5 + .2 * Math.sin(t * .00021) : .66 + .16 * Math.sin(t * .00021)) : aim.x, ty = auto ? H2 * (W2 < 760 ? .23 + .04 * Math.sin(t * .00033 + 1.2) : .36 + .14 * Math.sin(t * .00033 + 1.2)) : aim.y;
-  lens.x += (tx - lens.x) * (auto ? .02 : .16); lens.y += (ty - lens.y) * (auto ? .02 : .16);
-  root.style.setProperty('--mx', lens.x.toFixed(1) + 'px'); root.style.setProperty('--my', lens.y.toFixed(1) + 'px');
-  // what the lens sits on
-  const r = cv.getBoundingClientRect();
-  if (lens.y > r.top + 54 && lens.y < r.bottom - 24 && lens.x < r.right - 74) {
-    const v = CALL + 70 - (lens.y - r.top - 54) / (r.height - 78) * (CALL - PUT + 140);
-  }
+  if (auto) {
+    const tx = W2 * (W2 < 760 ? .5 + .2 * Math.sin(t * .00021) : .66 + .16 * Math.sin(t * .00021)), ty = H2 * (W2 < 760 ? .23 + .04 * Math.sin(t * .00033 + 1.2) : .36 + .14 * Math.sin(t * .00033 + 1.2));
+    lens.x += (tx - lens.x) * .03; lens.y += (ty - lens.y) * .03;
+  } else { lens.x = aim.x; lens.y = aim.y; }
+  if (lens.x === lens.px && lens.y === lens.py) return; lens.px = lens.x; lens.py = lens.y;
+  const tr = `translate3d(${lens.x.toFixed(1)}px,${lens.y.toFixed(1)}px,0)`;
+  fogEl.style.transform = tr; ringEl.style.transform = tr;
 }
 
 // ---------- boot ----------
@@ -305,13 +305,13 @@ addEventListener('resize', fit); fit(); document.fonts && document.fonts.ready.t
 let lt = 0, lw = 0, lp = 0, lastT = performance.now();
 function loop(t) {
   const dt = Math.min(64, t - lastT); lastT = t;
-  if (t - lt > 260) { tick(); lt = t; }
+  if (t - lt > 260) { tick(); lt = t; draw(t); }
   if (t - lw > 900) { ladder(t); topbar(); lw = t; }
   if (t - lp > 1700 + rnd() * 1200) { print(); lp = t; }
   off -= dt * .03; const f = flow.firstElementChild;
   if (f && -off > f.offsetWidth) { off += f.offsetWidth; f.remove(); }
   flow.style.transform = `translateX(${off.toFixed(1)}px)`;
-  lensAt(t); draw(t); requestAnimationFrame(loop);
+  lensAt(t); requestAnimationFrame(loop);
 }
 ladder(0); topbar(); requestAnimationFrame(loop);
 })();
