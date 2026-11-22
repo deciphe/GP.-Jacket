@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.9.0
+// @version      1.9.1
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -2014,7 +2014,7 @@
   .d.big{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(1120px,calc(100vw - 64px));height:min(780px,calc(100vh - 80px));border-radius:18px;box-shadow:0 40px 120px rgba(0,0,0,.6)}
   .d.big .hd{cursor:default}.d.big .sd,.d.big [data-t=pnl]{display:none}.d.big .bg{background:#e6e3dc;color:#0b0b0b;border-color:#e6e3dc}
   .d.big .rh{display:none}
-  .d.big .rows{display:grid;grid-template-columns:repeat(auto-fill,minmax(236px,1fr));gap:8px;padding:10px 12px 14px;align-content:start}
+  .d.big .rows{display:grid;grid-template-columns:repeat(auto-fill,minmax(236px,1fr));grid-auto-rows:max-content;gap:8px;padding:10px 12px 14px;align-content:start;overflow-y:auto}
   .d.big .gh{grid-column:1/-1;border:0;padding:10px 4px 2px}
   .d.big .r.a{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"nm ro" "vb vt" "ex ex";row-gap:4px;padding:10px 10px 10px 12px;border-radius:11px;background:rgba(238,234,226,.025);box-shadow:inset 0 0 0 1px rgba(238,234,226,.06)}
   .d.big .r.a .nm{grid-area:nm}.d.big .r.a .ro{grid-area:ro}.d.big .r.a .vb{grid-area:vb;text-align:left}.d.big .r.a .vt{grid-area:vt}.d.big .r.a .ex{grid-area:ex}
