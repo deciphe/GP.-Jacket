@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.9.3
+// @version      1.9.4
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -2453,21 +2453,21 @@
   }
   every(700, noAutoScale);
 
-  // ---------- the account on the chart: a faded tag top right, e.g. "1-Step 5/6/3 · 5K" (target/drawdown/daily %) or "2-Step · 5K" ----------
+  // ---------- the account on the chart: a faded tag top right, e.g. "1-Step 5/6/3 · 5K" or "2-Step 8/6/3 · 5K" (target / drawdown / daily loss %) ----------
   const pct = v => { v = +v; if (!(v > 0)) return null; if (v <= 1) v *= 100; return Math.round(v * 10) / 10; };
-  function acctTag(id) {
+  function acctTag(id) { // program, then profit target / max drawdown / daily loss in %, then size
     const a = capAcctOld(id); if (!a) return '';
-    const cap = +a.initial_capital || 0, sz = cap >= 1000 ? trimNum(cap / 1000) + 'K' : cap ? trimNum(cap) : '';
-    const nm = String(a.plan_name || ''), inst = /instant/i.test(nm + ' ' + (a.plan_product_type || ''));
-    if (inst) return 'Instant' + (sz ? ' · ' + sz : '');
-    const two = /2-Step/i.test(nm) || +a.steps_total > 1;
-    if (two) return '2-Step' + (sz ? ' · ' + sz : '');
-    const st = (a.stages || []).find(s => s.kind === 'eval'), g0 = nm.match(/(\d+(?:\.\d+)?)%\s*Goal/i);
-    const goal = g0 ? +g0[1] : st && +st.profit_target ? (+st.profit_target > 1 && cap ? Math.round(+st.profit_target / cap * 1000) / 10 : pct(st.profit_target)) : null;
-    const mll = pct(a.max_drawdown_pct) || (cap && +a.max_drawdown_limit ? Math.round((cap - +a.max_drawdown_limit) / cap * 1000) / 10 : null);
-    const d0 = nm.match(/(\d+(?:\.\d+)?)%\s*Daily/i), dll = /No Daily/i.test(nm) ? null : d0 ? +d0[1] : pct(a.max_daily_loss_pct);
-    const nums = [goal, mll, dll].map(v => v == null ? '–' : trimNum(v)).join('/');
-    return '1-Step' + (goal != null || mll != null ? ' ' + nums : '') + (sz ? ' · ' + sz : '');
+    const cap = +a.initial_capital || 0, sz = cap >= 1000 ? trimNum(cap / 1000) + 'K' : cap ? trimNum(cap) : '', nm = String(a.plan_name || '');
+    const prog = /instant/i.test(nm + ' ' + (a.plan_product_type || '')) ? 'Instant' : /2-Step/i.test(nm) || +a.steps_total > 1 ? '2-Step' : '1-Step';
+    const of = v => cap > 0 && v > 0 ? Math.round(v / cap * 1000) / 10 : null;
+    // target: this phase's own (target equity over the start), else the plan's
+    const st = (a.stages || []).filter(x => x.kind === 'eval')[Math.max(0, (+a.step || 1) - 1)], g0 = nm.match(/(\d+(?:\.\d+)?)%\s*Goal/i);
+    const goal = a.account_type === 2 ? (of(+a.target_equity - cap) || (st && +st.profit_target ? (+st.profit_target > 1 ? of(+st.profit_target) : pct(st.profit_target)) : null) || (g0 ? +g0[1] : null)) : null;
+    const dd = pct(a.max_drawdown_pct) || (+a.max_drawdown_limit ? of(cap - +a.max_drawdown_limit) : null);
+    const d0 = nm.match(/(\d+(?:\.\d+)?)%\s*Daily/i);
+    const dll = /No Daily/i.test(nm) ? null : pct(a.max_daily_loss_pct) || (d0 ? +d0[1] : null) || (+a.daily_loss_floor && +a.daily_reset_equity ? of(+a.daily_reset_equity - +a.daily_loss_floor) : null);
+    const f = v => v == null ? '–' : trimNum(v), nums = goal == null && dd == null && dll == null ? '' : ' ' + f(goal) + '/' + f(dd) + '/' + f(dll);
+    return prog + nums + (sz ? ' · ' + sz : '');
   }
   let ATAG = null;
   function placeTag() {
