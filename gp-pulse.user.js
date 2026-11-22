@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.9.2
+// @version      1.9.3
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -2453,7 +2453,7 @@
   }
   every(700, noAutoScale);
 
-  // ---------- the account on the chart: a faded tag top right, e.g. "1-Step 5/6/3 · 5K" or "2-Step · 5K" ----------
+  // ---------- the account on the chart: a faded tag top right, e.g. "1-Step 5/6/3 · 5K" (target/drawdown/daily %) or "2-Step · 5K" ----------
   const pct = v => { v = +v; if (!(v > 0)) return null; if (v <= 1) v *= 100; return Math.round(v * 10) / 10; };
   function acctTag(id) {
     const a = capAcctOld(id); if (!a) return '';
@@ -2461,7 +2461,7 @@
     const nm = String(a.plan_name || ''), inst = /instant/i.test(nm + ' ' + (a.plan_product_type || ''));
     if (inst) return 'Instant' + (sz ? ' · ' + sz : '');
     const two = /2-Step/i.test(nm) || +a.steps_total > 1;
-    if (two) return '2-Step' + (+a.steps_total > 1 && a.account_type !== 3 ? ' ' + (+a.step || 1) + '/' + a.steps_total : '') + (sz ? ' · ' + sz : '');
+    if (two) return '2-Step' + (sz ? ' · ' + sz : '');
     const st = (a.stages || []).find(s => s.kind === 'eval'), g0 = nm.match(/(\d+(?:\.\d+)?)%\s*Goal/i);
     const goal = g0 ? +g0[1] : st && +st.profit_target ? (+st.profit_target > 1 && cap ? Math.round(+st.profit_target / cap * 1000) / 10 : pct(st.profit_target)) : null;
     const mll = pct(a.max_drawdown_pct) || (cap && +a.max_drawdown_limit ? Math.round((cap - +a.max_drawdown_limit) / cap * 1000) / 10 : null);
