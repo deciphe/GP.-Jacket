@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.9.1
+// @version      1.9.2
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -2452,6 +2452,35 @@
     });
   }
   every(700, noAutoScale);
+
+  // ---------- the account on the chart: a faded tag top right, e.g. "1-Step 5/6/3 · 5K" or "2-Step · 5K" ----------
+  const pct = v => { v = +v; if (!(v > 0)) return null; if (v <= 1) v *= 100; return Math.round(v * 10) / 10; };
+  function acctTag(id) {
+    const a = capAcctOld(id); if (!a) return '';
+    const cap = +a.initial_capital || 0, sz = cap >= 1000 ? trimNum(cap / 1000) + 'K' : cap ? trimNum(cap) : '';
+    const nm = String(a.plan_name || ''), inst = /instant/i.test(nm + ' ' + (a.plan_product_type || ''));
+    if (inst) return 'Instant' + (sz ? ' · ' + sz : '');
+    const two = /2-Step/i.test(nm) || +a.steps_total > 1;
+    if (two) return '2-Step' + (+a.steps_total > 1 && a.account_type !== 3 ? ' ' + (+a.step || 1) + '/' + a.steps_total : '') + (sz ? ' · ' + sz : '');
+    const st = (a.stages || []).find(s => s.kind === 'eval'), g0 = nm.match(/(\d+(?:\.\d+)?)%\s*Goal/i);
+    const goal = g0 ? +g0[1] : st && +st.profit_target ? (+st.profit_target > 1 && cap ? Math.round(+st.profit_target / cap * 1000) / 10 : pct(st.profit_target)) : null;
+    const mll = pct(a.max_drawdown_pct) || (cap && +a.max_drawdown_limit ? Math.round((cap - +a.max_drawdown_limit) / cap * 1000) / 10 : null);
+    const d0 = nm.match(/(\d+(?:\.\d+)?)%\s*Daily/i), dll = /No Daily/i.test(nm) ? null : d0 ? +d0[1] : pct(a.max_daily_loss_pct);
+    const nums = [goal, mll, dll].map(v => v == null ? '–' : trimNum(v)).join('/');
+    return '1-Step' + (goal != null || mll != null ? ' ' + nums : '') + (sz ? ' · ' + sz : '');
+  }
+  let ATAG = null;
+  function placeTag() {
+    const f = IS_TRADE() ? document.querySelector('iframe[id^="tradingview_"]') : null, id = activeAcct(), t = id ? acctTag(id) : '';
+    if (!ATAG) { ATAG = document.createElement('div'); ATAG.id = 'gpz-atag'; ATAG.style.cssText = 'position:fixed;z-index:2147483630;pointer-events:none;font:600 11px/1 Inter,Manrope,system-ui,sans-serif;letter-spacing:.04em;white-space:nowrap;font-variant-numeric:tabular-nums;padding:3px 6px;border-radius:5px;transition:opacity .4s'; document.documentElement.appendChild(ATAG); }
+    const r = f && f.getBoundingClientRect();
+    if (!t || !r || r.width < 300 || r.height < 200 || vestModal()) { ATAG.style.opacity = '0'; return; }
+    if (ATAG.textContent !== t) ATAG.textContent = t;
+    const lt = cTheme().light; ATAG.style.color = lt ? 'rgba(30,30,34,0.42)' : 'rgba(230,227,220,0.34)'; ATAG.style.background = lt ? 'rgba(255,255,255,0.35)' : 'rgba(11,11,11,0.55)'; // lines pass under it, never through it
+    // inside the price pane: under TradingView's top bar and the price legend, clear of the price scale
+    ATAG.style.top = Math.round(r.top + 72) + 'px'; ATAG.style.right = Math.round(innerWidth - r.right + 72) + 'px'; ATAG.style.opacity = '1';
+  }
+  every(500, placeTag);
   // Vest mode: GP.'s own panels take Vest's colours too, so the page looks as if nothing were installed
   const VMAP = [[/#0b0b0b/gi, '#121714'], [/rgba\(11,\s*11,\s*11,/g, 'rgba(18,23,20,'], [/#1[01]1[01]1[01]|#151515/gi, '#0f0f0f'],
     [/#e6e3dc|#eeeae2|#dedbd3|#f1f1f3/gi, '#f2f2f2'], [/rgba\((230,\s*227,\s*220|238,\s*234,\s*226),/g, 'rgba(242,242,242,'], [/#c9c7c2/gi, '#d4d4d4'],
