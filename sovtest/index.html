@@ -123,13 +123,10 @@ a{color:inherit;text-decoration:none}
 
 <div class="fog"></div>
 <div class="shade"></div>
-<div class="ring" id="ring"><span id="lensP"></span></div>
+<div class="ring" id="ring"></div>
 
 <div class="gate">
-  <div class="bar">
-    <div class="mark">SOVEREIG<span style="letter-spacing:0">N</span><i>.</i></div>
-    <div class="r"><span class="lbl clock" id="clk"></span></div>
-  </div>
+  <div></div>
   <div class="mid">
     <div class="boot" id="boot"></div>
     <div class="state"><b></b><span class="lbl">Terminal access</span><span class="lbl">Locked</span></div>
@@ -139,7 +136,6 @@ a{color:inherit;text-decoration:none}
       <a class="btn s" href="https://whop.com/the-sovereign-analyst/products/sovereign-analyst-pro/" target="_blank" rel="noopener">Sign in with Whop<span class="k">↗</span></a>
       <div class="key" id="key"><code>SAPRO50</code><span id="keyS">50% off month one</span></div>
     </div>
-    <div class="meta"><span>Sovereign Pro <b>$200</b> / mo <s>$250</s></span><span>Cancel any time in Whop</span><a href="https://thesovereignanalyst.com/" target="_blank" rel="noopener">thesovereignanalyst.com ↗</a></div>
   </div>
   <div class="big" id="big">SOVEREIGN<i>.</i></div>
 </div>
@@ -265,7 +261,6 @@ function topbar() {
   $('tNQ').textContent = fmtP(L); $('cNQ').textContent = (ch >= 0 ? '+' : MINUS) + Math.abs(ch).toFixed(2) + '%'; $('cNQ').className = ch >= 0 ? 'up' : 'dn';
   $('tES').textContent = fmtP(Math.round(6842.5 * (1 + ch / 100 * .82) * 4) / 4);
   const f = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(new Date());
-  $('clk').textContent = f.replace(/^24/, '00') + ' ET';
 }
 
 // ---------- flow tape: sides show, size stays locked ----------
@@ -292,8 +287,7 @@ function lensAt(t) {
   const r = cv.getBoundingClientRect();
   if (lens.y > r.top + 54 && lens.y < r.bottom - 24 && lens.x < r.right - 74) {
     const v = CALL + 70 - (lens.y - r.top - 54) / (r.height - 78) * (CALL - PUT + 140);
-    $('lensP').textContent = fmtP(Math.round(v * 4) / 4) + '  GEX ' + red('+$000.0M');
-  } else $('lensP').textContent = '';
+  }
 }
 
 // ---------- boot ----------
