@@ -1,60 +1,125 @@
 <!doctype html>
-<html lang="en"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>GIGAPROP.</title>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GP. Entry for Vest</title>
+<meta name="description" content="GP. Entry for Vest. Fixed risk, one click, every account.">
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#0b0b0b">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,500..800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@600;700&family=Geist:wght@500;600&family=Geist+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#0b0b0b;--cr:#e6e3dc;--dim:#8a877f;--mute:#4a4843;--mint:#9fd7b2;--rose:#e8988c}
+:root{
+  --bg:#0b0b0b;--cr:#e6e3dc;--ink2:#c3c0b9;--mute:#8a877f;--faint:#4f4d48;--line2:rgba(238,234,226,.14);
+  --mint:#9fd7b2;
+  --disp:"Inter Tight","Inter",ui-sans-serif,system-ui,sans-serif;
+  --sans:"Geist","Inter",ui-sans-serif,system-ui,sans-serif;
+  --mono:"Geist Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  --pad:clamp(20px,3.6vw,68px);
+}
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{background:var(--bg);color:var(--cr);font-family:Inter,system-ui,sans-serif;font-optical-sizing:auto;-webkit-font-smoothing:antialiased}
+html,body{height:100%;background:var(--bg);color:var(--cr);font:500 14px/1.4 var(--sans);-webkit-font-smoothing:antialiased;overflow:hidden}
 a{color:inherit;text-decoration:none}
-.top,.bot{position:absolute;left:clamp(16px,3.4vw,66px);right:clamp(16px,3.4vw,66px);display:flex;justify-content:space-between;align-items:center;z-index:3;font-size:clamp(10px,.9vw,15px);font-weight:600;letter-spacing:.2em;color:#6f6c66;text-transform:uppercase}
-.top{top:clamp(20px,3.6vw,64px)}.bot{bottom:clamp(20px,3.6vw,64px)}
-.top b{color:var(--cr);letter-spacing:-.02em;text-transform:none;font-size:1.35em;font-weight:700}
-.bot a:hover{color:var(--cr)}
-.hero{position:relative;height:100svh;min-height:560px;overflow:hidden}
-.hero canvas{position:absolute;inset:0;width:100%;height:100%}
-.moonc{animation:breathe 11s ease-in-out infinite;-webkit-mask-image:linear-gradient(115deg,rgba(0,0,0,.6) 35%,#000 50%,rgba(0,0,0,.6) 65%);mask-image:linear-gradient(115deg,rgba(0,0,0,.6) 35%,#000 50%,rgba(0,0,0,.6) 65%);-webkit-mask-size:320% 100%;mask-size:320% 100%}
-@keyframes breathe{0%,100%{opacity:.8;-webkit-mask-position:100% 0;mask-position:100% 0}50%{opacity:1;-webkit-mask-position:0 0;mask-position:0 0}}
-.hw{position:absolute;left:0;right:0;top:var(--wy,30%);text-align:center;font-weight:700;letter-spacing:-.055em;line-height:1;z-index:2}
-.hw span{color:var(--cr)}.hw i{font-style:normal;color:#4a4843}
-.hw.r span{color:var(--rose)}
-.hw.r{transform:scaleY(-1);opacity:.13;-webkit-mask-image:linear-gradient(0deg,#000 0,transparent 70%);mask-image:linear-gradient(0deg,#000 0,transparent 70%);filter:blur(.6px);pointer-events:none}
-.ln{position:absolute;left:0;right:0;text-align:center;z-index:2;display:flex;flex-direction:column;align-items:center;gap:18px}
-.ln p{font-size:clamp(16px,1.35vw,24px);font-weight:600;color:#8a877f;letter-spacing:-.01em}.ln p b{color:var(--cr);font-weight:600}
-.btn{display:inline-flex;align-items:center;gap:12px;height:54px;padding:0 28px;border-radius:12px;background:var(--cr);color:#0b0b0b;font-weight:700;font-size:15px;letter-spacing:-.01em;transition:transform .2s,box-shadow .2s}
-.btn:hover{transform:translateY(-2px);box-shadow:0 14px 40px rgba(230,227,220,.15)}
-.ln small{font-size:12px;font-weight:600;color:#4a4843;letter-spacing:.06em}.ln small a{color:#8a877f}
-.hw{top:auto}.soon{position:absolute;left:0;right:0;text-align:center;z-index:2;font-size:clamp(11px,.95vw,15px);font-weight:600;letter-spacing:.3em;color:#6f6c66;text-transform:uppercase}
-</style></head><body>
-<section class="hero" id="hero"><canvas class="moonc" id="mc"></canvas><canvas id="fx"></canvas>
-<div class="top"><b>GP.</b><span>gigaprop.xyz</span></div>
-<div class="hw" id="w1"><span>GIGAPROP</span><i>.</i></div>
-<div class="soon" id="sn">in the works</div>
-<div class="bot"><span>for vest</span><span>soon</span></div>
-</section>
+::selection{background:var(--cr);color:var(--bg)}
+canvas{position:fixed;inset:0;width:100%;height:100%;pointer-events:none}
+#moon{animation:breathe 11s ease-in-out infinite}
+@keyframes breathe{0%,100%{opacity:.7}50%{opacity:1}}
+
+.bar{position:fixed;left:var(--pad);right:var(--pad);display:flex;justify-content:space-between;align-items:center;z-index:3;font:600 11px/1 var(--sans);letter-spacing:.22em;text-transform:uppercase;color:var(--faint)}
+.bar.t{top:clamp(22px,3.6vw,56px)}.bar.b{bottom:clamp(22px,3.6vw,56px)}
+.bar .mk{font:700 22px/1 var(--disp);letter-spacing:-.05em;text-transform:none;color:var(--cr)}
+.bar .mk i{font-style:normal;color:var(--faint)}
+.bar .live{display:flex;align-items:center;gap:10px}
+.bar .live i{width:6px;height:6px;border-radius:50%;background:var(--mint);box-shadow:0 0 12px var(--mint);animation:br 3.6s ease-in-out infinite}
+@keyframes br{0%,100%{transform:scale(.6);opacity:.5}45%{transform:scale(1.05);opacity:1}}
+
+.hero{position:relative;z-index:2;height:100%;padding:0 var(--pad);display:flex;flex-direction:column;justify-content:center}
+.word{margin-left:-.055em;font:700 clamp(110px,21vw,420px)/.78 var(--disp);letter-spacing:-.075em;white-space:nowrap}
+.word i{font-style:normal;color:var(--faint)}
+.line{margin-top:clamp(34px,5.4vw,108px);font:600 clamp(30px,4.2vw,80px)/.95 var(--disp);letter-spacing:-.055em}
+.line span{color:var(--faint)}
+.act{margin-top:clamp(30px,3.6vw,58px);display:flex;gap:10px;flex-wrap:wrap}
+.btn{height:60px;display:inline-flex;align-items:center;gap:22px;padding:0 26px;border-radius:12px;font:600 16px var(--sans);letter-spacing:-.01em;transition:background .15s,border-color .15s,color .15s,transform .25s cubic-bezier(.16,1,.3,1),box-shadow .3s}
+.btn .k{font:500 12px var(--mono);opacity:.5}
+.btn.p{background:var(--cr);color:var(--bg)}
+.btn.p:hover{background:#fff;transform:translateY(-2px);box-shadow:0 20px 60px -18px rgba(230,227,220,.45)}
+.btn.s{border:1px solid var(--line2);color:var(--ink2);background:rgba(11,11,11,.45);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.btn.s:hover{border-color:rgba(238,234,226,.36);color:var(--cr)}
+.hints{margin-top:clamp(26px,3vw,44px);display:flex;gap:clamp(14px,1.8vw,30px);flex-wrap:wrap;font:600 11px/1 var(--sans);letter-spacing:.22em;text-transform:uppercase;color:var(--faint)}
+.hints span{transition:color .6s}
+.hints span.on{color:var(--cr)}
+
+.in{opacity:0;transform:translateY(22px);animation:up 1.2s cubic-bezier(.16,1,.3,1) forwards}
+.d1{animation-delay:.05s}.d2{animation-delay:.18s}.d3{animation-delay:.3s}.d4{animation-delay:.42s}
+@keyframes up{to{opacity:1;transform:none}}
+
+@media (max-width:760px){
+  .word{font-size:31vw}
+  .line{font-size:11vw;margin-top:8.5vw}
+  .act{display:grid;grid-template-columns:1fr}.btn{justify-content:space-between}
+  .bar.b span:nth-child(2){display:none}
+}
+@media (max-height:620px) and (min-width:761px){.word{font-size:min(21vw,34vh)}.line{font-size:min(4.2vw,8vh);margin-top:min(5.4vw,8.5vh)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.in{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<canvas id="moon"></canvas><canvas id="fx"></canvas>
+
+<div class="bar t"><span class="mk">GP<i>.</i></span><span class="live"><i></i>for Vest</span></div>
+
+<main class="hero">
+  <h1 class="word in d1">Entry<i>.</i></h1>
+  <p class="line in d2">Fixed risk. One click.<br><span>Every account.</span></p>
+  <div class="act in d3">
+    <a class="btn p" href="https://raw.githubusercontent.com/deciphe/gp-pulse/main/gp-pulse.user.js">Install GP. Entry<span class="k">v<span id="ver">1.9.1</span></span></a>
+    <a class="btn s" href="https://www.tampermonkey.net/" target="_blank" rel="noopener">Get Tampermonkey<span class="k">↗</span></a>
+  </div>
+  <div class="hints in d4" id="hints"><span>Risk dials</span><span>Chart lines</span><span>Partials</span><span>Desk</span><span>Copy</span><span>Zone</span></div>
+</main>
+
+<div class="bar b"><span>gigaprop.xyz</span><span>Free · updates itself</span><span>Code GIGA</span></div>
+
 <script>
 (() => {
-  const H = document.getElementById('hero'), mc = document.getElementById('mc'), fx = document.getElementById('fx'), w1 = document.getElementById('w1'), sn = document.getElementById('sn');
-  function moon(x, cx, cy, R, step, hz, flip, tint, alpha, u) {
-    for (let yy = -R; yy <= R; yy += step) for (let xx = -R; xx <= R; xx += step) { if (Math.hypot(xx, yy) > R) continue;
-      const lx = (xx + R * .34) / R, ly = (yy + R * .42) / R, lit = Math.max(0, 1 - Math.hypot(lx, ly) * .72), cr = Math.sin(xx * .021 / u) * Math.cos(yy * .017 / u) * .18 + Math.sin((xx + yy) * .009 / u) * .12;
-      const v = Math.max(0, Math.min(1, lit + cr * lit)), r = step * .42 * Math.pow(v, 1.1); if (r < .35) continue;
-      const py = flip ? 2 * hz - (cy + yy) : cy + yy; if (!flip && py > hz - 2 * u) continue; if (flip && py < hz + 2 * u) continue;
-      const fade = flip ? Math.max(0, 1 - (py - hz) / (R * 1.1)) : 1; x.fillStyle = `rgba(${tint},${(alpha * (.35 + .65 * v) * fade).toFixed(3)})`; x.beginPath(); x.arc(cx + xx, py, r, 0, 7); x.fill(); } }
-  function draw() {
-    const W = H.clientWidth, Ht = H.clientHeight, d = Math.min(2, devicePixelRatio || 1), wide = W / Ht > 1.2, u0 = Math.min(W, Ht) / 1080, hz = Ht * (wide ? .56 : .52);
-    const fs = Math.round((wide ? 150 : 170) * u0 * (W < 700 ? .55 : 1)); w1.style.fontSize = fs + 'px'; w1.style.top = (hz - fs * 1.35) + 'px'; sn.style.top = (hz + 36 * Math.max(.7, u0)) + 'px';
-    [mc, fx].forEach(c => { c.width = W * d; c.height = Ht * d; });
-    const m = mc.getContext('2d'); m.setTransform(d, 0, 0, d, 0, 0); const Rm = (wide ? 430 : 360) * u0, stp = Math.max(6, 8 * u0); moon(m, W * (wide ? .72 : .66), hz - Rm * .38, Rm, stp, hz, false, '230,227,220', .36, u0);
-    const x = fx.getContext('2d'); x.setTransform(d, 0, 0, d, 0, 0); let sd = 11; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
-    const gh = x.createLinearGradient(0, 0, W, 0); gh.addColorStop(0, 'rgba(230,227,220,0)'); gh.addColorStop(.5, 'rgba(230,227,220,.32)'); gh.addColorStop(1, 'rgba(230,227,220,0)'); x.fillStyle = gh; x.fillRect(0, hz - .6, W, 1.2);
-    for (let i = 0; i < 240; i++) { x.fillStyle = 'rgba(230,227,220,' + (rnd() * .16).toFixed(3) + ')'; x.beginPath(); x.arc(rnd() * W, rnd() * Ht, rnd() * 1.2 + .3, 0, 7); x.fill(); }
-    const vg = x.createRadialGradient(W * .55, hz, Math.min(W, Ht) * .25, W * .5, hz, Math.max(W, Ht) * .85); vg.addColorStop(0, 'rgba(11,11,11,0)'); vg.addColorStop(1, 'rgba(11,11,11,.85)'); x.fillStyle = vg; x.fillRect(0, 0, W, Ht);
+'use strict';
+const $ = id => document.getElementById(id);
+fetch('https://raw.githubusercontent.com/deciphe/gp-pulse/main/gp-pulse.user.js', { cache: 'no-store' }).then(r => r.text()).then(t => { const m = t.match(/@version\s+([\d.]+)/); if (m) $('ver').textContent = m[1]; }).catch(() => {});
+
+// one hint lit at a time
+const H = [...$('hints').children]; let hi = 0;
+if (!matchMedia('(prefers-reduced-motion:reduce)').matches) setInterval(() => { H.forEach((e, i) => e.classList.toggle('on', i === hi)); hi = (hi + 1) % H.length; }, 1800);
+
+// halftone moon on a horizon, a faint reflection under it
+function moon(x, cx, cy, R, step, hz, flip, a) {
+  const u = R / 400;
+  for (let yy = -R; yy <= R; yy += step) for (let xx = -R; xx <= R; xx += step) {
+    if (Math.hypot(xx, yy) > R) continue;
+    const lx = (xx + R * .34) / R, ly = (yy + R * .42) / R, lit = Math.max(0, 1 - Math.hypot(lx, ly) * .72);
+    const cr = Math.sin(xx * .021 / u) * Math.cos(yy * .017 / u) * .18 + Math.sin((xx + yy) * .009 / u) * .12;
+    const v = Math.max(0, Math.min(1, lit + cr * lit)), r = step * .42 * Math.pow(v, 1.1); if (r < .35) continue;
+    const py = flip ? 2 * hz - (cy + yy) : cy + yy; if (!flip && py > hz - 2) continue; if (flip && py < hz + 2) continue;
+    const fade = flip ? Math.max(0, 1 - (py - hz) / (R * .9)) * .22 : 1;
+    x.fillStyle = `rgba(230,227,220,${(a * (.35 + .65 * v) * fade).toFixed(3)})`; x.beginPath(); x.arc(cx + xx, py, r, 0, 7); x.fill();
   }
-  let t = 0; addEventListener('resize', () => { clearTimeout(t); t = setTimeout(draw, 120); }); (document.fonts ? document.fonts.ready : Promise.resolve()).then(draw); draw();
+}
+function draw() {
+  const W = innerWidth, Ht = innerHeight, d = Math.min(2, devicePixelRatio || 1), wide = W / Ht > 1.1;
+  [$('moon'), $('fx')].forEach(c => { c.width = W * d; c.height = Ht * d; });
+  const m = $('moon').getContext('2d'); m.setTransform(d, 0, 0, d, 0, 0);
+  const R = wide ? Math.min(W * .36, Ht * .62) : W * .78, hz = wide ? Ht * .8 : Ht * .44, cx = wide ? W * .74 : W * .72, cy = hz - R * .42, st = Math.max(6, R / 52);
+  moon(m, cx, cy, R, st, hz, false, wide ? .4 : .3); moon(m, cx, cy, R, st, hz, true, .4);
+  const x = $('fx').getContext('2d'); x.setTransform(d, 0, 0, d, 0, 0);
+  const g = x.createLinearGradient(0, 0, W, 0); g.addColorStop(0, 'rgba(230,227,220,0)'); g.addColorStop(.62, 'rgba(230,227,220,.3)'); g.addColorStop(1, 'rgba(230,227,220,0)');
+  x.fillStyle = g; x.fillRect(0, hz - .5, W, 1);
+  let sd = 11; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 220; i++) { x.fillStyle = 'rgba(230,227,220,' + (rnd() * .14).toFixed(3) + ')'; x.beginPath(); x.arc(rnd() * W, rnd() * hz, rnd() * 1.1 + .3, 0, 7); x.fill(); }
+  const vg = x.createRadialGradient(W * .3, Ht * .5, Math.min(W, Ht) * .2, W * .4, Ht * .5, Math.max(W, Ht) * .9); vg.addColorStop(0, 'rgba(11,11,11,.55)'); vg.addColorStop(.5, 'rgba(11,11,11,0)'); vg.addColorStop(1, 'rgba(11,11,11,.8)');
+  x.fillStyle = vg; x.fillRect(0, 0, W, Ht);
+}
+let t = 0; addEventListener('resize', () => { clearTimeout(t); t = setTimeout(draw, 120); }); draw();
 })();
-</script></body></html>
+</script>
+</body>
+</html>
