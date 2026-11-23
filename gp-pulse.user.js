@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Jacket for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.12.3
+// @version      1.13.0
 // @description  A risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier, a desk to close any account, Claim all on the Portfolio page, and spend, payouts and live PnL in Vest's header.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -813,6 +813,10 @@
   const CTHEMES = [
     { id: 'vest', name: 'Vest', bg: '#121714', up: '#00D98E', upB: '#00D98E', dn: '#E03737', dnB: '#E03737' }, // Vest's own colours, the whole page
     { id: 'paper', name: 'Paper', light: true, scale: '#2b2b2e', bg: '#d8d8d8', grid: 'rgba(55,55,57,0.08)', text: '#4a4a4d', up: '#fdfdfd', upB: '#373739', upW: '#373739', dn: '#373739', dnB: '#373739', dnW: '#373739' }];
+  CTHEMES.push(
+    { id: 'term', name: 'Terminal', bg: '#0e1017', up: '#ff8f40', upB: '#ff8f40', upW: '#8f5125', dn: '#bbb9b2', dnB: '#bbb9b2', dnW: '#8f5125' },
+    { id: 'midnight', name: 'Midnight', bg: '#000000', up: '#D3D3D3', upB: '#BEBEBE', upW: '#D3D3D3', dn: '#A9A9A9', dnB: '#8C8C8C', dnW: '#A9A9A9' },
+    { id: 'compound', name: 'Compound', light: true, scale: '#333333', bg: '#FFFAFA', up: '#50C878', upB: '#45A46A', upW: '#45A46A', dn: '#006400', dnB: '#004B00', dnW: '#004B23' });
   const OLD_THEMES = [ // no longer offered. Kept so a set someone already picked stays exactly as it was
     { id: 'vdark', name: 'Vest Dark', bg: '#070908', up: '#00D98E', upB: '#00D98E', upW: '#0B8F62', dn: '#2A0E11', dnB: '#D23C3C', dnW: '#8E2A2C' },
     { id: 'massive', name: 'Massive', bg: '#0b0b0b', up: '#dedbd3', upB: '#dedbd3', dn: '#4b4b51', dnB: '#4b4b51' },
@@ -1362,7 +1366,20 @@
   .lc button small{margin-left:auto;font-size:10px;font-weight:600;color:#7a7a80;font-variant-numeric:tabular-nums}.lc.on button small{color:#9fd7b2}
   .lc button.x{width:26px;flex:none;color:#55555b;font-size:14px;opacity:0;transition:opacity .15s,color .15s}
   .lc:hover button.x{opacity:1}.lc button.x:hover{color:#efb1a7}
-  @keyframes lin{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:none}}`;
+  @keyframes lin{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:none}}
+  /* flat pass: fills in place of outlines, nothing circled, nothing glowing */
+  .ib,.c,.n,.sw,.lg,.pq,.ldd,.ls,.adh button,.kr button,.lvf button,.S,.A,.X,.lk,.mst .msg{border-color:transparent!important}
+  .ib{height:26px;text-transform:capitalize}.ib:not(.on):not(.armed):not(.lock){background:rgba(238,234,226,.055)}.ib:not(.on):not(.armed):not(.lock):hover{background:rgba(238,234,226,.13)}
+  .c:not(.on){background:rgba(238,234,226,.055)}.c:not(.on):hover{background:rgba(238,234,226,.13)}
+  .c.grn:not(.on),.c.mint:not(.on){background:rgba(159,215,178,.1)}.c.rose:not(.on){background:rgba(232,152,140,.12)}
+  .n:not(.on){background:rgba(238,234,226,.06)}.n:not(.on):focus{background:rgba(238,234,226,.13)}
+  .sw:not(.on){background:rgba(238,234,226,.12);box-shadow:none}
+  .ldd,.ls{background:rgba(238,234,226,.055)}.ldd:hover,.ldd.op,.ls:hover{background:rgba(238,234,226,.12)}
+  .lg,.pq{background:rgba(238,234,226,.055)}.adh button,.kr button,.lvf button{background:rgba(238,234,226,.07)}.adh button:hover,.kr button:hover,.lvf button:hover{background:rgba(238,234,226,.15)}
+  .L,.S,.A,.X,.L:hover,.S:hover,.A:hover,.X:hover{box-shadow:none}
+  .S,.A{background:rgba(238,234,226,.08)}.S:hover,.A:hover{background:rgba(238,234,226,.16)}
+  .X{background:rgba(232,152,140,.13)}.X:hover{background:rgba(232,152,140,.26)}
+  .lk{background:rgba(232,152,140,.1)}.mst .msg{background:#181817}`;
   let SP = null;
   const BEAM = '<i class="tr"></i><i class="zl"></i><i class="zh"></i><i class="fl"></i><span data-g></span><i class="bk ks"></i><i class="bk ke"></i><i class="bk kt"></i><i class="pd"></i>';
   // the beam: stop on the left, target on the right, entry between, the price riding along it. o is in points from entry.
@@ -2162,7 +2179,23 @@
   .ft .m{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ft .m.ok{color:#9fd7b2}.ft .m.bad{color:#efb1a7}
   .ft button{border:0;background:none;padding:0;color:#9e9ea5;font:600 10.5px Inter,system-ui,sans-serif;cursor:pointer}.ft button:hover{color:#f1f1f3}
   .none{padding:12px 14px;font-size:11px;color:#5f5f66}
-  @media (prefers-reduced-motion:reduce){.dot,.moon,.d{animation:none}}`;
+  @media (prefers-reduced-motion:reduce){.dot,.moon,.d{animation:none}}
+  /* flat pass: fills in place of outlines, nothing circled, nothing glowing */
+  .d{border-color:rgba(238,234,226,.07)}
+  .tb{border-color:transparent;background:rgba(238,234,226,.055);border-radius:9px}.tb button{border-radius:7px}
+  .fx{height:26px;border-color:transparent;background:rgba(232,152,140,.13);text-transform:capitalize}.fx:hover{background:rgba(232,152,140,.26)}
+  .x{width:26px;height:26px;border-radius:8px;border-color:transparent;background:rgba(238,234,226,.055);display:inline-grid;place-items:center;padding:0}.x:hover{border-color:transparent;background:rgba(238,234,226,.13)}
+  .x svg{width:12px;height:12px;display:block;pointer-events:none}.hd.t2 .x{width:22px;min-width:22px;height:22px}
+  .sw{border-color:transparent;background:rgba(238,234,226,.13)}.sw.on{border-color:transparent;background:#9fd7b2}.sw.on:after{background:#0b0b0b}
+  .fo{border-color:transparent;background:rgba(238,234,226,.09);border-radius:6px}.fo:hover{border-color:transparent;background:rgba(238,234,226,.2)}.fo.on,.fo.on:hover{background:#9fd7b2}.fo.nil,.fo.nil:hover{background:none}.fo.lead,.fo.lead:hover{background:#e6e3dc}
+  .lb{border-color:transparent;background:rgba(238,234,226,.07)}.lb:hover{border-color:transparent;background:rgba(238,234,226,.16)}.lb.on,.lb.on:hover{background:#e6e3dc}
+  .tg.copy{border-color:transparent;background:rgba(159,215,178,.14)}.tg.lkd{box-shadow:none}
+  .k{border-color:transparent;background:rgba(238,234,226,.06)}.k:hover{border-color:transparent;background:rgba(238,234,226,.15)}.k.cl{border-color:transparent;background:rgba(232,152,140,.13)}.k.cl:hover{background:#e8988c}
+  .cm button{border-color:transparent;background:rgba(238,234,226,.055)}
+  .mrw{display:flex;align-items:center;gap:8px;height:32px;padding:0 12px 0 14px;border-bottom:1px solid rgba(238,234,226,.06);cursor:default}
+  .mrw b{font-size:10px;font-weight:600;letter-spacing:.24em;color:#6f6f75}.mrw svg{width:10px;height:10px;color:#6f6f75;flex:none}
+  .mrw .sw{opacity:.45;cursor:default}.mrw span{margin-left:auto;font-size:10.5px;font-weight:600;color:#6f6f75;white-space:nowrap}
+  .mrw span em{font-style:normal}.mrw span em+em{display:none;color:#c9c7c2}.mrw:hover span em{display:none}.mrw:hover span em+em{display:inline}.mrw:hover .sw{display:none}.mrw span{font-size:10px;letter-spacing:-.01em}`;
   function deskHost() {
     if (DS) return DS;
     const host = document.createElement('div'); host.id = 'gpz-desk'; host.style.cssText = 'position:fixed;z-index:2147483640;display:none'; // above GP. if they ever meet
@@ -2170,11 +2203,12 @@
     const R = host.attachShadow({ mode: 'open' });
     R.innerHTML = `<style>${DCSS}</style><div class="scrim"></div><div class="d">
       <div class="mw"><canvas class="moon" width="440" height="440"></canvas></div>
-      <div class="hd" data-a="drag"><i class="dot"></i><div class="tb"><button data-t="acc">Accounts</button><button data-t="pnl">PnL</button></div><div class="sp"></div><button class="fx" data-a="flat"><span data-k="fx">flatten</span></button><button class="x bg" data-a="big" aria-label="Big view" title="Big view">⤢</button><button class="x sd" data-a="side" aria-label="Beside the chart" title="Beside the chart">⇤</button><button class="x" data-a="x" aria-label="Close desk">×</button></div>
+      <div class="hd" data-a="drag"><i class="dot"></i><div class="tb"><button data-t="acc">Accounts</button><button data-t="pnl">PnL</button></div><div class="sp"></div><button class="fx" data-a="flat"><span data-k="fx">flatten</span></button><button class="x bg" data-a="big" aria-label="Big view" title="Big view"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 1.5h3v3M4.5 10.5h-3v-3M10.5 1.5 7 5M1.5 10.5 5 7"/></svg></button><button class="x sd" data-a="side" aria-label="Beside the chart" title="Beside the chart"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 2v8M10.5 6H4.5M7 3.5 4.5 6 7 8.5"/></svg></button><button class="x" data-a="x" aria-label="Close desk"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7"/></svg></button></div>
       <div class="top"><span class="o" data-k="open">—</span><span class="t"><small>TODAY</small><span data-k="today">—</span></span></div>
       <div class="cpy" data-k="cpy"><b>COPY</b><button class="sw" data-a="arm" aria-label="Copy on or off"></button><button class="dd" data-dd="cm" title="Copy size"><span data-k="cmv">same</span><i></i></button><span class="ld" data-k="ld"></span><button class="dd st" data-dd="so" title="Sort"><em>sort</em><span data-k="sov">auto</span><i></i></button>
         <div class="mn" data-mn="cm" hidden><button data-cm="same">same size</button><button data-cm="bal">by balance</button><button data-cm="room" title="Each copy sized by its account's room to the floor">by room</button></div>
         <div class="mn rt" data-mn="so" hidden><button data-so="auto">auto</button><button data-so="target">to target</button><button data-so="pnl">pnl</button><button data-so="new">newest</button><button data-so="old">oldest</button></div></div>
+      <div class="mrw"><b>MIRROR</b><svg viewBox="0 0 16 16" fill="none"><rect x="2.5" y="7" width="11" height="7.5" rx="2" fill="currentColor"/><path d="M5 7V5a3 3 0 0 1 6 0v2" stroke="currentColor" stroke-width="1.8"/></svg><i class="sw" aria-hidden="true"></i><span><em>Locked</em><em>Vest announcement coming soon</em></span></div>
       <div class="rh"><span></span><span class="v">OPEN</span><span class="v">TODAY</span><span></span></div>
       <div class="rh ra"><span></span><span class="v">BALANCE</span><span class="v">TODAY</span><span class="v">COPY</span></div>
       <div class="rows" data-k="rows"></div>
@@ -2290,7 +2324,7 @@
     if (!DK.open || !DS) return; const { R, k } = DS;
     const rows = deskRows(), live = rows.filter(r => r.n), shown = DK.all ? rows : rows.filter(r => r.n || r.role); dayLine(rows);
     const U = live.reduce((a, r) => a + r.u, 0), T = rows.reduce((a, r) => a + r.today, 0), npos = live.reduce((a, r) => a + r.n, 0);
-    R.querySelector('.d').classList.toggle('live', live.length > 0); R.querySelector('.d').classList.toggle('busyall', !!DK.busy.all); R.querySelector('[data-a=side]').textContent = DK.side ? '⇥' : '⇤';
+    R.querySelector('.d').classList.toggle('live', live.length > 0); R.querySelector('.d').classList.toggle('busyall', !!DK.busy.all); { const sb = R.querySelector('[data-a=side]'), want = DK.side ? 'out' : 'in'; if (sb.dataset.ic !== want) { sb.dataset.ic = want; sb.innerHTML = want === 'out' ? '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 2v8M1.5 6h6M5 3.5 7.5 6 5 8.5"/></svg>' : '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 2v8M10.5 6H4.5M7 3.5 4.5 6 7 8.5"/></svg>'; } }
     const o = k('open'); o.textContent = live.length ? fm(U, { sign: true }) : 'flat'; o.className = 'o ' + (live.length ? tone(U) : 'dim flat');
     const t = k('today'); t.textContent = fm(T, { sign: true }); t.className = tone(T);
     const fx = R.querySelector('[data-a=flat]'); fx.disabled = !!DK.busy.all; fx.classList.toggle('busy', !!DK.busy.all); k('fx').textContent = npos ? 'flatten · ' + npos : 'flatten'; fx.title = 'Cancels every pending order and closes every position, on every account';
