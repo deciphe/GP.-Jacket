@@ -3,16 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>GP. Entry for Vest</title>
-<meta name="description" content="GP. Entry for Vest. Fixed risk, one click, every account.">
+<title>GP. Jacket for Vest</title>
+<meta name="description" content="GP. Jacket for Vest. Goes over Vest. One click, every account.">
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#0b0b0b">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@600;700&family=Geist:wght@500;600&family=Geist+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#0b0b0b;--cr:#e6e3dc;--ink2:#c3c0b9;--mute:#8a877f;--faint:#4f4d48;--line2:rgba(238,234,226,.14);
-  --mint:#9fd7b2;--mint2:#bfe6cb;--rose:#e8988c;--rose2:#efb1a7;
+  --bg:#0b0b0b;--cr:#e6e3dc;--ink2:#c3c0b9;--mute:#8a877f;--faint:#4f4d48;--line:rgba(238,234,226,.08);--line2:rgba(238,234,226,.14);
+  --mint:#9fd7b2;--mint2:#bfe6cb;--rose:#e8988c;--rose2:#efb1a7;--card:#131312;
   --disp:"Inter Tight","Inter",ui-sans-serif,system-ui,sans-serif;
   --sans:"Geist","Inter",ui-sans-serif,system-ui,sans-serif;
   --mono:"Geist Mono",ui-monospace,"SF Mono",Menlo,monospace;
@@ -23,88 +23,300 @@
 html,body{height:100%;background:var(--bg);color:var(--cr);font:500 14px/1.4 var(--sans);-webkit-font-smoothing:antialiased;overflow:hidden}
 a{color:inherit;text-decoration:none}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+i,em{font-style:normal}
 ::selection{background:var(--cr);color:var(--bg)}
-canvas{position:fixed;inset:0;width:100%;height:100%;pointer-events:none}
-#moon{animation:breathe 11s ease-in-out infinite}
-@keyframes breathe{0%,100%{opacity:.7}50%{opacity:1}}
+#moon{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;opacity:.42;transition:opacity .9s var(--ease)}
+body.list #moon{opacity:1}
 
-.bar{position:fixed;left:var(--pad);right:var(--pad);display:flex;justify-content:space-between;align-items:center;z-index:3;font:600 11px/1 var(--sans);letter-spacing:.22em;text-transform:uppercase;color:var(--faint)}
-.bar.t{top:clamp(22px,3.6vw,56px)}.bar.b{bottom:clamp(22px,3.6vw,56px)}
+/* ---------- bars ---------- */
+.bar{position:fixed;left:var(--pad);right:var(--pad);display:flex;justify-content:space-between;align-items:center;z-index:6;font:600 11px/1 var(--sans);letter-spacing:.22em;text-transform:uppercase;color:var(--faint);pointer-events:none}
+.bar>*{pointer-events:auto}
+.bar.t{top:clamp(22px,3.2vw,50px)}.bar.b{bottom:clamp(22px,3.2vw,50px)}
 .bar .mk{font:700 22px/1 var(--disp);letter-spacing:-.05em;text-transform:none;color:var(--cr)}
-.bar .mk i{font-style:normal;color:var(--faint)}
-.bar .live{display:flex;align-items:center;gap:10px}
-.bar .live i{width:6px;height:6px;border-radius:50%;background:var(--mint);box-shadow:0 0 12px var(--mint);animation:br 3.6s ease-in-out infinite}
-@keyframes br{0%,100%{transform:scale(.6);opacity:.5}45%{transform:scale(1.05);opacity:1}}
+.bar .mk i{color:var(--faint)}
+.bar .mk small{margin-left:12px;font:600 11px/1 var(--sans);letter-spacing:.22em;text-transform:uppercase;color:var(--faint)}
+.seg{display:flex;padding:3px;border-radius:10px;border:1px solid var(--line2);background:rgba(11,11,11,.6);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.seg button{height:30px;padding:0 16px;border-radius:7px;font:600 11px/1 var(--sans);letter-spacing:.2em;text-transform:uppercase;color:var(--mute);transition:background .2s,color .2s}
+.seg button:hover{color:var(--cr)}
+.seg button.on{background:var(--cr);color:var(--bg)}
 
-/* ---------- left: the words and the buttons ---------- */
-.hero{position:relative;z-index:2;height:100%;padding:0 var(--pad);display:flex;flex-direction:column;justify-content:center}
-.word{margin-left:-.055em;font:700 clamp(100px,15vw,320px)/.78 var(--disp);letter-spacing:-.075em;white-space:nowrap}
-.word i{font-style:normal;color:var(--faint)}
-.line{margin-top:clamp(30px,4vw,80px);font:600 clamp(28px,3.1vw,60px)/.95 var(--disp);letter-spacing:-.055em}
+/* ---------- the words and the buttons ---------- */
+.hero{position:relative;z-index:5;height:100%;padding:0 var(--pad);display:flex;flex-direction:column;justify-content:center;pointer-events:none}
+.hero a{pointer-events:auto}
+.word{margin-left:-.055em;font:700 clamp(96px,14.2vw,300px)/.78 var(--disp);letter-spacing:-.075em;white-space:nowrap;text-shadow:0 0 80px rgba(11,11,11,.9)}
+.word i{color:var(--faint)}
+.line{margin-top:clamp(28px,3.6vw,72px);font:600 clamp(26px,2.9vw,56px)/.98 var(--disp);letter-spacing:-.055em}
 .line span{color:var(--faint)}
-.act{margin-top:clamp(28px,3.2vw,54px);display:flex;gap:10px;flex-wrap:wrap}
-.btn{height:60px;display:inline-flex;align-items:center;gap:22px;padding:0 26px;border-radius:12px;font:600 16px var(--sans);letter-spacing:-.01em;transition:background .15s,border-color .15s,color .15s,transform .25s var(--ease),box-shadow .3s}
+.act{margin-top:clamp(26px,3vw,50px);display:flex;gap:10px;flex-wrap:wrap}
+.btn{height:58px;display:inline-flex;align-items:center;gap:20px;padding:0 24px;border-radius:12px;font:600 16px var(--sans);letter-spacing:-.01em;white-space:nowrap;transition:background .15s,border-color .15s,color .15s,transform .25s var(--ease),box-shadow .3s}
 .btn .k{font:500 12px var(--mono);opacity:.5}
 .btn.p{background:var(--cr);color:var(--bg)}
 .btn.p:hover{background:#fff;transform:translateY(-2px);box-shadow:0 20px 60px -18px rgba(230,227,220,.45)}
-.btn.s{border:1px solid var(--line2);color:var(--ink2);background:rgba(11,11,11,.45);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.btn.s{border:1px solid var(--line2);color:var(--ink2);background:rgba(11,11,11,.9);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 .btn.s:hover{border-color:rgba(238,234,226,.36);color:var(--cr)}
 
-/* ---------- the trade, drawn across the moon ---------- */
-.art{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:0;animation:up 1.6s var(--ease) forwards .55s}
-.pl{position:absolute;height:1px;transform-origin:left center}
-.pl em{position:absolute;right:0;top:50%;transform:translateY(-50%);height:24px;padding:0 11px;border-radius:7px;font:600 11.5px/22px var(--mono);font-style:normal;white-space:nowrap;background:var(--bg);font-variant-numeric:tabular-nums;letter-spacing:.01em}
+/* ---------- collage ---------- */
+.col{position:fixed;inset:0;z-index:2;transition:opacity .7s var(--ease),transform .9s var(--ease),filter .7s}
+body.list .col{opacity:0;transform:scale(1.04);filter:blur(14px);pointer-events:none}
+.shade{position:fixed;inset:0;z-index:3;pointer-events:none;background:radial-gradient(120% 90% at 0% 55%,rgba(11,11,11,.94) 0,rgba(11,11,11,.7) 30%,rgba(11,11,11,0) 50%),linear-gradient(0deg,rgba(11,11,11,.85),rgba(11,11,11,0) 16%,rgba(11,11,11,0) 86%,rgba(11,11,11,.8));transition:opacity .7s}
+.c{position:absolute;left:var(--x);top:var(--y);z-index:var(--z,1);transform:rotate(var(--r,0deg)) scale(var(--s,1));translate:calc(var(--mx,0)*var(--d,10)*1px) calc(var(--my,0)*var(--d,10)*1px);filter:blur(var(--b,0px));opacity:var(--o,1);transition:filter .45s var(--ease),opacity .45s,transform .6s var(--ease),translate .9s var(--ease);cursor:default}
+.c:hover,.c:focus-visible{filter:blur(0);opacity:1;transform:rotate(0deg) scale(calc(var(--s,1)*1.05));z-index:40;outline:0}
+.ci{position:relative;background:var(--card);border:1px solid var(--line2);border-radius:16px;padding:16px;box-shadow:0 40px 90px -30px #000,0 0 0 1px rgba(0,0,0,.5);animation:fl var(--t,14s) ease-in-out infinite alternate;animation-delay:var(--dl,0s);white-space:nowrap}
+@keyframes fl{from{transform:translate3d(0,-7px,0)}to{transform:translate3d(0,9px,0)}}
+.c>b{position:absolute;left:4px;top:calc(100% + 12px);font:600 10.5px/1 var(--sans);letter-spacing:.24em;text-transform:uppercase;color:var(--cr);opacity:0;transition:opacity .3s;white-space:nowrap}
+.c:hover>b,.c:focus-visible>b{opacity:1}
+.c>b em{margin-left:8px;color:var(--mute)}
+
+/* card parts */
+.h{display:flex;align-items:center;gap:8px;margin-bottom:12px;font:600 10px/1 var(--sans);letter-spacing:.2em;text-transform:uppercase;color:var(--mute)}
+.h .sp{flex:1}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--mint);box-shadow:0 0 10px var(--mint)}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.up{color:var(--mint2)}.dn{color:var(--rose2)}.dim{color:var(--mute)}
+.sw{display:inline-block;width:30px;height:17px;border-radius:9px;background:rgba(238,234,226,.12);position:relative;vertical-align:middle}
+.sw:after{content:"";position:absolute;left:2px;top:2px;width:13px;height:13px;border-radius:50%;background:var(--mute)}
+.sw.on{background:var(--mint)}.sw.on:after{left:15px;background:var(--bg)}
+.row{display:grid;grid-template-columns:118px 76px 70px 34px;align-items:center;gap:10px;height:38px;border-top:1px solid var(--line);font:500 12.5px var(--mono)}
+.row b{font:600 13px var(--sans)}.row small{display:block;font:500 10px var(--sans);color:var(--mute);letter-spacing:.02em}
+.row .v{text-align:right}
+.row.cur{margin:0 -8px;padding:0 8px;border-radius:9px;background:rgba(238,234,226,.07);border-top-color:transparent}
+.tabs{display:flex;gap:2px;padding:2px;border-radius:8px;background:rgba(238,234,226,.06)}
+.tabs span{padding:6px 10px;border-radius:6px;letter-spacing:.14em}.tabs span.on{background:var(--cr);color:var(--bg)}
+.pill{display:inline-flex;align-items:center;height:28px;padding:0 11px;border-radius:8px;border:1px solid var(--line2);font:600 11.5px var(--mono);color:var(--ink2)}
+.pill.fill{background:var(--cr);color:var(--bg);border-color:transparent}
+.kbtn{display:inline-flex;align-items:center;justify-content:center;min-width:46px;height:40px;padding:0 12px;border-radius:10px;border:1px solid var(--line2);font:600 14px var(--mono);color:var(--cr)}
+.kbtn.x{color:var(--rose2);border-color:rgba(232,152,140,.45)}
+.kbtn.g{color:var(--mint2);border-color:rgba(159,215,178,.45)}
+.big{font:700 44px/.9 var(--disp);letter-spacing:-.055em}
+.cap{font:600 10px/1 var(--sans);letter-spacing:.2em;text-transform:uppercase;color:var(--mute)}
+.g6{display:flex;gap:6px}.g10{display:flex;gap:10px;align-items:center}
+.ls{display:flex;gap:8px;margin-top:12px}
+.ls span{flex:1;height:54px;display:flex;align-items:center;justify-content:center;border-radius:11px;font:700 17px var(--disp);letter-spacing:-.02em}
+.ls .l{background:var(--mint);color:#0b0b0b}.ls .s{background:transparent;border:1px solid rgba(232,152,140,.6);color:var(--rose2)}
+.sl{position:relative;height:3px;border-radius:2px;background:rgba(238,234,226,.12);margin:10px 0 16px}
+.sl i{position:absolute;left:0;top:0;bottom:0;border-radius:2px;background:var(--cr)}
+.sl u{position:absolute;top:-6px;width:15px;height:15px;margin-left:-7px;border-radius:50%;background:var(--cr);box-shadow:0 0 0 4px rgba(230,227,220,.12)}
+.kv{display:flex;justify-content:space-between;align-items:baseline;font:600 10px var(--sans);letter-spacing:.2em;text-transform:uppercase;color:var(--mute)}
+.kv b{font:600 15px var(--mono);letter-spacing:0;color:var(--cr);text-transform:none}
+.chart{position:relative;width:330px;height:190px}
+.pl{position:absolute;left:0;right:0;height:1px}
+.pl em{position:absolute;right:0;top:50%;transform:translateY(-50%);height:23px;padding:0 10px;border-radius:7px;font:600 11px/21px var(--mono);background:var(--card)}
 .pl.tp{background:linear-gradient(90deg,rgba(159,215,178,0),rgba(159,215,178,.7) 18%)}.pl.tp em{color:var(--mint2);border:1px solid rgba(159,215,178,.55)}
-.pl.en{background:repeating-linear-gradient(90deg,rgba(230,227,220,.32) 0 6px,transparent 6px 12px)}.pl.en em{color:var(--ink2);border:1px solid rgba(230,227,220,.18)}
-.pl.sl{background:linear-gradient(90deg,rgba(232,152,140,0),rgba(232,152,140,.8) 18%)}.pl.sl em{color:var(--rose2);border:1px solid rgba(232,152,140,.6);cursor:ns-resize}
-.pl.sl:after{content:"";position:absolute;left:34%;top:-5px;width:11px;height:11px;border-radius:50%;background:var(--rose2);box-shadow:0 0 0 4px rgba(232,152,140,.14),0 0 18px rgba(232,152,140,.6)}
-.pd{position:absolute;width:13px;height:13px;margin:-6.5px 0 0 -6.5px;border-radius:50%;background:var(--cr);box-shadow:0 0 0 5px rgba(230,227,220,.08),0 0 26px rgba(230,227,220,.55)}
-.pd:after{content:"";position:absolute;inset:-9px;border-radius:50%;border:1px solid rgba(230,227,220,.4);animation:ring 3.6s ease-out infinite}
-@keyframes ring{0%{transform:scale(.4);opacity:0}35%{opacity:.7}100%{transform:scale(1.7);opacity:0}}
-.note{position:absolute;font:600 10.5px/1 var(--sans);letter-spacing:.24em;text-transform:uppercase;color:var(--faint);white-space:nowrap}
-.note b{display:block;margin-bottom:10px;font:700 clamp(26px,2.3vw,44px)/.9 var(--disp);letter-spacing:-.055em;text-transform:none;color:var(--cr)}
-.note b.up{color:var(--mint2)}
-.note:before{content:"";position:absolute;left:0;top:-22px;width:1px;height:14px;background:rgba(238,234,226,.25)}
-.note.r{text-align:right}.note.r:before{left:auto;right:0}
+.pl.en{background:repeating-linear-gradient(90deg,rgba(230,227,220,.4) 0 6px,transparent 6px 12px)}.pl.en em{color:var(--bg);background:var(--cr)}
+.pl.st{background:linear-gradient(90deg,rgba(232,152,140,0),rgba(232,152,140,.8) 18%)}.pl.st em{color:var(--rose2);border:1px solid rgba(232,152,140,.6)}
+.pl.fl{background:repeating-linear-gradient(90deg,rgba(232,152,140,.55) 0 3px,transparent 3px 8px)}.pl.fl em{color:var(--mute);border:1px solid var(--line2)}
+.cd{position:absolute;bottom:0;width:9px;border-radius:2px}
+.cd.u{background:#dedbd3}.cd.d{background:#4b4b51}
+.rb{height:4px;border-radius:2px;background:rgba(238,234,226,.1);overflow:hidden}.rb i{display:block;height:100%;background:var(--cr);border-radius:2px}
+.pair{display:grid;grid-template-columns:1fr 26px 1fr;align-items:center;gap:8px;height:50px;padding:0 14px;border-radius:11px;border:1px solid var(--line2);margin-top:8px;font:700 19px var(--disp);letter-spacing:-.03em}
+.pair.on{border-color:var(--cr);background:rgba(238,234,226,.06)}
+.pair span:last-child{text-align:right}.pair i{color:var(--mute);font:500 14px var(--mono);text-align:center}
+.tagp{margin-left:auto;padding:4px 7px;border-radius:5px;border:1px solid var(--line2);font:600 9px/1 var(--sans);letter-spacing:.18em;color:var(--mute)}
+.key{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:34px;padding:0 9px;border-radius:8px;border:1px solid var(--line2);border-bottom-width:3px;font:600 12px var(--mono);color:var(--cr)}
+.kr{display:flex;align-items:center;gap:6px;margin-top:8px}.kr span{margin-left:10px;font:500 12px var(--sans);color:var(--mute)}
+.swz{display:flex;gap:8px}.swz span{width:46px;height:62px;border-radius:10px;border:1px solid var(--line2);position:relative;overflow:hidden}
+.swz span i{position:absolute;bottom:8px;width:7px;border-radius:2px}
+.cert{width:250px;padding:6px 4px}
+.cert .big{font-size:58px}
+.pulse{display:flex;align-items:center;gap:12px;height:26px;font:600 13px var(--mono)}
+.pulse b{font:700 16px var(--disp);letter-spacing:-.04em}.pulse s{width:1px;height:16px;background:var(--line2)}
+.pulse small{font:500 11px var(--sans);color:var(--mute);margin-left:-5px}
+
+/* ---------- list ---------- */
+.lst{position:fixed;z-index:4;right:var(--pad);top:50%;width:min(44vw,720px);transform:translateY(-46%);display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(8,auto);grid-auto-flow:column;column-gap:clamp(24px,3vw,56px);opacity:0;pointer-events:none;transition:opacity .6s var(--ease)}
+body.list .lst{opacity:1;pointer-events:auto}
+body.list .shade{opacity:.55}
+.lst li{list-style:none;display:grid;grid-template-columns:30px 1fr;align-items:baseline;padding:clamp(9px,1.25vh,15px) 0;border-top:1px solid var(--line);opacity:0;transform:translateY(10px);transition:opacity .5s var(--ease),transform .7s var(--ease)}
+body.list .lst li{opacity:1;transform:none;transition-delay:calc(var(--i)*28ms)}
+.lst .n{font:500 11px var(--mono);color:var(--faint)}
+.lst h3{font:600 clamp(17px,1.45vw,23px)/1.05 var(--disp);letter-spacing:-.035em}
+.lst h3 em{margin-left:8px;padding:3px 6px;border-radius:5px;border:1px solid var(--line2);font:600 8.5px/1 var(--sans);letter-spacing:.18em;color:var(--mute);vertical-align:middle;text-transform:uppercase}
+.lst p{grid-column:2;margin-top:4px;font:500 13px/1.35 var(--sans);color:var(--mute)}
+
 .in{opacity:0;transform:translateY(22px);animation:up 1.2s var(--ease) forwards}
-.d1{animation-delay:.05s}.d2{animation-delay:.18s}.d3{animation-delay:.3s}.d4{animation-delay:.5s}
+.d1{animation-delay:.05s}.d2{animation-delay:.18s}.d3{animation-delay:.3s}
+.col{animation:cin 1.8s var(--ease) both .2s}
 @keyframes up{to{opacity:1;transform:none}}
+@keyframes cin{from{opacity:0;transform:scale(1.08)}}
 
 @media (max-width:1000px){
-  .word{font-size:min(31vw,240px)}
-  .line{font-size:min(9.5vw,56px);margin-top:min(8vw,56px)}
-  .note{display:none}
+  html,body{height:auto;min-height:100%;overflow:auto;overflow-x:hidden}
+  body{display:flex;flex-direction:column}.hero{order:1}.col{order:2}.bar.b{order:4}
+  .bar{position:absolute}.bar.b{position:static;margin:40px var(--pad) 28px}
+  .bar .mk small{display:none}
+  .hero{height:auto;padding-top:clamp(120px,24vw,190px)}
+  .word{font-size:min(27vw,220px)}
+  .line{font-size:min(8.6vw,52px);margin-top:min(7vw,50px)}
+  .shade{display:none}
+  .col{position:relative;inset:auto;margin-top:56px;padding:0 6px;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:22px 14px;zoom:.62;overflow:hidden;padding-bottom:40px}
+  .c{position:relative;left:auto;top:auto;translate:none;--s:1;filter:blur(calc(var(--b,0px)*.45));opacity:1}
+  .c>b{display:none}
+  body.list .col{display:none}
+  .lst{position:relative;right:auto;top:auto;transform:none;width:auto;margin:48px var(--pad) 0;display:none;grid-template-columns:1fr;grid-template-rows:none;grid-auto-flow:row;order:3}
+  body.list .lst{display:grid}
 }
 @media (max-width:600px){
   .act{display:grid;grid-template-columns:1fr}.btn{justify-content:space-between}
   .bar.b span:nth-child(2){display:none}
-  .pl em{font-size:10.5px;padding:0 8px}
+  .col{zoom:.5}
 }
-@media (max-height:640px) and (min-width:1001px){.word{font-size:min(15vw,30vh)}}
+@media (max-width:1460px) and (min-width:1001px){.btn{height:52px;padding:0 18px;gap:14px;font-size:15px}.act{gap:8px}.c.mir{--x:50vw!important}.c.cpy{--x:71vw!important;--y:74vh!important}}
+@media (max-height:700px) and (min-width:1001px){.word{font-size:min(14.2vw,30vh)}.lst p{display:none}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.in{opacity:1;transform:none}}
 </style>
 </head>
 <body>
-<canvas id="moon"></canvas><canvas id="fx"></canvas>
-<div class="art" id="art" aria-hidden="true">
-  <div class="pl tp" id="tp"><em id="tpt">TP  +$200.00</em></div>
-  <div class="pl en" id="en"><em id="ent">long 1.9089 BTC · 25x</em></div>
-  <div class="pl sl" id="sl"><em id="slt">SL  −$100.00 · 39.5 pts</em></div>
-  <i class="pd" id="pd"></i>
-  <div class="note" id="n1"><b>One desk</b>every account · one click</div>
-  <div class="note r" id="n2"><b class="up">+$1,284</b>zone · the receipt</div>
-</div>
+<canvas id="moon"></canvas>
 
-<div class="bar t"><span class="mk">GP<i>.</i></span><span class="live"><i></i>for Vest</span></div>
+<div class="col" id="col">
+
+  <!-- Desk -->
+  <div class="c" tabindex="0" style="--x:47vw;--y:9vh;--r:-3deg;--z:8;--d:14;--t:15s"><div class="ci">
+    <div class="h"><i class="dot"></i><div class="tabs"><span class="on">Accounts</span><span>PnL</span></div><span class="sp"></span><span class="pill">flatten · 3</span></div>
+    <div class="h" style="margin:0 0 6px"><span style="width:118px"></span><span style="width:86px;text-align:right">Balance</span><span style="width:80px;text-align:right">Today</span><span class="sp"></span><span>Copy</span></div>
+    <div class="row cur"><div><b>25K · 01</b><small>Funded · lead</small></div><div class="v">25,412.80</div><div class="v up">+412.80</div><div class="v dim">—</div></div>
+    <div class="row"><div><b>25K · 02</b><small>Funded</small></div><div class="v">25,398.10</div><div class="v up">+398.10</div><div class="v"><i class="sw on"></i></div></div>
+    <div class="row"><div><b>10K · 07</b><small>Eval · $412 to go</small></div><div class="v">10,388.00</div><div class="v up">+161.40</div><div class="v"><i class="sw on"></i></div></div>
+    <div class="row"><div><b>5K · 03</b><small>Eval</small></div><div class="v">4,961.25</div><div class="v dn">−38.75</div><div class="v"><i class="sw"></i></div></div>
+  </div><b>Desk<em>every account on screen</em></b></div>
+
+  <!-- Ticket -->
+  <div class="c" tabindex="0" style="--x:77vw;--y:31vh;--r:4deg;--z:13;--d:20;--t:12s;--dl:-4s"><div class="ci" style="width:250px">
+    <div class="kv"><span>Risk</span><b>1% · $250</b></div><div class="sl"><i style="width:34%"></i><u style="left:34%"></u></div>
+    <div class="kv"><span>Target</span><b>2R</b></div><div class="sl"><i style="width:52%"></i><u style="left:52%"></u></div>
+    <div class="kv"><span>Size</span><b class="dim">1.9089 BTC</b></div>
+    <div class="ls"><span class="l">Long</span><span class="s">Short</span></div>
+  </div><b>Risk<em>set the dollars, size follows</em></b></div>
+
+  <!-- Trim -->
+  <div class="c" tabindex="0" style="--x:60vw;--y:45vh;--r:-4deg;--z:12;--d:26;--t:11s;--dl:-2s"><div class="ci">
+    <div class="h"><span>Trim</span><span class="sp"></span><span class="mono up">+$412.80</span></div>
+    <div class="g6"><span class="kbtn">10</span><span class="kbtn">20</span><span class="kbtn">25</span><span class="kbtn">50</span><span class="kbtn x">×</span></div>
+  </div><b>Trim<em>one click</em></b></div>
+
+  <!-- Add -->
+  <div class="c" tabindex="0" style="--x:84vw;--y:66vh;--r:6deg;--z:11;--d:24;--t:13s;--dl:-6s"><div class="ci">
+    <div class="h"><span>Add</span><span class="sp"></span><span class="mono">LONG 1.9089</span></div>
+    <div class="g6"><span class="kbtn g">+25%</span><span class="kbtn g">+50%</span><span class="kbtn g">+1x</span></div>
+  </div><b>Add<em>one click</em></b></div>
+
+  <!-- Copy -->
+  <div class="c cpy" tabindex="0" style="--x:67vw;--y:72vh;--r:2deg;--z:10;--d:18;--t:16s;--dl:-8s"><div class="ci" style="width:270px">
+    <div class="g10"><b style="font:600 11px var(--sans);letter-spacing:.2em">COPY</b><i class="sw on"></i><span class="pill">same size</span><span class="sp" style="flex:1"></span><span class="mono dim" style="font-size:11px">3 on</span></div>
+    <div class="row" style="grid-template-columns:1fr auto;margin-top:12px"><b>25K · 02</b><span class="up">✓ 84ms</span></div>
+    <div class="row" style="grid-template-columns:1fr auto"><b>10K · 07</b><span class="up">✓ 91ms</span></div>
+    <div class="row" style="grid-template-columns:1fr auto"><b>10K · 08</b><span class="up">✓ 88ms</span></div>
+  </div><b>Copy<em>one switch, followers take the trade</em></b></div>
+
+  <!-- Mirror -->
+  <div class="c mir" tabindex="0" style="--x:45.5vw;--y:59vh;--r:-6deg;--z:10;--d:16;--t:17s;--dl:-3s"><div class="ci" style="width:260px">
+    <div class="h"><span>Mirror</span><span class="tagp">PRIVATE BUILD</span></div>
+    <div class="g6"><span class="pill fill">MAIN</span><span class="pill">OPP</span></div>
+    <div class="pair on"><span>NDX</span><i>⇄</i><span>SPX</span></div>
+    <div class="pair"><span>BTC</span><i>⇄</i><span>ETH</span></div>
+  </div><b>Mirror<em>opposite side across accounts</em></b></div>
+
+  <!-- Chart -->
+  <div class="c" tabindex="0" style="--x:60vw;--y:26vh;--r:1deg;--z:5;--b:1.6px;--o:.85;--d:8;--t:19s;--dl:-5s"><div class="ci"><div class="chart" id="chart">
+    <div class="pl tp" style="top:22px"><em>TP +$500.00</em></div>
+    <div class="pl en" style="top:84px"><em>ARM · long 1.9089</em></div>
+    <div class="pl st" style="top:128px"><em>SL −$250.00</em></div>
+    <div class="pl fl" style="top:170px"><em>Daily floor</em></div>
+  </div></div><b>Limits<em>drag the entry, arm</em></b></div>
+
+  <!-- Swap -->
+  <div class="c" tabindex="0" style="--x:86vw;--y:11vh;--r:-4deg;--z:6;--d:16;--t:14s;--dl:-9s"><div class="ci" style="width:210px">
+    <div class="h"><span>Account</span></div>
+    <div class="row cur" style="grid-template-columns:1fr auto"><b>25K · 01</b><span class="dim">Funded</span></div>
+    <div class="row" style="grid-template-columns:1fr auto;border:0"><b>25K · 02</b><span class="dim">Funded</span></div>
+    <div class="row" style="grid-template-columns:1fr auto"><b>10K · 07</b><span class="dim">Eval</span></div>
+  </div><b>Swap<em>jump between accounts</em></b></div>
+
+  <!-- Flatten -->
+  <div class="c" tabindex="0" style="--x:49vw;--y:84vh;--r:5deg;--z:6;--b:3px;--o:.75;--d:10;--t:18s;--dl:-1s"><div class="ci">
+    <div class="g10"><span class="kbtn x" style="height:52px;padding:0 22px;font-size:16px">flatten · 3</span><span class="cap">every account</span></div>
+  </div><b>Flatten<em>one click</em></b></div>
+
+  <!-- Zone -->
+  <div class="c" tabindex="0" style="--x:91vw;--y:42vh;--r:-8deg;--z:4;--b:4px;--o:.7;--d:7;--t:21s;--dl:-7s"><div class="ci"><div class="cert">
+    <div class="cap" style="margin-bottom:16px">Zone · 2h 14m</div>
+    <div class="big up">+$1,284</div>
+    <div class="cap" style="margin-top:16px">7 trades · 5 green</div>
+  </div></div><b>Zone<em>a session, a lock, a certificate</em></b></div>
+
+  <!-- Pulse -->
+  <div class="c" tabindex="0" style="--x:68vw;--y:3vh;--r:2deg;--z:4;--b:3.5px;--o:.7;--d:6;--t:20s;--dl:-10s"><div class="ci" style="border-radius:999px;padding:10px 18px"><div class="pulse">
+    <i class="dot"></i><b>GP.</b><span>$312</span><small>spent today</small><s></s><span class="up">+$1,284</span><small>live</small>
+  </div></div><b>Pulse<em>spend, payouts, live PnL</em></b></div>
+
+  <!-- Keys -->
+  <div class="c" tabindex="0" style="--x:33vw;--y:6vh;--r:6deg;--z:3;--b:5px;--o:.55;--d:5;--t:22s;--dl:-12s"><div class="ci">
+    <div class="h"><span>Keys</span><span class="sp"></span><i class="sw on"></i></div>
+    <div class="kr"><i class="key">Alt</i><i class="key">B</i><span>Long</span></div>
+    <div class="kr"><i class="key">Alt</i><i class="key">S</i><span>Short</span></div>
+    <div class="kr"><i class="key">Alt</i><i class="key">X</i><span>Close</span></div>
+  </div><b>Keys<em>set your own</em></b></div>
+
+  <!-- Colour -->
+  <div class="c" tabindex="0" style="--x:30vw;--y:86vh;--r:-4deg;--z:3;--b:5px;--o:.5;--d:5;--t:23s;--dl:-14s"><div class="ci">
+    <div class="h"><span>Colour</span></div>
+    <div class="swz">
+      <span style="background:#121714"><i style="left:10px;height:26px;background:#00D98E"></i><i style="left:20px;height:18px;background:#E03737"></i><i style="left:30px;height:34px;background:#00D98E"></i></span>
+      <span style="background:#0b0b0b"><i style="left:10px;height:20px;background:#dedbd3"></i><i style="left:20px;height:32px;background:#4b4b51"></i><i style="left:30px;height:26px;background:#dedbd3"></i></span>
+      <span style="background:#d8d8d8"><i style="left:10px;height:30px;background:#fdfdfd;outline:1px solid #373739"></i><i style="left:20px;height:20px;background:#373739"></i><i style="left:30px;height:36px;background:#fdfdfd;outline:1px solid #373739"></i></span>
+      <span style="background:#d1d4dc"><i style="left:10px;height:22px;background:#a5d6a7"></i><i style="left:20px;height:34px;background:#faa1a4"></i><i style="left:30px;height:28px;background:#a5d6a7"></i></span>
+      <span style="background:#000"><i style="left:10px;height:32px;background:#81c784"></i><i style="left:20px;height:22px;background:#f7525f"></i><i style="left:30px;height:38px;background:#81c784"></i></span>
+    </div>
+  </div><b>Colour<em>five chart sets</em></b></div>
+
+  <!-- Floor -->
+  <div class="c" tabindex="0" style="--x:76vw;--y:88vh;--r:-2deg;--z:5;--b:2px;--o:.8;--d:9;--t:17s;--dl:-11s"><div class="ci" style="width:230px">
+    <div class="kv"><span>Room to floor</span><b>$612</b></div>
+    <div class="rb" style="margin-top:12px"><i style="width:68%"></i></div>
+  </div><b>Floor<em>daily loss floor on the chart</em></b></div>
+
+  <!-- Loadouts -->
+  <div class="c" tabindex="0" style="--x:52vw;--y:1vh;--r:-6deg;--z:2;--b:6px;--o:.45;--d:4;--t:24s;--dl:-13s"><div class="ci">
+    <div class="h"><span>Loadouts</span></div>
+    <div class="g6"><span class="pill fill">Open · 1% · 2R</span><span class="pill">Scalp · 0.5%</span><span class="pill">Runner · 4R</span></div>
+  </div><b>Loadouts<em>save a setup</em></b></div>
+
+  <!-- Tag -->
+  <div class="c" tabindex="0" style="--x:93vw;--y:82vh;--r:3deg;--z:2;--b:4.5px;--o:.5;--d:4;--t:25s;--dl:-15s"><div class="ci" style="padding:10px 14px"><span class="mono dim" style="font-size:12px">1-Step 5/6/3 5K</span></div><b>Tag<em>the account on the chart</em></b></div>
+</div>
+<div class="shade"></div>
+
+<div class="bar t"><span class="mk">GP<i>.</i><small>for Vest</small></span>
+  <div class="seg" role="tablist" aria-label="View"><button id="vc" class="on" role="tab">Collage</button><button id="vl" role="tab">List</button></div></div>
 
 <main class="hero">
-    <h1 class="word in d1">Entry<i>.</i></h1>
-    <p class="line in d2">Fixed risk. One click.<br><span>Every account.</span></p>
-    <div class="act in d3">
-      <a class="btn p" href="https://raw.githubusercontent.com/deciphe/gp-pulse/main/gp-pulse.user.js">Install GP. Entry<span class="k">v<span id="ver">1.9.2</span></span></a>
-      <a class="btn s" href="https://www.tampermonkey.net/" target="_blank" rel="noopener">Get Tampermonkey<span class="k">↗</span></a>
-    </div>
+  <h1 class="word in d1">Jacket<i>.</i></h1>
+  <p class="line in d2">Goes over Vest.<br><span>One click. Every account.</span></p>
+  <div class="act in d3">
+    <a class="btn p" href="https://raw.githubusercontent.com/deciphe/gp-pulse/main/gp-jacket.user.js">Install GP. Jacket<span class="k">v<span id="ver">1.11.0</span></span></a>
+    <a class="btn s" href="https://www.tampermonkey.net/" target="_blank" rel="noopener">Get Tampermonkey<span class="k">↗</span></a>
+    <a class="btn s" href="/gp-jacket.user.js" download="gp-jacket.user.js">Download .js<span class="k">↓</span></a>
+  </div>
 </main>
+
+<ol class="lst" id="lst">
+  <li style="--i:0"><span class="n">01</span><h3>Swap</h3><p>Jump between accounts from the desk.</p></li>
+  <li style="--i:1"><span class="n">02</span><h3>Desk</h3><p>Every account on screen. Balance, open, today.</p></li>
+  <li style="--i:2"><span class="n">03</span><h3>Copy</h3><p>One switch. Followers take the trade.</p></li>
+  <li style="--i:3"><span class="n">04</span><h3>Mirror<em>Private build</em></h3><p>Hedge across accounts. NDX / SPX, BTC / ETH.</p></li>
+  <li style="--i:4"><span class="n">05</span><h3>Trim</h3><p>10, 20, 25, 50 or all of it. One click.</p></li>
+  <li style="--i:5"><span class="n">06</span><h3>Add</h3><p>One click adds to the trade you are in.</p></li>
+  <li style="--i:6"><span class="n">07</span><h3>Risk</h3><p>Set the dollars. Size follows.</p></li>
+  <li style="--i:7"><span class="n">08</span><h3>Limits</h3><p>Drag the entry on the chart. Arm.</p></li>
+  <li style="--i:8"><span class="n">09</span><h3>Floor</h3><p>Your daily loss floor, drawn on the chart.</p></li>
+  <li style="--i:9"><span class="n">10</span><h3>Flatten</h3><p>Everything closed on every account. One click.</p></li>
+  <li style="--i:10"><span class="n">11</span><h3>Zone</h3><p>A session, a lock, a certificate.</p></li>
+  <li style="--i:11"><span class="n">12</span><h3>Pulse</h3><p>Spend, payouts and live PnL in the header.</p></li>
+  <li style="--i:12"><span class="n">13</span><h3>Keys</h3><p>Shortcuts you set yourself.</p></li>
+  <li style="--i:13"><span class="n">14</span><h3>Colour</h3><p>Five chart sets, dark and light.</p></li>
+  <li style="--i:14"><span class="n">15</span><h3>Loadouts</h3><p>Save a setup, call it back.</p></li>
+  <li style="--i:15"><span class="n">16</span><h3>Tag</h3><p>Program, target and drawdown on the chart.</p></li>
+</ol>
 
 <div class="bar b"><span>gigaprop.xyz</span><span>Free · updates itself</span><span>Code GIGA</span></div>
 
@@ -112,7 +324,19 @@ canvas{position:fixed;inset:0;width:100%;height:100%;pointer-events:none}
 (() => {
 'use strict';
 const $ = id => document.getElementById(id), RM = matchMedia('(prefers-reduced-motion:reduce)').matches;
-fetch('https://raw.githubusercontent.com/deciphe/gp-pulse/main/gp-pulse.user.js', { cache: 'no-store' }).then(r => r.text()).then(t => { const m = t.match(/@version\s+([\d.]+)/); if (m) $('ver').textContent = m[1]; }).catch(() => {});
+fetch('https://raw.githubusercontent.com/deciphe/gp-pulse/main/gp-jacket.user.js', { cache: 'no-store' }).then(r => r.text()).then(t => { const m = t.match(/@version\s+([\d.]+)/); if (m) $('ver').textContent = m[1]; }).catch(() => {});
+
+// view: collage or list, remembered per browser
+function view(v, save) { document.body.classList.toggle('list', v === 'list'); $('vc').classList.toggle('on', v !== 'list'); $('vl').classList.toggle('on', v === 'list'); if (save) try { localStorage.setItem('gpj-view', v); } catch (e) {} }
+$('vc').onclick = () => view('collage', 1); $('vl').onclick = () => view('list', 1);
+try { if (localStorage.getItem('gpj-view') === 'list') view('list'); } catch (e) {}
+
+// candles behind the chart card
+(() => { const c = $('chart'); let sd = 7, y = 70; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 22; i++) { const h = 14 + rnd() * 34, up = rnd() > .42; y = Math.max(20, Math.min(120, y + (up ? 1 : -1) * rnd() * 16)); const e = document.createElement('i'); e.className = 'cd ' + (up ? 'u' : 'd'); e.style.cssText = `left:${i * 13}px;bottom:${y}px;height:${h}px;opacity:.5`; c.prepend(e); } })();
+
+// the collage leans a little toward the cursor
+if (!RM) { const col = $('col'); let raf = 0; addEventListener('pointermove', e => { if (innerWidth <= 1000 || raf) return; raf = requestAnimationFrame(() => { raf = 0; col.style.setProperty('--mx', (.5 - e.clientX / innerWidth).toFixed(3)); col.style.setProperty('--my', (.5 - e.clientY / innerHeight).toFixed(3)); }); }, { passive: true }); }
 
 // halftone moon on a horizon, a faint reflection under it
 function moon(x, cx, cy, R, step, hz, flip, a) {
@@ -127,54 +351,15 @@ function moon(x, cx, cy, R, step, hz, flip, a) {
     x.fillStyle = `rgba(230,227,220,${(a * (.35 + .65 * v) * fade).toFixed(3)})`; x.beginPath(); x.arc(cx + xx, py, r, 0, 7); x.fill();
   }
 }
-function freeBand() { // phones: the space between the buttons and the footer
-  const a = document.querySelector('.act').getBoundingClientRect(), f = document.querySelector('.bar.b').getBoundingClientRect(), t = a.bottom + 36, b = f.top - 22;
-  return { t, b, h: Math.max(120, b - t) };
-}
 function draw() {
-  const W = innerWidth, Ht = innerHeight, d = Math.min(2, devicePixelRatio || 1), wide = W > 1000;
-  [$('moon'), $('fx')].forEach(c => { c.width = W * d; c.height = Ht * d; });
-  const m = $('moon').getContext('2d'); m.setTransform(d, 0, 0, d, 0, 0);
-  const band = wide ? null : freeBand(), R = wide ? Math.min(W * .25, Ht * .42) : Math.min(W * .5, band.h * .95), hz = wide ? Ht * .76 : band.b, cx = wide ? W * .72 : W * .62, cy = hz - R * .42, st = Math.max(6, R / 52);
-  moon(m, cx, cy, R, st, hz, false, wide ? .42 : .3); moon(m, cx, cy, R, st, hz, true, .4);
-  const x = $('fx').getContext('2d'); x.setTransform(d, 0, 0, d, 0, 0);
-  const g = x.createLinearGradient(0, 0, W, 0); g.addColorStop(0, 'rgba(230,227,220,0)'); g.addColorStop(.62, 'rgba(230,227,220,.26)'); g.addColorStop(1, 'rgba(230,227,220,0)');
-  x.fillStyle = g; x.fillRect(0, hz - .5, W, 1);
-  let sd = 11; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
-  for (let i = 0; i < 220; i++) { x.fillStyle = 'rgba(230,227,220,' + (rnd() * .14).toFixed(3) + ')'; x.beginPath(); x.arc(rnd() * W, rnd() * hz, rnd() * 1.1 + .3, 0, 7); x.fill(); }
-  const vg = x.createRadialGradient(W * .3, Ht * .5, Math.min(W, Ht) * .2, W * .45, Ht * .5, Math.max(W, Ht) * .9); vg.addColorStop(0, 'rgba(11,11,11,.5)'); vg.addColorStop(.5, 'rgba(11,11,11,0)'); vg.addColorStop(1, 'rgba(11,11,11,.8)');
-  x.fillStyle = vg; x.fillRect(0, 0, W, Ht);
-  return { cx, cy, R, hz };
+  const W = innerWidth, Ht = innerHeight, d = Math.min(2, devicePixelRatio || 1), c = $('moon'); c.width = W * d; c.height = Ht * d;
+  const m = c.getContext('2d'); m.setTransform(d, 0, 0, d, 0, 0);
+  const wide = W > 1000, R = wide ? Math.min(W * .25, Ht * .42) : W * .5, hz = wide ? Ht * .8 : Ht * .98, cx = wide ? W * .3 : W * .7, cy = hz - R * .42, st = Math.max(6, R / 52);
+  moon(m, cx, cy, R, st, hz, false, wide ? .3 : .16); moon(m, cx, cy, R, st, hz, true, .3);
+  const g = m.createLinearGradient(0, 0, W, 0); g.addColorStop(0, 'rgba(230,227,220,0)'); g.addColorStop(.26, 'rgba(230,227,220,.22)'); g.addColorStop(.5, 'rgba(230,227,220,0)');
+  m.fillStyle = g; m.fillRect(0, hz - .5, W, 1);
 }
-// the trade across the moon: the stop drifts, the dollars at risk stay, the size follows
-let G = null;
-function place() {
-  const W = innerWidth, Ht = innerHeight, wide = W > 1000, R = G.R, x0 = wide ? G.cx - R * 1.08 : W * .08, x1 = W - (wide ? Math.max(24, W * .036) : 18);
-  const set = (id, y) => { const e = $(id); e.style.left = x0 + 'px'; e.style.width = (x1 - x0) + 'px'; e.style.top = y + 'px'; };
-  if (wide) { G.yTP = G.cy - R * .62; G.yEN = G.cy - R * .2; G.ySL = G.cy + R * .1; G.drift = R * .32; }
-  else { const b = freeBand(); G.yTP = b.t; G.yEN = b.t + b.h * .4; G.ySL = b.t + b.h * .58; G.drift = b.h * .36; }
-  set('tp', G.yTP); set('en', G.yEN); set('sl', G.ySL);
-  G.x0 = x0; G.x1 = x1;
-  const n1 = $('n1'), n2 = $('n2');
-  n1.style.left = (G.cx - R * .95) + 'px'; n1.style.top = (G.hz + 30) + 'px';
-  n2.style.right = (W - x1) + 'px'; n2.style.top = (G.hz + 30) + 'px';
-}
-const PX = 64500, F = 2 * PX * 1e-4;
-function frame(now) {
-  if (G) {
-    const k = RM ? 0 : (1 - Math.cos(now / 12000 * Math.PI * 2)) / 2, d = 39.5 + k * 70, q = 100 / (d + F);
-    const y = G.ySL + k * G.drift; $('sl').style.top = y + 'px';
-    $('slt').textContent = 'SL  −$100.00 · ' + d.toFixed(1) + ' pts';
-    $('ent').textContent = 'long ' + q.toFixed(4) + ' BTC · 25x';
-    const tpd = (200 + F * q) / q; $('tpt').textContent = 'TP  +$200.00 · ' + tpd.toFixed(1) + ' pts';
-    // price rides between entry and target
-    const p = RM ? .35 : (Math.sin(now / 5200) * .5 + .5) * .75, py = G.yEN + (G.yTP - G.yEN) * p, px = G.x0 + (G.x1 - G.x0) * .52;
-    const pd = $('pd'); pd.style.left = px + 'px'; pd.style.top = py + 'px';
-  }
-  requestAnimationFrame(frame);
-}
-function redraw() { G = draw(); place(); }
-let t = 0; addEventListener('resize', () => { clearTimeout(t); t = setTimeout(redraw, 120); }); redraw(); requestAnimationFrame(frame);
+let t = 0; addEventListener('resize', () => { clearTimeout(t); t = setTimeout(draw, 120); }); draw();
 })();
 </script>
 </body>

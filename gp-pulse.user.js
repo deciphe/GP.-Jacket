@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         GP. Entry for Vest
+// @name         GP. Jacket for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.10.7
+// @version      1.11.0
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -11,8 +11,8 @@
 // @grant        GM_addValueChangeListener
 // @grant        unsafeWindow
 // @homepageURL  https://github.com/deciphe/gp-pulse
-// @updateURL    https://raw.githubusercontent.com/deciphe/gp-pulse/main/gp-pulse.user.js
-// @downloadURL  https://raw.githubusercontent.com/deciphe/gp-pulse/main/gp-pulse.user.js
+// @updateURL    https://raw.githubusercontent.com/deciphe/gp-pulse/main/gp-jacket.user.js
+// @downloadURL  https://raw.githubusercontent.com/deciphe/gp-pulse/main/gp-jacket.user.js
 // ==/UserScript==
 
 (function () {
@@ -24,6 +24,7 @@
   function every(ms, fn, keep) { JOBS.push({ ms, fn, keep: !!keep, at: 0 }); if (!clockT) clockT = setInterval(clock, 100); }
   function clock() { const now = Date.now(), hid = document.hidden; for (const j of JOBS) { const ms = hid && !j.keep ? j.ms * 4 : j.ms; if (now - j.at < ms) continue; j.at = now; try { j.fn(); } catch (e) {} } }
   if (W.top !== W.self) return;
+  if (W.__gpJacket) return; W.__gpJacket = 1; // one copy per page: an old install under the Entry name must never run beside this one
 
   // ---------- Vest session: reuse the sign-in Vest's own page already sends. Kept in memory only, never saved. ----------
   // A user token (no accountId claim) reads everything and mints short-lived account tokens; an account token
@@ -345,7 +346,7 @@
     if (PILL) return PILL;
     const host = document.createElement('div'); host.id = 'gpz-home';
     const R = host.attachShadow({ mode: 'open' });
-    R.innerHTML = `<style>${PCSS}</style><button class="rs" data-a="rs" title="Put the ticket and the desk back in place"><svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M2.5 8a5.5 5.5 0 1 0 1.7-3.98" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M2.2 2.2v3.6h3.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>reset</button><button class="p wait" aria-label="Open GP. Entry"><i class="dot"></i><b>GP.</b><span class="v" data-k="a">—</span><span class="l" data-k="al">spent today</span><i class="s" data-k="sep" hidden></i><span class="v" data-k="b" hidden></span><span class="l" data-k="bl" hidden>live</span></button>`;
+    R.innerHTML = `<style>${PCSS}</style><button class="rs" data-a="rs" title="Put the ticket and the desk back in place"><svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M2.5 8a5.5 5.5 0 1 0 1.7-3.98" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M2.2 2.2v3.6h3.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>reset</button><button class="p wait" aria-label="Open GP. Jacket"><i class="dot"></i><b>GP.</b><span class="v" data-k="a">—</span><span class="l" data-k="al">spent today</span><i class="s" data-k="sep" hidden></i><span class="v" data-k="b" hidden></span><span class="l" data-k="bl" hidden>live</span></button>`;
     R.querySelector('.p').onclick = e => { e.stopPropagation(); OPEN ? closePanel() : openPanel(); };
     R.querySelector('.rs').onclick = e => { e.stopPropagation(); const b = e.currentTarget; snapAll(); b.classList.add('ok'); setTimeout(() => b.classList.remove('ok'), 1200); };
     PILL = { host, R, btn: R.querySelector('.p'), k: n => R.querySelector(`[data-k="${n}"]`) };
