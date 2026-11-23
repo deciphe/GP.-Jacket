@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         GP. Jacket for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.11.0
-// @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
+// @version      1.12.0
+// @description  A risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier, a desk to close any account, Claim all on the Portfolio page, and spend, payouts and live PnL in Vest's header.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
 // @run-at       document-start
@@ -804,8 +804,10 @@
   const LIM = {}; // the limit entry per market, set by dragging the chart line or typing it
   const CTHEMES = [
     { id: 'vest', name: 'Vest', bg: '#121714', up: '#00D98E', upB: '#00D98E', dn: '#E03737', dnB: '#E03737' }, // Vest's own colours, the whole page
+    { id: 'vdark', name: 'Vest Dark', bg: '#070908', up: '#00D98E', upB: '#00D98E', upW: '#0B8F62', dn: '#2A0E11', dnB: '#D23C3C', dnW: '#8E2A2C' }, // Vest's green and red on a near-black canvas, down candles hollowed out
+    { id: 'paper', name: 'Paper', light: true, scale: '#2b2b2e', bg: '#d8d8d8', grid: 'rgba(55,55,57,0.08)', text: '#4a4a4d', up: '#fdfdfd', upB: '#373739', upW: '#373739', dn: '#373739', dnB: '#373739', dnW: '#373739' }];
+  const OLD_THEMES = [ // no longer offered. Kept so a set someone already picked stays exactly as it was
     { id: 'massive', name: 'Massive', bg: '#0b0b0b', up: '#dedbd3', upB: '#dedbd3', dn: '#4b4b51', dnB: '#4b4b51' },
-    { id: 'paper', name: 'Paper', light: true, scale: '#2b2b2e', bg: '#d8d8d8', grid: 'rgba(55,55,57,0.08)', text: '#4a4a4d', up: '#fdfdfd', upB: '#373739', upW: '#373739', dn: '#373739', dnB: '#373739', dnW: '#373739' },
     { id: 'pastel', name: 'Pastel', light: true, scale: '#2a2d36', bg: '#d1d4dc', grid: 'rgba(27,30,40,0.07)', text: '#4a4d57', up: '#a5d6a7', upB: '#1b5e20', upW: '#1b5e20', dn: '#faa1a4', dnB: '#801922', dnW: '#801922' },
     { id: 'night', name: 'Night', bg: '#000000', grid: 'rgba(255,255,255,0.05)', text: '#8b8b92', up: '#163918', upB: '#81c784', upW: '#81c784', dn: '#481015', dnB: '#f7525f', dnW: '#f7525f' }];
   const hex6 = v => /^#[0-9a-f]{6}$/i.test(v || '') ? v : null;
@@ -817,7 +819,8 @@
   // the colours the chart shows right now, whatever set them: GP., or the chart's own settings
   const readChart = () => { try { const f = document.querySelector('iframe[id^="tradingview_"]'), ch = f.contentWindow.tradingViewApi.activeChart(), cs = ch.getSeries().chartStyleProperties(ch.chartType()) || {}, bg = ch.chartModel().backgroundColor().value();
     const o = { bg: cssCol(bg), up: cssCol(cs.upColor), dn: cssCol(cs.downColor), upB: cssCol(cs.borderUpColor), dnB: cssCol(cs.borderDownColor), upW: cssCol(cs.wickUpColor), dnW: cssCol(cs.wickDownColor) }; return o.bg && o.up && o.dn ? o : null; } catch (e) { return null; } };
-  const allThemes = () => CTHEMES.concat((Array.isArray(DB.cthc) ? DB.cthc : []).map(c => myTheme(c, c.id, c.name)), DB.cthd ? [myTheme(DB.cthd, 'draft', 'Edit')] : []);
+  const allThemes = () => CTHEMES.concat(OLD_THEMES.filter(t => t.id === DB.cth), (Array.isArray(DB.cthc) ? DB.cthc : []).map(c => myTheme(c, c.id, c.name)), DB.cthd ? [myTheme(DB.cthd, 'draft', 'Edit')] : []);
+  const fullCols = t => ({ bg: t.bg, up: t.up, dn: t.dn, upB: t.upB || t.up, dnB: t.dnB || t.dn, upW: t.upW || t.upB || t.up, dnW: t.dnW || t.dnB || t.dn });
   const ctgHtml = () => allThemes().filter(t => t.id !== 'draft').map(t => `<button data-cth="${esc(t.id)}" title="${esc(t.name)}"><span class="sw3"><i style="background:${t.bg}"></i><i style="background:${t.up};box-shadow:inset 0 0 0 1px ${t.upB}"></i><i style="background:${t.dn};box-shadow:inset 0 0 0 1px ${t.dnB}"></i></span><small>${esc(t.name)}</small>${t.mine ? `<em data-cdel="${esc(t.id)}" title="Delete">×</em>` : ''}</button>`).join('');
   SH.keys = Object.assign({ on: false, long: 'Alt+KeyB', short: 'Alt+KeyS', close: 'Alt+KeyX' }, SH.keys || {}); // keyboard shortcuts: off until switched on
   SH.chart = true;
@@ -1115,8 +1118,9 @@
   .ctm button{display:flex;align-items:center;gap:10px;height:28px;padding:0 10px;border:0;border-radius:8px;background:none;color:#c9c7c2;font:600 12px Inter,system-ui,sans-serif;cursor:pointer;text-align:left}
   .ctm button:hover{background:rgba(238,234,226,.06);color:#f1f1f3}.ctm button.on{background:rgba(238,234,226,.08);color:#f1f1f3}
   .ctg button{position:relative}.ctg em{position:absolute;top:1px;right:3px;font-style:normal;font-size:11px;line-height:1;color:#6f6f75;display:none;padding:2px}.ctg button:hover em{display:block}.ctg em:hover{color:#e8988c}
-  .cted{display:flex;gap:2px;padding:3px 1px 2px}.cted label{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 2px;border-radius:8px;cursor:pointer;position:relative}.cted label:hover{background:rgba(238,234,226,.06)}.cted input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;border:0;padding:0}.cted i{width:22px;height:14px;border-radius:4px;box-shadow:inset 0 0 0 1px rgba(238,234,226,.18)}.cted small{font-size:9px;font-weight:700;letter-spacing:.12em;color:#8b8b92}.cted button:disabled{opacity:.35;cursor:default}.cted button{flex:1.2;justify-content:center;height:auto!important;color:#9fd7b2!important}
-  .ctg{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px;padding:0 1px}.ctg .sw3{gap:1px;padding:2px}.ctg .sw3 i{width:6px;height:12px}.ctg .sw3 i:first-child{width:9px}.ctg button{flex-direction:column;justify-content:center;gap:5px;height:auto!important;padding:7px 2px!important}.ctg small{font-size:9.5px;font-weight:600;color:#8b8b92}.ctg button.on small{color:#f1f1f3}.ctm{width:236px!important}
+  .cted{display:grid;grid-template-columns:52px repeat(3,minmax(0,1fr));gap:4px 4px;align-items:center;padding:6px 9px 4px}.cted small{font-size:8.5px;font-weight:700;letter-spacing:.14em;color:#6f6f75;text-align:center}.cted b{font-size:11.5px;font-weight:600;color:#c9c7c2}.cted label{position:relative;display:block;height:24px;border-radius:7px;cursor:pointer;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(238,234,226,.16);transition:box-shadow .12s}.cted label:hover{box-shadow:inset 0 0 0 1px rgba(238,234,226,.5)}.cted label.wd{grid-column:2/5}.cted input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;border:0;padding:0}.cted i{position:absolute;inset:2px;border-radius:5px;pointer-events:none}
+  .csv{display:flex;gap:4px;padding:4px 9px 6px}.csv input{flex:1;min-width:0;height:28px;padding:0 9px;border-radius:8px;border:1px solid rgba(238,234,226,.12);background:#0b0b0b;color:#f1f1f3;font:600 12px Inter,system-ui,sans-serif;outline:0}.csv input:focus{border-color:rgba(238,234,226,.34)}.csv input::placeholder{color:#55555a}.csv button{flex:none;justify-content:center;padding:0 14px!important;background:#e6e3dc!important;color:#0b0b0b!important;font-weight:700!important}.csv button:hover{background:#fff!important}
+  .ctg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:2px;padding:0 1px}.ctg .sw3{gap:1px;padding:2px}.ctg .sw3 i{width:6px;height:12px}.ctg .sw3 i:first-child{width:9px}.ctg button{flex-direction:column;justify-content:center;gap:5px;height:auto!important;padding:7px 2px!important}.ctg small{font-size:9.5px;font-weight:600;color:#8b8b92}.ctg button.on small{color:#f1f1f3}.ctm{width:236px!important}
   .ctt{padding:6px 10px 6px;font-size:13px;font-weight:800;color:#f1f1f3;border-bottom:1px solid rgba(238,234,226,.08);margin-bottom:2px}.ctm{max-height:min(560px,calc(100vh - 140px));overflow-y:auto;scrollbar-width:none}.cth{padding:6px 10px 3px;font-size:9.5px;font-weight:700;letter-spacing:.16em;color:#6f6f75}.ctr{display:flex;gap:2px}.ctr button{flex:1;justify-content:center;padding:0 6px}
   .sw3{display:inline-flex;gap:2px;padding:2px;border-radius:6px;background:rgba(238,234,226,.06)}.sw3 i{width:10px;height:14px;border-radius:2px}.sw3 i:first-child{width:14px}
   .ib.on{color:#0b0b0b;background:#e6e3dc;border-color:#e6e3dc}
@@ -1374,7 +1378,7 @@
       <div class="mw"><canvas class="moon" width="660" height="660"></canvas></div>
       <div class="hd" data-a="drag"><i class="dot"></i><div class="brand">GP.<span>SHOT</span></div><div class="sp"></div>
         <button class="ib" data-a="zone" title="Zone"><i></i><span data-k="zc">zone</span></button><button class="ib gr" data-a="cth" title="Settings" aria-label="Settings"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v2.6M12 18.9v2.6M4.6 4.6l1.9 1.9M17.5 17.5l1.9 1.9M2.5 12h2.6M18.9 12h2.6M4.6 19.4l1.9-1.9M17.5 6.5l1.9-1.9"/></svg><i class="cs" data-k="cts" hidden></i></button><button class="ib" data-a="copy" title="Copier"><i></i><span data-k="cp">desk</span></button><button class="ib" data-a="vest" title="Vest's ticket">Vest</button></div>
-      <div class="ctm" data-k="ctm" hidden><div class="ctt">Settings</div><span class="cth">LOOK</span><div class="ctr"><button data-look="vest">Vest</button><button data-look="gp">GP.</button></div><span class="cth">CHART</span><div class="ctg" data-k="ctg"></div><div class="cted"><label title="Background"><input type="color" data-cc="bg"><i></i><small>BG</small></label><label title="Up candles"><input type="color" data-cc="up"><i></i><small>UP</small></label><label title="Down candles"><input type="color" data-cc="dn"><i></i><small>DOWN</small></label><button data-a="csave" title="Save the chart's colours as it looks now, from GP. or the chart's own settings">save</button></div><span class="cth">LINES</span><div class="ctr"><button data-lst="0">solid</button><button data-lst="2">dashed</button><button data-lst="1">dotted</button></div><span class="cth">CODE GIGA AT CHECKOUT</span><div class="ctr"><button data-giga="1" title="GIGA goes on every account you buy, in place of any other code">on</button><button data-giga="0">off</button></div><span class="cth">TRADE</span><div class="ctr"><button data-am="abe" title="Stop to break even once the trade reaches +1R">auto BE at 1R</button><button data-am="atr" title="After +1R the stop locks profit in 0.5R steps">trail 0.5R</button></div><span class="cth">GP. PILL</span><div class="ctr"><button data-pil="1">on</button><button data-pil="0">off</button></div><span class="cth">TOOLS</span><div class="ctr"><button data-a="keys" title="Keyboard shortcuts">keys</button><button data-a="snap" title="Put the ticket, the desk and the chart back in place">reset layout</button></div></div>
+      <div class="ctm" data-k="ctm" hidden><div class="ctt">Settings</div><span class="cth">LOOK</span><div class="ctr"><button data-look="vest">Vest</button><button data-look="gp">GP.</button></div><span class="cth">CHART</span><div class="ctg" data-k="ctg"></div><div class="cted"><span></span><small>BODY</small><small>BORDER</small><small>WICK</small><b>Up</b><label title="Up body"><input type="color" data-cc="up"><i></i></label><label title="Up border"><input type="color" data-cc="upB"><i></i></label><label title="Up wick"><input type="color" data-cc="upW"><i></i></label><b>Down</b><label title="Down body"><input type="color" data-cc="dn"><i></i></label><label title="Down border"><input type="color" data-cc="dnB"><i></i></label><label title="Down wick"><input type="color" data-cc="dnW"><i></i></label><b>Canvas</b><label class="wd" title="Canvas"><input type="color" data-cc="bg"><i></i></label></div><div class="csv"><input data-k="cname" maxlength="14" placeholder="Name it" aria-label="Colour set name" spellcheck="false"><button data-a="csave" title="Save these colours">Save</button></div><span class="cth">LINES</span><div class="ctr"><button data-lst="0">solid</button><button data-lst="2">dashed</button><button data-lst="1">dotted</button></div><span class="cth">CODE GIGA AT CHECKOUT</span><div class="ctr"><button data-giga="1" title="GIGA goes on every account you buy, in place of any other code">on</button><button data-giga="0">off</button></div><span class="cth">TRADE</span><div class="ctr"><button data-am="abe" title="Stop to break even once the trade reaches +1R">auto BE at 1R</button><button data-am="atr" title="After +1R the stop locks profit in 0.5R steps">trail 0.5R</button></div><span class="cth">GP. PILL</span><div class="ctr"><button data-pil="1">on</button><button data-pil="0">off</button></div><span class="cth">TOOLS</span><div class="ctr"><button data-a="keys" title="Keyboard shortcuts">keys</button><button data-a="snap" title="Put the ticket, the desk and the chart back in place">reset layout</button></div></div>
       <div class="mk"><b><em data-k="px">—</em><i class="fr" data-k="fr"></i></b><span data-k="ac">—</span></div>
       <div class="mst"><div class="msg" data-k="msg"></div></div>
       <div class="lvp" data-k="lvp" hidden><div class="lvh"><span>LEVERAGE</span><b data-k="lvv">—</b></div><input type="range" data-k="lvr" min="1" max="50" step="1" aria-label="Leverage"><div class="lvf"><span>1x</span><button data-a="levmax">max <span data-k="lvm"></span></button></div></div>
@@ -1478,9 +1482,13 @@
     const paintNow = () => { DB.cthPaint = true; save(true); skinKey = ''; applySkin(); renderShot(); };
     k('ctg').addEventListener('click', e => { const d = e.target.closest('[data-cdel]'); if (d) { e.stopPropagation(); DB.cthc = (DB.cthc || []).filter(c => c.id !== d.dataset.cdel); if (DB.cth === d.dataset.cdel) DB.cth = 'vest'; paintNow(); return; }
       const b = e.target.closest('[data-cth]'); if (!b) return; DB.cth = b.dataset.cth; ctm.hidden = true; paintNow(); });
-    R.querySelectorAll('[data-cc]').forEach(inp => inp.oninput = () => { const t = cTheme(), d = readChart() || { bg: t.bg, up: t.up, dn: t.dn, upB: t.upB, dnB: t.dnB, upW: t.upW, dnW: t.dnW }; if (inp.dataset.cc === 'up') d.upB = d.upW = inp.value; if (inp.dataset.cc === 'dn') d.dnB = d.dnW = inp.value; d[inp.dataset.cc] = inp.value; DB.cthd = d; DB.cth = 'draft'; paintNow(); });
-    on('csave', () => { const t = cTheme(), live = readChart(), L = Array.isArray(DB.cthc) ? DB.cthc : []; if (L.length >= 10) L.shift(); let n = 1; while (L.some(c => c.name === 'Mine ' + n)) n++;
-      const c = Object.assign({ id: 'u' + Date.now().toString(36), name: 'Mine ' + n }, live || { bg: t.bg, up: t.up, dn: t.dn, upB: t.upB, dnB: t.dnB, upW: t.upW, dnW: t.dnW }); L.push(c); DB.cthc = L; DB.cth = c.id; delete DB.cthd; paintNow(); });
+    R.querySelectorAll('[data-cc]').forEach(inp => inp.oninput = () => { const t = cTheme(), d = DB.cth === 'draft' && DB.cthd ? Object.assign({}, DB.cthd) : readChart() || fullCols(t); if (t.mine && t.id !== 'draft' && !k('cname').value) k('cname').value = t.name; d[inp.dataset.cc] = inp.value; DB.cthd = d; DB.cth = 'draft'; paintNow(); }); // each part on its own: body, border, wick
+    ['keydown', 'keyup', 'keypress'].forEach(t => k('cname').addEventListener(t, e => { e.stopPropagation(); if (t === 'keydown' && e.key === 'Enter') k('cname').nextElementSibling.click(); }));
+    on('csave', () => { const t = cTheme(), live = DB.cth === 'draft' && DB.cthd ? DB.cthd : readChart(), L = Array.isArray(DB.cthc) ? DB.cthc : [], cols = fullCols(live || t);
+      let name = k('cname').value.trim().slice(0, 14); if (!name) { let n = 1; while (L.some(c => c.name === 'Mine ' + n)) n++; name = 'Mine ' + n; }
+      const had = L.find(c => String(c.name).toLowerCase() === name.toLowerCase()); // the same name again: that set is updated, not doubled
+      const c = Object.assign(had || { id: 'u' + Date.now().toString(36) }, { name }, cols); if (!had) { if (L.length >= 10) L.shift(); L.push(c); }
+      DB.cthc = L; DB.cth = c.id; delete DB.cthd; k('cname').value = ''; paintNow(); });
     R.addEventListener('pointerdown', e => { if (!ctm.hidden && !e.composedPath().some(n => n === ctm || (n.dataset && n.dataset.a === 'cth'))) { ctm.hidden = true; renderShot(); } });
     const kp = k('kp');
     on('snap', () => { k('ctm').hidden = true; snapAll(); });
@@ -1717,7 +1725,7 @@
       { const t = cTheme(); k('cts').style.background = t.id === 'massive' ? '#e6e3dc' : t.id === 'vest' ? '#00D98E' : t.bg; R.querySelector('[data-a=cth]').classList.toggle('on', !k('ctm').hidden);
         { const g = k('ctg'), h = ctgHtml(); if (g.__h !== h) { g.innerHTML = h; g.__h = h; } }
         R.querySelectorAll('[data-cth]').forEach(b => b.classList.toggle('on', b.dataset.cth === t.id));
-        const lv = !k('ctm').hidden && readChart(); R.querySelectorAll('[data-cc]').forEach(inp => { const v = toHex((lv || t)[inp.dataset.cc]) || '#000000'; if (inp !== R.activeElement && inp.value !== v.toLowerCase()) inp.value = v.toLowerCase(); inp.nextElementSibling.style.background = v; });
+        const lv = !k('ctm').hidden && (DB.cth === 'draft' && DB.cthd ? DB.cthd : readChart()), cv = fullCols(lv || t); R.querySelectorAll('[data-cc]').forEach(inp => { const v = toHex(cv[inp.dataset.cc]) || '#000000'; if (inp !== R.activeElement && inp.value !== v.toLowerCase()) inp.value = v.toLowerCase(); inp.nextElementSibling.style.background = v; });
         
         R.querySelectorAll('[data-look]').forEach(b => b.classList.toggle('on', (b.dataset.look === 'vest') === (DB.skin === false)));
         R.querySelectorAll('[data-lst]').forEach(b => b.classList.toggle('on', +b.dataset.lst === lineStyle()));
@@ -2404,6 +2412,80 @@
   if (DK.open) setTimeout(() => deskToggle(true), 1200);
   // a cleaner Vest: no market-category rail beside the chart, no Feedback tab
   (function clean() { const root = document.documentElement; if (!root) return setTimeout(clean, 30); if (document.getElementById('gpz-clean')) return; const st = document.createElement('style'); st.id = 'gpz-clean'; st.textContent = 'aside.h-full:has(> ul.space-y-2),aside.h-full:has(> ul.space-y-2) + div.w-px,div[class^="PostHogSurvey"]{display:none!important}'; root.appendChild(st); })();
+  // ---------- claim all: on the Portfolio page, every funded account's profit claimed to the Primary account in one click ----------
+  // Vest's own rules, read from its Claim Profit dialog: what can be claimed is the free balance above the starting balance,
+  // $1 at least, and only from an account with nothing open and nothing resting. The request is Vest's own:
+  // POST /v3/capital/withdraw with that account's token, { account_id, amount, target_account_id, idempotency_key }.
+  // Money is counted in whole millionths of a dollar, as Vest does, so no cent is ever made or lost to rounding.
+  const IS_PORT = () => /^\/portfolio(\/|$)/.test(location.pathname);
+  const micro = v => { v = String(v == null ? '' : v).trim(); if (!/^-?\d+(\.\d+)?$/.test(v)) return null; const neg = v[0] === '-', [a, b = ''] = (neg ? v.slice(1) : v).split('.'), n = BigInt(a + b.padEnd(6, '0').slice(0, 6)); return neg ? -n : n; };
+  const unmicro = n => { const t = n.toString().padStart(7, '0'), a = t.slice(0, -6), b = t.slice(-6).replace(/0+$/, ''); return b ? a + '.' + b : a; };
+  const CL = { rows: [], prim: null, at: 0, busy: false, step: '', done: null, doneAt: 0, host: null, R: null, key: '' };
+  const CL_MIN = 1000000n; // Vest's minimum claim: $1
+  const claimable = r => !r.open && r.avail != null && r.avail >= CL_MIN;
+  async function claimScan() {
+    const [acc, cap, pos] = await Promise.all([api('/v3/accounts?active=true&limit=500'), api('/v3/capital/accounts/active'), api('/v3/positions/opened')]);
+    let A = acc.accounts || [], prim = A.find(a => a.account_type === 1);
+    if (!prim) { const all = await api('/v3/accounts?limit=500').catch(() => null); prim = ((all && all.accounts) || []).find(a => a.account_type === 1); }
+    const busy = new Set(((pos && pos.positions) || []).map(p => p.accountId || p.account_id)); // a resting limit counts too: Vest lists it as a position of size 0
+    CL.prim = prim ? prim.account_id : null;
+    CL.rows = (cap.accounts || []).filter(c => c.account_type === 3 && c.status === 2).map(c => { const a = A.find(x => x.account_id === c.id), bal = a ? micro(a.amount) : null, start = micro(c.initial_capital);
+      return { id: c.id, name: 'Account ' + String((+c.attempt_index || 0) + 1).padStart(2, '0'), avail: bal != null && start != null && start > 0n ? bal - start : null, open: busy.has(c.id) }; });
+    CL.at = Date.now();
+  }
+  async function claimAll() {
+    if (CL.busy) return; CL.busy = true; CL.done = null; CL.step = ''; paintClaim();
+    const out = [];
+    try {
+      await claimScan(); // fresh numbers, read this second: never an amount from an older look
+      if (!CL.prim) throw new Error('Primary account not found');
+      const list = CL.rows.filter(claimable);
+      for (let i = 0; i < list.length; i++) { const r = list[i]; CL.step = (i + 1) + '/' + list.length; paintClaim();
+        try {
+          const os = await send(r.id, 'GET', '/v3/positions/opened-orders').catch(() => null), n = os ? ((Array.isArray(os) ? os : os.orders || os.items || []) || []).length : 0;
+          if (n) { out.push({ r, err: 'orders resting' }); continue; }
+          const key = uuid(), body = { account_id: r.id, amount: unmicro(r.avail), target_account_id: CL.prim, idempotency_key: key };
+          let j; try { j = await send(r.id, 'POST', '/v3/capital/withdraw', body, key); }
+          catch (e) { if (e.status && e.status < 429) throw e; await sleep(900); j = await send(r.id, 'POST', '/v3/capital/withdraw', body, key); } // a rate limit or a dropped line: once more, same key, so it can never pay twice
+          out.push({ r, got: isFinite(+j.trader_amount) ? +j.trader_amount : null, req: Number(unmicro(r.avail)) });
+        } catch (e) { out.push({ r, err: String(e && e.message || e).slice(0, 80) }); }
+        if (i < list.length - 1) await sleep(250);
+      }
+    } catch (e) { out.push({ err: String(e && e.message || e).slice(0, 80) }); }
+    CL.done = out; CL.doneAt = Date.now(); CL.busy = false; CL.at = 0; paintClaim(); try { kick(); } catch (e) {}
+  }
+  const CLCSS = `:host{all:initial}*{box-sizing:border-box;margin:0;padding:0}
+  .w{display:flex;flex-direction:column;align-items:center;gap:8px;font-family:Inter,ui-sans-serif,system-ui,sans-serif;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased;animation:in .45s cubic-bezier(.16,1,.3,1)}
+  @keyframes in{from{opacity:0;transform:translateY(14px)}}
+  .b{display:flex;align-items:center;gap:14px;height:54px;padding:0 22px 0 18px;border:0;border-radius:15px;background:#e6e3dc;color:#0b0b0b;cursor:pointer;box-shadow:0 22px 60px -14px rgba(0,0,0,.85),0 0 0 1px rgba(0,0,0,.4);transition:background .15s,transform .25s cubic-bezier(.16,1,.3,1)}
+  .b:hover{background:#fff;transform:translateY(-2px)}.b:active{transform:none}
+  .b b{font:700 17px/1 "Inter Tight",Inter,system-ui,sans-serif;letter-spacing:-.03em}
+  .b span{font:600 13px/1 ui-monospace,"SF Mono",Menlo,monospace;opacity:.62}
+  .b i{width:7px;height:7px;border-radius:50%;background:#2f9e63;box-shadow:0 0 0 4px rgba(47,158,99,.18)}
+  .b.busy{cursor:default;background:#1a1a19;color:#e6e3dc;box-shadow:0 22px 60px -14px rgba(0,0,0,.85),0 0 0 1px rgba(238,234,226,.14)}.b.busy:hover{transform:none}
+  .b.busy i{background:#e6e3dc;box-shadow:none;animation:br 1s ease-in-out infinite}@keyframes br{50%{opacity:.25}}
+  .b.done{background:#9fd7b2}.b.done i{background:#0b0b0b;box-shadow:none}.b.bad{background:#e8988c}
+  .l{min-width:240px;max-width:340px;padding:6px;border-radius:13px;background:#101010;border:1px solid rgba(238,234,226,.14);box-shadow:0 22px 50px -16px rgba(0,0,0,.9)}
+  .l div{display:flex;justify-content:space-between;gap:18px;padding:6px 9px;font:600 12px/1.2 Inter,system-ui,sans-serif;color:#c9c7c2}
+  .l div span{font-family:ui-monospace,"SF Mono",Menlo,monospace;white-space:nowrap}.l .ok span{color:#bfe6cb}.l .no span{color:#efb1a7;white-space:normal;text-align:right}`;
+  let clKey = '';
+  function paintClaim() {
+    const show = IS_PORT() && (CL.busy || CL.done || CL.rows.some(claimable));
+    if (!show) { if (CL.host) { CL.host.remove(); CL.host = CL.R = null; clKey = ''; } return; }
+    if (!CL.host || !CL.host.isConnected) { const h = document.createElement('div'); h.id = 'gpz-claim'; h.style.cssText = 'position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:2147483600'; CL.R = h.attachShadow({ mode: 'open' }); (document.body || document.documentElement).appendChild(h); CL.host = h; clKey = ''; fonts();
+      CL.R.addEventListener('click', e => { const b = e.target.closest('.b'); if (!b || CL.busy) return; if (CL.done) { CL.done = null; paintClaim(); return; } claimAll(); }); }
+    let h;
+    if (CL.busy) h = `<button class="b busy"><i></i><b>Claiming</b><span>${esc(CL.step || '…')}</span></button>`;
+    else if (CL.done) { const ok = CL.done.filter(o => o.r && !o.err), bad = CL.done.filter(o => o.err), got = ok.reduce((a, o) => a + (o.got != null ? o.got : o.req), 0);
+      h = `<div class="l">${ok.map(o => `<div class="ok">${esc(o.r.name)}<span>${fm(o.got != null ? o.got : o.req)}</span></div>`).join('')}${bad.map(o => `<div class="no">${esc(o.r ? o.r.name : 'Claim all')}<span>${esc(o.err)}</span></div>`).join('')}${!ok.length && !bad.length ? '<div class="no">Claim all<span>nothing to claim</span></div>' : ''}</div><button class="b ${ok.length ? 'done' : 'bad'}"><i></i><b>${ok.length ? 'Claimed' : 'Not claimed'}</b><span>${ok.length ? fm(got) + ' · ' + ok.length : bad.length + ' failed'}</span></button>`; }
+    else { const L2 = CL.rows.filter(claimable), tot = L2.reduce((a, r) => a + r.avail, 0n);
+      h = `<button class="b" title="${esc(L2.map(r => r.name + '  ' + fm(Number(unmicro(r.avail)))).join('\n'))}"><i></i><b>Claim all</b><span>${fm(Number(unmicro(tot)))} · ${L2.length}</span></button>`; }
+    if (h !== clKey) { clKey = h; CL.R.innerHTML = `<style>${CLCSS}</style><div class="w">${h}</div>`; }
+  }
+  // on Portfolio: a look every 10s while the tab is in front; the button is there only when there is something to claim
+  every(1000, () => { if (!IS_PORT()) { if (CL.host) paintClaim(); return; } if (CL.done && !CL.busy && Date.now() - CL.doneAt > 45000) CL.done = null;
+    if (!CL.busy && !document.hidden && userTok() && Date.now() - CL.at > 10000) { CL.at = Date.now(); claimScan().then(paintClaim, () => {}); } paintClaim(); });
+
   let lastPath = location.pathname;
   function freshLayout() { // forget what was measured on the old page: Vest builds a new one
     OCOL = null; SHOT.lastH = 0; bookDone = ''; skinKey = ''; tkFit(null);
