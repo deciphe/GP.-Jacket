@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.9.5
+// @version      1.9.6
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -157,6 +157,17 @@
   // taken from a matching pair, so a trade opened between two balance reads can't count its margin as money.
   const marginOf = id => L.pos.filter(p => (p.accountId || p.account_id) === id).reduce((a, p) => a + Math.abs(+p.quantity) * (+p.openPrice) / (+p.leverage || 1), 0);
   function snapCash() { const o = {}; for (const id in L.bal) o[id] = L.bal[id] + marginOf(id); L.cash = o; }
+  // read positions, then free balances, then positions again: a fill landing mid-read would add margin to one read and not
+  // the other, so the snapshot is only taken when both position reads agree (else the last good one stays)
+  const posKey = ps => ps.map(p => (p.positionId || p.id) + ':' + p.quantity).sort().join('|');
+  async function readCash() {
+    const p0 = (await api('/v3/positions/opened')).positions || [];
+    const acc = (await api('/v3/accounts?active=true&limit=500')).accounts || [];
+    const p1 = (await api('/v3/positions/opened')).positions || [];
+    L.bal = {}; acc.forEach(a => { L.bal[a.account_id] = +a.amount || 0; }); L.balAt = Date.now();
+    L.pos = p1; L.posAt = Date.now();
+    if (posKey(p0) === posKey(p1)) snapCash();
+  }
   let seriesAt = 0;
   async function loadSeries() {
     if (Date.now() - seriesAt < 15000 || !L.pos.length) return; seriesAt = Date.now();
@@ -278,11 +289,9 @@
       tick++;
       try {
         await Promise.all([
-          api('/v3/accounts?active=true&limit=500').then(j => { L.bal = {}; (j.accounts || []).forEach(a => { L.bal[a.account_id] = +a.amount || 0; }); L.balAt = Date.now(); }),
-          api('/v3/positions/opened').then(j => { L.pos = j.positions || []; }),
+          readCash(),
           (!L.cap || tick % 6 === 0) ? api('/v3/capital/accounts/active').then(j => { L.cap = j.accounts || []; }) : null
         ]);
-        snapCash();
         if (L.pos.length) { await readMarks(); await loadSeries(); }
         L.ok = true; L.at = Date.now(); L.err = '';
         if (!DB.full || Date.now() - DB.full > 6 * 36e5) await syncHistory(true);
@@ -769,12 +778,11 @@
       fastBusy = true;
       try {
         await loadSpecs();
-        const T = [api('/v3/positions/opened').then(j => { L.pos = j.positions || []; L.posAt = Date.now(); }), readMarks()];
         const balNow = Date.now() - (L.balAt || 0) > 4000;
-        if (balNow) T.push(api('/v3/accounts?active=true&limit=500').then(j => { L.bal = {}; (j.accounts || []).forEach(a => { L.bal[a.account_id] = +a.amount || 0; }); L.balAt = Date.now(); }));
+        const T = [balNow ? readCash() : api('/v3/positions/opened').then(j => { L.pos = j.positions || []; L.posAt = Date.now(); }), readMarks()];
         if (!L.cap || Date.now() - (L.capAt || 0) > 30000) T.push(api('/v3/capital/accounts/active').then(j => { L.cap = j.accounts || []; L.capAt = Date.now(); }));
         if (!L.levs || Date.now() - (L.levAt || 0) > 60000) T.push(api('/v3/user-state').then(j => { const o = {}, n = {}; (j.accounts || []).forEach(a => { o[a.accountId] = {}; (a.leverages || []).forEach(l => { o[a.accountId][l.symbol] = +l.leverage; }); if (a.name) n[a.accountId] = a.name; }); L.levs = o; L.names = n; L.levAt = Date.now(); }).catch(() => { L.levAt = Date.now(); }));
-        await Promise.all(T); if (balNow) snapCash(); await loadSeries();
+        await Promise.all(T); await loadSeries();
         { const act = activeAcct(); if (act && L.balAt > (L.capAt || 0) && L.bal[act] == null && capAcct(act)) L.capAt = 0; } // the active account dropped out: re-read the list now
         L.ok = true; L.at = Date.now(); L.err = '';
         if (C.on && ownCopier()) await copierSync();
