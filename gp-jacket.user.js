@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Jacket for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.12.1
+// @version      1.12.2
 // @description  A risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier, a desk to close any account, Claim all on the Portfolio page, and spend, payouts and live PnL in Vest's header.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -2467,20 +2467,27 @@
   .b.done{background:#9fd7b2}.b.done i{background:#0b0b0b;box-shadow:none}.b.bad{background:#e8988c}
   .l{min-width:240px;max-width:340px;padding:6px;border-radius:13px;background:#101010;border:1px solid rgba(238,234,226,.14);box-shadow:0 22px 50px -16px rgba(0,0,0,.9)}
   .l div{display:flex;justify-content:space-between;gap:18px;padding:6px 9px;font:600 12px/1.2 Inter,system-ui,sans-serif;color:#c9c7c2}
-  .l div span{font-family:ui-monospace,"SF Mono",Menlo,monospace;white-space:nowrap}.l .ok span{color:#bfe6cb}.l .no span{color:#efb1a7;white-space:normal;text-align:right}`;
+  .l div span{font-family:ui-monospace,"SF Mono",Menlo,monospace;white-space:nowrap}.l .ok span{color:#bfe6cb}.l .no span{color:#efb1a7;white-space:normal;text-align:right}
+  .dk{flex-direction:column-reverse;align-items:stretch}.dk .b{width:100%;height:40px;padding:0 14px 0 13px;border-radius:8px;gap:10px;box-shadow:none}.dk .b:hover{transform:none}.dk .b b{font-size:14px;letter-spacing:-.02em}.dk .b span{margin-left:auto;font-size:12px}.dk .b.busy{box-shadow:inset 0 0 0 1px rgba(238,234,226,.14)}
+  .dk .l{min-width:0;max-width:none;border-radius:8px;box-shadow:none}`;
   let clKey = '';
   function paintClaim() {
     const show = IS_PORT() && (CL.busy || CL.done || CL.rows.some(claimable));
-    if (!show) { if (CL.host) { CL.host.remove(); CL.host = CL.R = null; clKey = ''; } return; }
-    if (!CL.host || !CL.host.isConnected) { const h = document.createElement('div'); h.id = 'gpz-claim'; h.style.cssText = 'position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:2147483600'; CL.R = h.attachShadow({ mode: 'open' }); (document.body || document.documentElement).appendChild(h); CL.host = h; clKey = ''; fonts();
+    if (!show) { if (CL.host) { CL.host.remove(); CL.host = CL.R = null; CL.dock = null; clKey = ''; } return; }
+    if (!CL.host) { const h = document.createElement('div'); h.id = 'gpz-claim'; CL.R = h.attachShadow({ mode: 'open' }); CL.host = h; clKey = ''; fonts();
       CL.R.addEventListener('click', e => { const b = e.target.closest('.b'); if (!b || CL.busy) return; if (CL.done) { CL.done = null; paintClaim(); return; } claimAll(); }); }
+    // its place: right under Vest's own Get Funded / Claim Profit row, the width of that card. If Vest's page has no such row, bottom centre.
+    { const vb = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Claim Profit' && b.offsetParent), row = vb && vb.parentElement, dock = !!(row && row.parentElement), h = CL.host;
+      if (dock) { if (h.previousElementSibling !== row) { h.style.cssText = 'display:block;margin-top:10px'; row.insertAdjacentElement('afterend', h); } }
+      else if (h.parentElement !== document.body) { h.style.cssText = 'position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:2147483600'; document.body.appendChild(h); }
+      if (CL.dock !== dock) { CL.dock = dock; clKey = ''; } }
     let h;
     if (CL.busy) h = `<button class="b busy"><i></i><b>Claiming</b><span>${esc(CL.step || '…')}</span></button>`;
     else if (CL.done) { const ok = CL.done.filter(o => o.r && !o.err), bad = CL.done.filter(o => o.err), got = ok.reduce((a, o) => a + (o.got != null ? o.got : o.req), 0);
       h = `<div class="l">${ok.map(o => `<div class="ok">${esc(o.r.name)}<span>${fm(o.got != null ? o.got : o.req)}</span></div>`).join('')}${bad.map(o => `<div class="no">${esc(o.r ? o.r.name : 'Claim all')}<span>${esc(o.err)}</span></div>`).join('')}${!ok.length && !bad.length ? '<div class="no">Claim all<span>nothing to claim</span></div>' : ''}</div><button class="b ${ok.length ? 'done' : 'bad'}"><i></i><b>${ok.length ? 'Claimed' : 'Not claimed'}</b><span>${ok.length ? fm(got) + ' · ' + ok.length : bad.length + ' failed'}</span></button>`; }
     else { const L2 = CL.rows.filter(claimable), tot = L2.reduce((a, r) => a + r.avail, 0n);
       h = `<button class="b" title="${esc(L2.map(r => r.name + '  ' + fm(Number(unmicro(r.avail)))).join('\n'))}"><i></i><b>Claim all</b><span>${fm(Number(unmicro(tot)))} · ${L2.length}</span></button>`; }
-    if (h !== clKey) { clKey = h; CL.R.innerHTML = `<style>${CLCSS}</style><div class="w">${h}</div>`; }
+    if (h !== clKey) { clKey = h; CL.R.innerHTML = `<style>${CLCSS}</style><div class="w${CL.dock ? ' dk' : ''}">${h}</div>`; }
   }
   // on Portfolio: a look every 10s while the tab is in front; the button is there only when there is something to claim
   every(1000, () => { if (!IS_PORT()) { if (CL.host) paintClaim(); return; } if (CL.done && !CL.busy && Date.now() - CL.doneAt > 45000) CL.done = null;
