@@ -4,7 +4,7 @@ A Tampermonkey userscript for [Vest](https://next.vestmarkets.com): a one-click 
 
 > **Code GIGA at checkout.** GP. Jacket puts referral code **GIGA** on every Vest account you buy, in place of any other code. It is on by default. To turn it off, click **GIGA** next to **Online** at the bottom of Vest, or use the gear on the ticket (Settings) → **CODE GIGA AT CHECKOUT** → **off**.
 
-Formerly GP. Entry. If you installed it under that name it updates to GP. Jacket on its own.
+Formerly GP. Entry. Tampermonkey treats the two names as two scripts, each with its own saved settings. If your Tampermonkey dashboard lists both, open Vest once (your settings carry over to the one that runs), then delete one of them.
 
 ## Install
 

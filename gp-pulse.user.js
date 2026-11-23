@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Jacket for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.12.2
+// @version      1.12.3
 // @description  A risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier, a desk to close any account, Claim all on the Portfolio page, and spend, payouts and live PnL in Vest's header.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -24,7 +24,13 @@
   function every(ms, fn, keep) { JOBS.push({ ms, fn, keep: !!keep, at: 0 }); if (!clockT) clockT = setInterval(clock, 100); }
   function clock() { const now = Date.now(), hid = document.hidden; for (const j of JOBS) { const ms = hid && !j.keep ? j.ms * 4 : j.ms; if (now - j.at < ms) continue; j.at = now; try { j.fn(); } catch (e) {} } }
   if (W.top !== W.self) return;
-  if (W.__gpJacket) return; W.__gpJacket = 1; // one copy per page: an old install under the Entry name must never run beside this one
+  // One copy per page. Tampermonkey tells scripts apart by name, so the install made under the old Entry name and one made under
+  // the Jacket name are two scripts, each with its own saved settings. Two running at once would send every order twice.
+  // If another copy is already here (this build, or the old Entry build, known by its mark on Vest's requests), this one stands
+  // down and hands its saved settings over; the running copy takes them once if they hold more of what the trader made.
+  { let old = false; try { old = /__gpzu/.test(Function.prototype.toString.call(W.XMLHttpRequest.prototype.open)); } catch (e) {}
+    if (W.__gpJacket || old) { try { const d = GM_getValue('pulse', null); if (d && typeof W.__gpJacketTake === 'function') W.__gpJacketTake(JSON.stringify(d)); } catch (e) {} return; } }
+  W.__gpJacket = 1;
 
   // ---------- Vest session: reuse the sign-in Vest's own page already sends. Kept in memory only, never saved. ----------
   // A user token (no accountId claim) reads everything and mints short-lived account tokens; an account token
@@ -97,6 +103,8 @@
   // ---------- saved locally in Tampermonkey ----------
   const DB = Object.assign({ purch: {}, pay: {}, aff: {}, wd: {}, full: 0, win: 'today', zone: null, zones: [], name: '', hero: '', layout: 'land', dayBase: {} }, GM_getValue('pulse', {}) || {});
   let saveT = 0;
+  { const made = d => { try { return (Array.isArray(d.loads) ? d.loads.length : 0) + (Array.isArray(d.cthc) ? d.cthc.length : 0) + (Array.isArray(d.zones) ? d.zones.length : 0) + (d.pill === true ? 1 : 0) + (d.shot && d.shot.keys && d.shot.keys.on ? 1 : 0) + (d.name ? 1 : 0) + (d.cthV ? 1 : 0); } catch (e) { return 0; } };
+    W.__gpJacketTake = t => { try { if (DB.took) return; const o = JSON.parse(t); if (!o || typeof o !== 'object' || Array.isArray(o) || made(o) <= made(DB)) return; o.took = 1; GM_setValue('pulse', o); W.location.reload(); } catch (e) {} }; }
   const save = now => { clearTimeout(saveT); if (now) GM_setValue('pulse', DB); else saveT = setTimeout(() => GM_setValue('pulse', DB), 800); };
   // another Vest tab saved: take its copier choices and switches, so an older tab never writes stale ones back over yours
   const SYNC_C = ['on', 'leader', 'pick', 'followers', 'mode', 'owned', 'opened', 'share', 'pre'];
