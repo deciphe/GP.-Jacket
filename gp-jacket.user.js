@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Jacket for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.18.0
+// @version      1.18.1
 // @description  A risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier, GP. Mirror (lock a pair of markets and every trade on the lead is mirrored, opposite, on the pair's other market), a desk to close any account, Claim all on the Portfolio page, the GP. Dashboard (earnings, payouts, every account and trade), and spend, payouts and live PnL in Vest's header.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -1824,6 +1824,7 @@
   // =====================================================================================================
   const HX = { bars: {}, st: {}, busy: {}, deep: null, deepBusy: false, pop: false, setup: false, corr: false, cor: {}, corBusy: {} };
   const MAINP = [['NDX-USD-PERP', 'SPX-USD-PERP'], ['BTC-PERP', 'ETH-PERP']];
+  const SAMEP = [['NDX-USD-PERP', 'NDX-USD-PERP'], ['BTC-PERP', 'BTC-PERP']]; // one market, long on one account and short on another: the pair that matters most
   const TWINS = [/^(NDX|QQQ)$/, /^(SPX|SPY)$/, /^(RTY|IWM)$/, /^(GC|GLD)$/, /^(SI|SLV)$/, /^(BZ|CL)$/]; // one asset under two names: not a hedge
   const base = s => String(s || '').split('-')[0];
   const twin = (a, b) => a === b || TWINS.some(r => r.test(base(a)) && r.test(base(b)));
@@ -1853,9 +1854,9 @@
     if (!HX.busy[key]) { HX.busy[key] = 1; Promise.all([barsOf(S), barsOf(H)]).then(([a, b]) => { HX.st[key] = { at: Date.now(), s: pairStats(a, b, 96) }; }).catch(() => { HX.st[key] = { at: Date.now() - 9 * 6e4, s: null }; }).then(() => { delete HX.busy[key]; try { renderDesk(); } catch (e) {} kickFast(50); }); }
     return c ? c.s : null;
   }
-  const pairNow = () => { // the locked pair; NDX / SPX until you pick another
+  const pairNow = () => { // the locked pair; NDX / NDX until you pick another
     const ok = q => q && q.length === 2 && SPEC[q[0]] && SPEC[q[1]], pk = String(C.hpair || '').split('|');
-    return ok(pk) ? pk : MAINP.find(ok) || null;
+    return ok(pk) ? pk : SAMEP.concat(MAINP).find(ok) || null;
   };
   const hedgeOf = S => { const p = pairNow(); return !p ? null : S === p[0] ? p[1] : S === p[1] ? p[0] : null; };
   // the lead's trade as the hedge accounts should hold it: opposite side, the pair's other market, beta size, stop and target swapped
@@ -1913,7 +1914,7 @@
     HX.deepBusy = false; try { renderDesk(); } catch (e) {}
   }
   const rhoTxt = r => r == null ? '' : r.toFixed(2).replace(/^0/, '');
-  const sameP = () => { const out = []; [curSymbol(), 'NDX-USD-PERP', 'BTC-PERP'].forEach(m => { if (m && SPEC[m] && !out.some(q => q[0] === m)) out.push([m, m]); }); return out; }; // one market, long on one account and short on another
+  const okP = q => SPEC[q[0]] && SPEC[q[1]], pickList = () => { const out = SAMEP.filter(okP).concat(MAINP.filter(okP)), m = curSymbol(); if (m && SPEC[m] && !out.some(q => q[0] === m && q[1] === m)) out.push([m, m]); return out; }; // NDX / NDX, BTC / BTC, the cross pairs, then the chart's own market against itself // one market, long on one account and short on another
   const pTag = (q, rho) => q[0] === q[1] ? 'SAME' : rhoTxt(rho);
   // ---------- the desk in pair mode: a one-line summary, then only the accounts in play, in order ----------
   const nm = id => acctShort(id).replace(/^Account /, '#');
@@ -1968,7 +1969,7 @@
     renderCorr(R);
     const su = R.querySelector('[data-k=su]'); if (!su) return; su.hidden = !HX.setup; if (!HX.setup) return;
     su.querySelector('.suc').classList.toggle('pair', !!C.hedge);
-    const p = pairNow(), list = MAINP.filter(q => SPEC[q[0]] && SPEC[q[1]]).concat(sameP()); if (p && !list.some(q => q[0] === p[0] && q[1] === p[1])) list.push(p);
+    const p = pairNow(), list = pickList(); if (p && !list.some(q => q[0] === p[0] && q[1] === p[1])) list.push(p);
     const pairs = su.querySelector('[data-k=spairs]'), pk = JSON.stringify([C.hedge, p, list.map(q => { const st = statFor(q[0], q[1]); return st && st.rho; }), HX.pop, HX.deep && HX.deep.at, HX.deepBusy]);
     if (pairs.__k !== pk) { pairs.__k = pk;
       pairs.innerHTML = !C.hedge ? '' : list.map(q => { const st = statFor(q[0], q[1]), on = p && q[0] === p[0] && q[1] === p[1]; return `<button class="pc2${on ? ' on' : ''}" data-hp="${q[0]}|${q[1]}"><span><b>${base(q[0])}</b><em>/</em><b>${base(q[1])}</b></span><i>${pTag(q, st && st.rho)}</i></button>`; }).join('') + `<button class="pc2 mo${HX.pop ? ' on2' : ''}" data-a="hmore"><span>${HX.pop ? 'less' : 'more pairs'}</span></button>`
