@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.10.1
+// @version      1.10.2
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -1199,7 +1199,7 @@
   .sw.sm{width:24px;height:14px;vertical-align:-2px;margin-left:7px}.sw.sm:after{width:8px;height:8px;top:2px;left:2px}.sw.sm.on:after{transform:translateX(10px)}
   .s.nosl .sr[data-sr=risk]>b{color:#4f4f55}.s.nosl .pl .sl b{color:#4f4f55}
   .mk .bl{font-style:normal}.mk.t1 b{font-size:16px}.mk.t2 .bl{display:none}
-  .mk>span.sw .an{animation:gpzsw 1.4s ease-out}@keyframes gpzsw{0%{background:#e6e3dc;color:#0b0b0b}100%{background:transparent}}.mk .an{font-style:normal;color:#f1f1f3;padding:1px 4px;margin:0 -4px;border-radius:5px}
+  .mk .an{font-style:normal;color:#f1f1f3}
   .lvb{border:0;background:none;padding:0 2px;margin:0 -2px;border-radius:5px;color:#f1f1f3;font:inherit;font-weight:700;cursor:pointer;border-bottom:1px dashed rgba(238,234,226,.35)}
   .lvb:hover{background:rgba(238,234,226,.08)}.lvb.set{color:#e6e3dc;border-bottom-color:rgba(238,234,226,.5)}
   .lvp{position:absolute;right:14px;top:84px;z-index:30;width:230px;padding:12px 14px 10px;border-radius:12px;background:#111111;border:1px solid rgba(238,234,226,.14);box-shadow:0 22px 50px -16px rgba(0,0,0,.9);animation:lin .2s ease-out}
@@ -1660,10 +1660,8 @@
     k('px').textContent = p.sym && L.mark[p.sym] ? shortSym(p.sym) + '  ' + fmtPx(L.mark[p.sym], p.sym) : '—'; k('px').classList.toggle('old', stale);
     { const ca = p.id && capAcct(p.id), fund = !!ca && ca.account_type === 3 && p.bal > 0; R.querySelectorAll('[data-tk=risk]').forEach(b => { if (b.dataset.l == null) b.dataset.l = b.textContent; b.textContent = fund ? '$' + trimNum(Math.round(p.bal * +b.dataset.v / 100)) : b.dataset.l; }); }
     { const age = (Date.now() - (L.markAt || 0)) / 1000, f = k('fr'); f.className = 'fr ' + (age < 1.6 ? 'ok' : age < 4 ? 'mid' : 'bad'); f.title = 'price ' + (age < 60 ? age.toFixed(1) + 's' : 'over a minute') + ' old'; }
-    const swNow = !!(p.id && SHOT.acc && p.id !== SHOT.acc); if (p.id) SHOT.acc = p.id;
     const acH = p.id && p.bal ? `<em class="an">${esc(acctShort(p.id).replace(/^Account /, '#'))}</em> · <button class="lvb${p.lev && p.levMax && p.lev < p.levMax ? ' set' : ''}" data-a="lev" title="Leverage">${p.lev || '—'}x</button><i class="bl"> · ${p.bal >= 1e3 ? '$' + trimNum(Math.round(p.bal / 10) / 100) + 'K' : fm(p.bal, { short: true }).replace(/\.00$/, '')}</i>` : '';
-    { const a = k('ac'); if (a.__h !== acH) { a.__h = acH; a.innerHTML = acH; } // rebuilt only when it changes, so the flash plays once
-      if (swNow) { a.classList.remove('sw'); void a.offsetWidth; a.classList.add('sw'); clearTimeout(SHOT.swT); SHOT.swT = setTimeout(() => a.classList.remove('sw'), 1500); } }
+    { const a = k('ac'); if (a.__h !== acH) { a.__h = acH; a.innerHTML = acH; } }
     if (!pos) SHOT.adding = false; const adding = !!pos && !!SHOT.adding;
     R.querySelector('[data-v=plan]').hidden = !!pos && !adding; R.querySelector('[data-v=pos]').hidden = !pos || adding;
     R.querySelector('[data-v=go]').hidden = !!pos || locked; if (pos && k('pnd').dataset.h) k('pnd').innerHTML = k('pnd').dataset.h = ''; R.querySelector('[data-v=go2]').hidden = !pos || adding; R.querySelector('[data-v=go3]').hidden = !locked; R.querySelector('[data-v=go4]').hidden = !adding;
