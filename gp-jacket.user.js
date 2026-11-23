@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Jacket for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.12.0
+// @version      1.12.1
 // @description  A risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier, a desk to close any account, Claim all on the Portfolio page, and spend, payouts and live PnL in Vest's header.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -804,9 +804,9 @@
   const LIM = {}; // the limit entry per market, set by dragging the chart line or typing it
   const CTHEMES = [
     { id: 'vest', name: 'Vest', bg: '#121714', up: '#00D98E', upB: '#00D98E', dn: '#E03737', dnB: '#E03737' }, // Vest's own colours, the whole page
-    { id: 'vdark', name: 'Vest Dark', bg: '#070908', up: '#00D98E', upB: '#00D98E', upW: '#0B8F62', dn: '#2A0E11', dnB: '#D23C3C', dnW: '#8E2A2C' }, // Vest's green and red on a near-black canvas, down candles hollowed out
     { id: 'paper', name: 'Paper', light: true, scale: '#2b2b2e', bg: '#d8d8d8', grid: 'rgba(55,55,57,0.08)', text: '#4a4a4d', up: '#fdfdfd', upB: '#373739', upW: '#373739', dn: '#373739', dnB: '#373739', dnW: '#373739' }];
   const OLD_THEMES = [ // no longer offered. Kept so a set someone already picked stays exactly as it was
+    { id: 'vdark', name: 'Vest Dark', bg: '#070908', up: '#00D98E', upB: '#00D98E', upW: '#0B8F62', dn: '#2A0E11', dnB: '#D23C3C', dnW: '#8E2A2C' },
     { id: 'massive', name: 'Massive', bg: '#0b0b0b', up: '#dedbd3', upB: '#dedbd3', dn: '#4b4b51', dnB: '#4b4b51' },
     { id: 'pastel', name: 'Pastel', light: true, scale: '#2a2d36', bg: '#d1d4dc', grid: 'rgba(27,30,40,0.07)', text: '#4a4d57', up: '#a5d6a7', upB: '#1b5e20', upW: '#1b5e20', dn: '#faa1a4', dnB: '#801922', dnW: '#801922' },
     { id: 'night', name: 'Night', bg: '#000000', grid: 'rgba(255,255,255,0.05)', text: '#8b8b92', up: '#163918', upB: '#81c784', upW: '#81c784', dn: '#481015', dnB: '#f7525f', dnW: '#f7525f' }];
