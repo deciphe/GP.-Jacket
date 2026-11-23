@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.9.6
+// @version      1.9.7
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -797,7 +797,8 @@
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { kickFast(0); reflowSoon(); } });
 
   // ---------- the plan: risk-locked size and fee-aware stop / target ----------
-  const SH = Object.assign({ on: true, sl: true, tp: true, risk: 2, R: 1, tmode: 'R', usd: 0, size: 100, fees: true, chart: true, side: 'long', dock: true, x: null, y: null, addp: 50 }, DB.shot || {});
+  const SH = Object.assign({ on: true, sl: true, tp: true, risk: 2, R: 1, tmode: 'R', usd: 0, size: 100, fees: true, chart: true, side: 'long', dock: true, x: null, y: null, addp: 50, ot: 'mkt' }, DB.shot || {});
+  const LIM = {}; // the limit entry per market, set by dragging the chart line or typing it
   const CTHEMES = [
     { id: 'vest', name: 'Vest', bg: '#121714', up: '#00D98E', upB: '#00D98E', dn: '#E03737', dnB: '#E03737' }, // Vest's own colours, the whole page
     { id: 'massive', name: 'Massive', bg: '#0b0b0b', up: '#dedbd3', upB: '#dedbd3', dn: '#4b4b51', dnB: '#4b4b51' },
@@ -831,14 +832,16 @@
     if (!sym || !x) return { ok: false, why: 'reading the market' };
     if (!id) return { ok: false, why: 'pick an account on Vest', sym };
     if (L.cap && L.capAt && L.balAt && !capAcct(id) && L.bal[id] == null) return { ok: false, why: acctShort(id) + ' is closed · pick another', sym, id, closed: true };
-    const px = L.mark[sym], bal = balOf(id);
-    if (!px || !(bal > 0)) return { ok: false, why: 'reading your account', sym, id };
+    const mark = L.mark[sym], bal = balOf(id), lim = SH.ot === 'lim' && !L.pos.some(q => accOf(q) === id && q.symbol === sym);
+    if (lim && mark && !(LIM[sym] > 0)) LIM[sym] = +fmtP(mark * (SH.side === 'short' ? 1.0025 : 0.9975), sym);
+    const px = lim ? LIM[sym] : mark;
+    if (!px || !mark || !(bal > 0)) return { ok: false, why: 'reading your account', sym, id };
     const levMax = maxLev(sym, id) || 1, lev = Math.max(1, Math.min(levMax, Math.round((SH.levs && SH.levs[sym]) || levMax))), f = +x.takerFee || 0;
     const mine = L.pos.filter(p => accOf(p) === id);
     const used = mine.reduce((a, p) => a + Math.abs(+p.quantity) * (+p.openPrice) / (+p.leverage || lev), 0);
     const free = L.bal[id] != null ? Math.max(0, L.bal[id]) : Math.max(0, bal - used), maxN = free * lev * 0.985, notional = maxN * (SH.size / 100);
     const d = dec(sym), qty = Math.floor(notional / px * Math.pow(10, d) + 1e-7) / Math.pow(10, d);
-    const base = { sym, id, x, px, bal, lev, levMax, f, maxN };
+    const base = { sym, id, x, px, mark, lim, bal, lev, levMax, f, maxN };
     if (!(qty > 0)) return { ...base, ok: false, why: 'no free margin' };
     // the pass line: an evaluation's target equity, less what the account holds now (open trades included)
     const ca = capAcct(id), tgtEq = ca && ca.account_type === 2 ? +ca.target_equity : 0;
@@ -855,15 +858,25 @@
     if (dSL >= liq * 0.92) return { ...out, ok: false, why: 'stop past liquidation · size down' };
     if (dSL < tickOf(sym) * 2) return { ...out, ok: false, why: 'stop under a tick · size down' };
     if (!(Date.now() - (L.markAt || 0) < FRESH)) return { ...out, ok: false, why: 'price stale' };
+    if (lim && (SH.side === 'short' ? px <= mark : px >= mark)) return { ...out, ok: false, why: SH.side === 'short' ? 'sell limit sits above the price' : 'buy limit sits below the price' };
     return { ...out, ok: true };
   }
   // the chart's stop line dragged: the dollars at risk stay, the size moves to fit the distance
   function sizeFromStop(price) {
     const p = plan(); if (!p.px || !p.maxN || !p.risk) return;
     const d = Math.abs(price - p.px); if (!(d > 0)) return;
+    if (p.lim && (price < p.px ? 'long' : 'short') !== SH.side) return; // a limit's side comes from its entry
     SH.side = price < p.px ? 'long' : 'short';
     const q = SH.fees ? p.risk / (d + 2 * p.px * p.f) : p.risk / d;
     SH.size = Math.max(1, Math.min(100, Math.round(q * p.px / p.maxN * 1000) / 10)); saveSH(); renderShot(); drawChart();
+  }
+  // the limit entry line dragged (or typed): below the price buys, above it sells; risk, size and target ride along
+  function setLimit(price) {
+    const sym = curSymbol(), m = sym && L.mark[sym]; if (!m || !(price > 0)) return;
+    LIM[sym] = +fmtP(price, sym); SH.side = LIM[sym] < m ? 'long' : 'short'; saveSH(); renderShot(); drawChart();
+  }
+  function setOt(ot) {
+    const sym = curSymbol(); SH.ot = ot === 'lim' ? 'lim' : 'mkt'; if (sym) delete LIM[sym]; PEND.at = 0; saveSH(); renderShot(); drawChart(); if (SH.ot === 'lim') pendPull(true);
   }
   function targetFromLine(price) {
     const p = plan(); if (!p.qty || !p.risk) return;
@@ -893,6 +906,7 @@
   function shotMsg(m, tone) { SHOT.msg = m; SHOT.tone = tone || ''; SHOT.msgAt = Date.now(); renderShot(); }
   const myPos = p => p && p.sym ? L.pos.find(x => accOf(x) === p.id && x.symbol === p.sym) : null;
   async function fire(side) {
+    if (SH.ot === 'lim' && !curPos()) { if (side !== (SH.side || 'long')) { SH.side = side; const sym = curSymbol(), m = sym && L.mark[sym]; if (m && LIM[sym]) LIM[sym] = +fmtP(2 * m - LIM[sym], sym); saveSH(); renderShot(); drawChart(); return; } return armLimit(); }
     if (SHOT.busy || Date.now() < SHOT.cool) return;
     if (zoneLocked()) return shotMsg('zone locked', 'bad');
     let p = plan(); if (!p.ok) return shotMsg(p.why, 'bad');
@@ -912,6 +926,43 @@
     SHOT.cool = Date.now() + (sent ? 2500 : 600); // no second shot until the position list has caught up
     SHOT.busy = false; saveSH(); kickFast(150); setTimeout(renderShot, 2600);
   }
+  async function armLimit() {
+    if (SHOT.busy || Date.now() < SHOT.cool) return;
+    if (zoneLocked()) return shotMsg('zone locked', 'bad');
+    let p = plan(); if (!p.lim) return; if (!p.ok) return shotMsg(p.why, 'bad');
+    const side = SH.side === 'short' ? 'short' : 'long';
+    SHOT.busy = 'arm'; renderShot();
+    let sent = false;
+    try {
+      await ensureLev(p.id, p.sym, p.lev).catch(() => {});
+      p = plan(); if (!p.ok || !p.lim) throw new Error(p.why || 'limit off');
+      const g = p[side];
+      const body = { orderType: 'limit', leverage: String(p.lev), side, symbol: p.sym, quantity: p.qtyS, price: fmtP(p.px, p.sym), timeInForce: 'GTC', takeProfits: SH.tp === false ? [] : [{ executionType: 'market', triggerPrice: fmtP(g.tp, p.sym) }], stopLosses: SH.sl === false ? [] : [{ executionType: 'market', triggerPrice: fmtP(g.sl, p.sym) }] };
+      sent = true; await send(p.id, 'POST', '/v3/positions/open', body);
+      shotMsg('Armed ' + (side === 'long' ? 'buy ' : 'sell ') + p.qtyS + ' ' + shortSym(p.sym) + ' @ ' + fmtPx(p.px, p.sym), 'ok'); flash(side);
+    } catch (e) { if (e.status && e.status < 500 && e.status !== 429) sent = false; shotMsg(e.message, 'bad'); }
+    SHOT.cool = Date.now() + (sent ? 1500 : 600);
+    SHOT.busy = false; renderShot(); setTimeout(() => pendPull(true), 400);
+  }
+  // resting limits for this account and market, read from Vest every few seconds while the ticket is on limit
+  const PEND = { key: '', at: 0, rows: [], busy: false };
+  async function pendPull(force) {
+    const id = activeAcct(), sym = curSymbol(); if (!id || !sym || PEND.busy) return;
+    const key = id + '|' + sym; if (!force && PEND.key === key && Date.now() - PEND.at < 4000) return;
+    PEND.busy = true;
+    try {
+      const j = await send(id, 'GET', '/v3/positions/opened-orders'), os = (Array.isArray(j) ? j : j.orders || j.items || []) || [];
+      PEND.rows = os.filter(o => (o.symbol === sym) && /^limit$/i.test(o.order_type || o.orderType || '') && !o.reduce_only && !o.reduceOnly && !/fill|cancel|reject/i.test(o.status || ''))
+        .map(o => ({ oid: o.order_id || o.orderId || o.id, buy: /^(b|l)/i.test(o.side || ''), q: +o.quantity - (+o.executed_quantity || 0), px: +o.price })).filter(o => o.oid && o.px > 0);
+      PEND.key = key; PEND.at = Date.now();
+    } catch (e) {} PEND.busy = false; renderShot();
+  }
+  async function pendCancel(oid) {
+    const id = activeAcct(); if (!id || !oid) return;
+    await act('pc' + oid, async () => { await sendExit(id, '/v3/positions/cancel-order', { orderId: oid }); PEND.rows = PEND.rows.filter(r => r.oid !== oid); return 'Cancelled'; });
+    pendPull(true);
+  }
+  every(1000, () => { if (SHOT.visible && SH.ot === 'lim') pendPull(false); });
   function flash(side) { const s = SP && SP.R.querySelector('.s'); if (!s) return; s.classList.remove('fl-long', 'fl-short'); void s.offsetWidth; s.classList.add('fl-' + side); setTimeout(() => s.classList.remove('fl-' + side), 900); }
   // auto break even at +1R, then the stop trails up in 0.5R steps: off unless switched on in settings
   function autoManage() {
@@ -1194,7 +1245,15 @@
   /* the triggers */
   .sdt{grid-column:1/-1;display:flex;justify-content:center;align-items:center;gap:8px;margin-top:-2px;height:16px}
   .sdt button{border:0;background:none;padding:0 4px;color:#4f4f55;font:600 10px Inter,system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;transition:color .2s}
-  .sdt button:hover{color:#9e9ea5}.sdt button.on{color:#e6e3dc}.sdt i{width:1px;height:9px;background:rgba(238,234,226,.14)}
+  .sdt button:hover{color:#9e9ea5}.sdt button.on{color:#e6e3dc}.sdt i{width:1px;height:9px;background:rgba(238,234,226,.14)}.sdt b{width:3px;height:3px;border-radius:50%;background:rgba(238,234,226,.18);margin:0 6px}.sdt button[data-ot].on{color:#e3c98e}
+  .go .arm{grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:10px}.go .arm small{font-size:12px;font-weight:600;opacity:.55;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+  .lrw{display:flex;align-items:center;gap:8px;height:30px;margin-bottom:6px}.lrw label{font-size:10.5px;font-weight:700;letter-spacing:.14em;color:#e3c98e}.lrw .n{flex:1;width:0;height:28px;font-size:13px;text-align:left;padding:0 10px;border-color:rgba(227,201,142,.3)}.lrw .n:focus{border-color:#e3c98e}
+  .lrw span{font-size:11px;font-weight:600;color:#8b8b92;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .pnd{display:flex;flex-direction:column;gap:4px;margin-top:8px}.pnd:empty{display:none}
+  .pq{display:flex;align-items:center;gap:8px;height:28px;padding:0 4px 0 10px;border-radius:8px;border:1px solid rgba(227,201,142,.22);font-size:11.5px;font-weight:600;color:#c9c7c2;font-variant-numeric:tabular-nums}
+  .pq b{font-size:10px;letter-spacing:.14em;font-weight:700}.pq b.up{color:#9fd7b2}.pq b.dn{color:#efb1a7}.pq span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pq button{position:relative;overflow:hidden;height:22px;padding:0 9px;border-radius:6px;border:0;background:none;color:#8b8b92;font:600 11px Inter,system-ui,sans-serif;cursor:pointer}.pq button:hover{color:#efb1a7;background:rgba(232,152,140,.08)}
+  .s.add .lrw{display:none}
   .s>.go{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:auto;position:sticky;bottom:0;z-index:3;padding:8px 0 0;background:linear-gradient(180deg,rgba(11,11,11,0),#0b0b0b 10px)}
   .L,.S,.X{position:relative;height:50px;border-radius:10px;font:600 16px Inter,system-ui,sans-serif;letter-spacing:-.03em;cursor:pointer;transition:transform .12s,background .25s,border-color .25s,opacity .25s,box-shadow .3s;overflow:hidden}
   .L{border:0;background:#e6e3dc;color:#0b0b0b}.L:hover{background:#fff;box-shadow:0 0 26px -6px rgba(230,227,220,.55)}
@@ -1317,6 +1376,7 @@
         <div class="zi" data-k="zi"><label>LOCK</label><input class="n" data-z="loss" inputmode="decimal" placeholder="−$ loss" aria-label="Lock after this loss"><input class="n" data-z="n" inputmode="numeric" placeholder="losers" aria-label="Lock after this many losers"><button class="ls on" data-a="zgo">enter</button></div>
         <button class="ls" data-a="zend" hidden>end</button></div>
       <div class="pv" data-v="plan">
+        <div class="lrw" data-k="lrw" hidden><label>ENTRY</label><input class="n" data-n="lpx" inputmode="decimal" aria-label="Limit price"><span data-k="lpd"></span></div>
         <div class="adh" data-k="adh" hidden><span data-k="adt">—</span><button data-a="addback">back</button></div>
         <div class="pl"><div class="sl"><small>STOP<button class="sw sm k-sl" data-t="sl" title="Stop loss on or off" aria-label="Stop loss on or off"></button></small><b data-k="slv">—</b><em data-k="slp">—</em><div class="pe"><input class="n" data-n="rusd" inputmode="decimal" placeholder="$ stop" aria-label="Dollar stop"></div></div><div class="tp"><small>TARGET<button class="sw sm k-tp" data-t="tp" title="Target on or off" aria-label="Target on or off"></button></small><b data-k="tpv">—</b><em data-k="tpp">—</em><div class="pe"><button class="c pass" data-a="pass" title="Pass line">PASS</button><input class="n" data-n="usd" inputmode="decimal" placeholder="$ gain" aria-label="Dollar target"></div></div></div>
         <div class="bm" data-k="bm0">${BEAM}</div>
@@ -1339,7 +1399,8 @@
         <div class="ar"><label>STOP</label><div class="ch"><button class="c" data-a="half">½ risk</button><button class="c" data-a="be">break even</button><button class="c rose" data-a="addstop" hidden>add stop</button></div></div>
         <div class="lgs" data-k="lgs"></div>
       </div>
-      <div class="go" data-v="go"><button class="L" data-a="long">Long<small data-kk="long"></small></button><button class="S" data-a="short">Short<small data-kk="short"></small></button><div class="sdt" title="Which side the stop, target and lines are set for"><button data-sd="long">long</button><i></i><button data-sd="short">short</button></div></div>
+      <div class="pnd" data-k="pnd"></div>
+      <div class="go" data-v="go"><button class="L" data-a="long">Long<small data-kk="long"></small></button><button class="S" data-a="short">Short<small data-kk="short"></small></button><button class="L arm" data-a="arm" hidden><span data-k="armt">Arm</span><small data-k="arms"></small></button><div class="sdt" title="Which side the stop, target and lines are set for"><button data-sd="long">long</button><i></i><button data-sd="short">short</button><b></b><button data-ot="mkt">market</button><i></i><button data-ot="lim">limit</button></div></div>
       <div class="go" data-v="go2" hidden><button class="X" data-a="close">Close<small data-kk="close"></small></button></div>
       <div class="go" data-v="go4" hidden><button class="L" data-a="addgo"><span data-k="addq">Add</span><small data-kk="add"></small></button><button class="X" data-a="close2">Close<small data-kk="close"></small></button></div>
       <div class="kp" data-k="kp" hidden><div class="kh"><span>KEYS</span><button class="sw" data-kt="keys" aria-label="Keyboard shortcuts on or off"></button></div>
@@ -1422,9 +1483,15 @@
     SHOT.kpOff = kpOff; document.addEventListener('pointerdown', kpOff, true); R.addEventListener('pointerdown', kpOff);
     R.querySelector('[data-kt=keys]').onclick = () => { SH.keys.on = !SH.keys.on; KREC = null; saveSH(); renderShot(); };
     R.querySelectorAll('[data-kb]').forEach(b => b.onclick = () => { KREC = KREC === b.dataset.kb ? null : b.dataset.kb; renderShot(); });
+    on('arm', armLimit);
+    R.querySelectorAll('[data-ot]').forEach(b => b.onclick = () => setOt(b.dataset.ot));
+    { const lp = R.querySelector('[data-n=lpx]');
+      lp.onchange = () => { const v = parseFloat(String(lp.value).replace(/[$,\s]/g, '')); if (v > 0) setLimit(v); else renderShot(); };
+      lp.onkeydown = e => { e.stopPropagation(); if (e.key === 'Enter') lp.blur(); }; }
+    k('pnd').onclick = e => { const b = e.target.closest('[data-oid]'); if (b) pendCancel(b.dataset.oid); };
     on('long', () => fire('long')); on('short', () => fire('short')); on('close', closeMine); on('close2', closeMine);
     on('addback', () => addOn(false)); on('addgo', addMore);
-    R.querySelectorAll('[data-sd]').forEach(b => b.onclick = () => { SH.side = b.dataset.sd; saveSH(); redo(); });
+    R.querySelectorAll('[data-sd]').forEach(b => b.onclick = () => { const sym = curSymbol(), m = sym && L.mark[sym]; if (SH.ot === 'lim' && b.dataset.sd !== SH.side && m && LIM[sym]) LIM[sym] = +fmtP(2 * m - LIM[sym], sym); SH.side = b.dataset.sd; saveSH(); redo(); });
     on('vest', () => { SH.on = false; saveSH(); placeShot(); clearLines(); });
     // in the trade
     R.querySelectorAll('[data-cut]').forEach(b => b.onclick = () => cut(+b.dataset.cut));
@@ -1592,7 +1659,7 @@
     k('ac').innerHTML = p.id && p.bal ? `${esc(acctShort(p.id).replace(/^Account /, '#'))} · <button class="lvb${p.lev && p.levMax && p.lev < p.levMax ? ' set' : ''}" data-a="lev" title="Leverage">${p.lev || '—'}x</button> · ${p.bal >= 1e3 ? '$' + trimNum(Math.round(p.bal / 10) / 100) + 'K' : fm(p.bal, { short: true }).replace(/\.00$/, '')}` : '';
     if (!pos) SHOT.adding = false; const adding = !!pos && !!SHOT.adding;
     R.querySelector('[data-v=plan]').hidden = !!pos && !adding; R.querySelector('[data-v=pos]').hidden = !pos || adding;
-    R.querySelector('[data-v=go]').hidden = !!pos || locked; R.querySelector('[data-v=go2]').hidden = !pos || adding; R.querySelector('[data-v=go3]').hidden = !locked; R.querySelector('[data-v=go4]').hidden = !adding;
+    R.querySelector('[data-v=go]').hidden = !!pos || locked; if (pos && k('pnd').dataset.h) k('pnd').innerHTML = k('pnd').dataset.h = ''; R.querySelector('[data-v=go2]').hidden = !pos || adding; R.querySelector('[data-v=go3]').hidden = !locked; R.querySelector('[data-v=go4]').hidden = !adding;
     box.classList.toggle('in', !!pos && !adding); box.classList.toggle('nosl', SH.sl === false && !(pos && !adding)); box.classList.toggle('add', adding); box.classList.toggle('notp', SH.tp === false && !(pos && !adding)); k('adh').hidden = !adding;
     if (pos && !adding) {
       const t = tradeOf(pos), sym = pos.symbol, slP = t.sl ? +t.sl.triggerPrice : null, tpP = t.tp ? +t.tp.triggerPrice : null;
@@ -1646,6 +1713,15 @@
         R.querySelectorAll('[data-am]').forEach(b => b.classList.toggle('on', !!DB[b.dataset.am])); }
       const side = SH.side || 'long';
       R.querySelectorAll('[data-sd]').forEach(b => b.classList.toggle('on', b.dataset.sd === side));
+      R.querySelectorAll('[data-ot]').forEach(b => b.classList.toggle('on', b.dataset.ot === (SH.ot === 'lim' ? 'lim' : 'mkt')));
+      { const lm = !!p.lim && !adding, lp = R.querySelector('[data-n=lpx]'), ab = R.querySelector('[data-a=arm]');
+        k('lrw').hidden = !lm; ab.hidden = !lm; R.querySelector('[data-a=long]').hidden = R.querySelector('[data-a=short]').hidden = lm;
+        if (lm) { if (R.activeElement !== lp) lp.value = fmtPx(p.px, p.sym); const d = p.px - p.mark;
+          k('lpd').textContent = (d >= 0 ? '+' : '−') + pts(Math.abs(d)) + ' pts · ' + (Math.abs(d) / p.mark * 100).toFixed(2) + '%';
+          ab.className = (side === 'long' ? 'L' : 'S') + ' arm' + (SHOT.busy === 'arm' ? ' busy' : ''); ab.disabled = !p.ok || !!SHOT.busy || Date.now() < SHOT.cool;
+          k('armt').textContent = 'Arm ' + (side === 'long' ? 'buy' : 'sell'); k('arms').textContent = p.qtyS ? p.qtyS + ' @ ' + fmtPx(p.px, p.sym) : ''; } }
+      { const rows = SH.ot === 'lim' && !pos && PEND.key === (p.id + '|' + p.sym) ? PEND.rows : [], h = rows.map(r => `<div class="pq"><b class="${r.buy ? 'up' : 'dn'}">${r.buy ? 'BUY' : 'SELL'}</b><span>${esc(trimNum(r.q))} @ ${esc(fmtPx(r.px, p.sym))}</span><button data-oid="${esc(r.oid)}" class="${SHOT.busy === 'pc' + r.oid ? 'busy' : ''}">cancel</button></div>`).join('');
+        if (k('pnd').dataset.h !== h) k('pnd').innerHTML = k('pnd').dataset.h = h; }
       if (p.qty) {
         k('slv').textContent = '−' + fm(SH.fees ? p.risk : p.slG).replace('−', '');
         k('tpv').textContent = '+' + fm(SH.fees ? p.reward : p.tpG);
@@ -1692,7 +1768,7 @@
   // Before a trade: drag the stop and the size follows (the dollars at risk stay); drag the target and the R follows.
   // In a trade: drag the stop, the target or a partial; × on a line removes it. If Vest already draws its own stop
   // and target lines, those are used (with the distance added to their labels) and nothing is drawn twice.
-  const CHL = {}, HOLD = {}; let CHDOWN = false;
+  const CHL = {}, HOLD = {}; let CHDOWN = false, DRAGKEY = null;
   function chartApi() { try { const f = document.querySelector('iframe[id^="tradingview_"]'); const a = f && f.contentWindow && f.contentWindow.tradingViewApi; return a ? a.activeChart() : null; } catch (e) { return null; } }
   function chLine(key, price, text, color, style, o) {
     const ch = chartApi(); if (!ch) return; o = o || {};
@@ -1711,7 +1787,7 @@
       l.__gpzMove = o.move || null; l.__gpzCancel = o.cancel || null;
       set('setEditable', !!o.move); set('setCancellable', !!o.cancel); set('setCancelButtonIconColor', o.cancel ? color : 'rgba(0,0,0,0)');
       const h = HOLD[key]; if (h && Date.now() > h.until) delete HOLD[key];
-      if (!CHDOWN) set('setPrice', HOLD[key] ? HOLD[key].px : price); // never fight a line that is being dragged
+      if (!CHDOWN || (DRAGKEY && key !== DRAGKEY)) { const v = HOLD[key] ? HOLD[key].px : price; set('setPrice', v); l.__gpzSet = v; } // never fight a line that is being dragged
       if (style === 2) style = lineStyle();
       const lt = cTheme().light, vm = !lt && DB.skin === false, vc = vm ? vestTone(color) : null;
       const bg = lt ? 'rgba(22,22,24,0.94)' : vm ? '#121714' : 'rgba(11,11,11,0.78)', tx = lt ? lightTone(color, 1) : vm ? vc : color, ln = lt ? lightTone(color, 0) : vm ? vc : color, bd = vm ? vc : 'rgba(0,0,0,0)';
@@ -1794,7 +1870,8 @@
     const side = SH.side || 'long', g = p[side];
     if (SH.tp !== false) chLine('tp', g.tp, (SH.tmode === 'pass' ? 'PASS  +' : 'TP  +') + fm(p.reward) + '  ·  ' + pts(p.dTP) + ' pts', MINT, 2, { move: targetFromLine });
     if (SH.sl !== false) chLine('sl', g.sl, 'SL  −' + fm(p.risk).replace('−', '') + '  ·  ' + pts(p.dSL) + ' pts', ROSE, 2, { move: sizeFromStop });
-    chLine('en', p.px, (side === 'long' ? 'long ' : 'short ') + p.qtyS + '  ·  ' + p.lev + 'x', 'rgba(230,227,220,0.32)', 1);
+    if (p.lim) chLine('en', p.px, (side === 'long' ? 'BUY LIMIT  ' : 'SELL LIMIT  ') + p.qtyS + '  ·  ' + p.lev + 'x  ·  ' + pts(Math.abs(p.px - p.mark)) + ' pts', 'rgba(227,201,142,0.9)', 0, { move: setLimit });
+    else chLine('en', p.px, (side === 'long' ? 'long ' : 'short ') + p.qtyS + '  ·  ' + p.lev + 'x', 'rgba(230,227,220,0.32)', 1);
     const keep = ['en', ...(SH.tp !== false ? ['tp'] : []), ...(SH.sl !== false ? ['sl'] : []), ...dllKeys(p, side)];
     if (p.passNeed > 0 && SH.tmode !== 'pass' && SH.tp !== false) { chLine('pass', g.pass, 'PASS  +' + fm(p.passNeed) + '  ·  ' + pts(p.dPass) + ' pts', 'rgba(227,201,142,0.6)', 2); keep.push('pass'); }
     clearLines(keep);
@@ -2283,9 +2360,22 @@
     if (act === 'long') fire('long'); else if (act === 'short') fire('short'); else closeMine();
   }
   document.addEventListener('keydown', hotkey, true);
+  // the plan's own lines (limit entry, stop, target) are drafts, not orders: while one is dragged the others follow it live
+  function dragLive() {
+    if (!CHDOWN) { DRAGKEY = null; return; }
+    const sym = curSymbol(), tk = sym ? tickOf(sym) : 0;
+    if (tk && !myPos(plan())) for (const key of DRAGKEY ? [DRAGKEY] : ['en', 'sl', 'tp']) {
+      const l = CHL[key]; if (!l || !l.__gpzMove) continue;
+      let px = null; try { px = l.getPrice(); } catch (e) {} if (px == null || !isFinite(px)) continue;
+      if (!DRAGKEY) { if (!(l.__gpzSet > 0) || Math.abs(px - l.__gpzSet) < tk / 2) continue; DRAGKEY = key; }
+      if (l.__gpzLive !== px) { l.__gpzLive = px; try { l.__gpzMove(px); } catch (e) {} }
+      break;
+    }
+    requestAnimationFrame(dragLive);
+  }
   function hookFrame(f) { // the chart is its own page: keys pressed there never reach Vest's page, so they are heard there too
     try { const d = f.contentDocument; if (!d || d.__gpzKeys) return; d.__gpzKeys = 1; d.addEventListener('keydown', hotkey, true);
-      d.addEventListener('pointerdown', () => { CHDOWN = true; if (SHOT.kpOff) SHOT.kpOff(); }, true); ['pointerup', 'pointercancel'].forEach(t => d.addEventListener(t, () => { CHDOWN = false; }, true)); } catch (e) {}
+      d.addEventListener('pointerdown', () => { CHDOWN = true; DRAGKEY = null; if (SHOT.kpOff) SHOT.kpOff(); requestAnimationFrame(dragLive); }, true); ['pointerup', 'pointercancel'].forEach(t => d.addEventListener(t, () => { CHDOWN = false; DRAGKEY = null; }, true)); } catch (e) {}
   }
   if (DK.open) setTimeout(() => deskToggle(true), 1200);
   // a cleaner Vest: no market-category rail beside the chart, no Feedback tab
