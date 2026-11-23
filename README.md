@@ -19,8 +19,8 @@ Tampermonkey checks this repo and updates the script on its own. To pull an upda
 
 ---
 
-# GP. Dashboard for Vest
+# GP. Dashboard
 
-Your whole Vest profile in one screen: every account, every trade, what you spent and what you got paid, plus affiliate earnings. Press the GP. button on Vest.
+The Dashboard is inside GP. Jacket now. Press **DASHBOARD** at the bottom of Vest, beside Online and GIGA: your affiliate earnings and payouts, and your whole profile (every account, every trade, what you spent and what you got paid).
 
-Install: open **[gp-dashboard.user.js](https://raw.githubusercontent.com/deciphe/GP.-Jacket/main/gp-dashboard.user.js)** and press **Install**. It updates from this repo the same way.
+If you still have the separate "GP. Dashboard for Vest" script installed, remove it: Jacket has it built in.
