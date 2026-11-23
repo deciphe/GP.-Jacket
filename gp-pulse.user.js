@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.10.4
+// @version      1.10.5
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -915,7 +915,7 @@
     let sent = false;
     try {
       await ensureLev(p.id, p.sym, p.lev).catch(() => {});
-      await Promise.race([readMarks(), sleep(350)]).catch(() => {}); // stop and target come off the newest price
+      if (Date.now() - (L.markAt || 0) > 400) await Promise.race([readMarks(), sleep(250)]).catch(() => {}); // stop and target come off a price under half a second old; no wait when it already is
       p = plan(); if (!p.ok) throw new Error(p.why);
       if (myPos(p)) throw new Error('already in ' + shortSym(p.sym));
       const g = p[side];
@@ -2075,7 +2075,12 @@
   .tb button{height:22px;padding:0 9px;border:0;border-radius:6px;background:none;color:#8b8b92;font:600 10.5px Inter,system-ui,sans-serif;letter-spacing:.02em;cursor:pointer}.tb button:hover{color:#f1f1f3}
   .tb button.on{background:#e6e3dc;color:#0b0b0b}
   .d.acc .rh:not(.ra),.d.pnl .rh.ra,.d.pnl .cpy{display:none}
-  .cpy{display:flex;align-items:center;gap:8px;padding:8px 12px 8px 14px;border-bottom:1px solid rgba(238,234,226,.06)}
+  .cpy{position:relative;z-index:6;display:flex;align-items:center;gap:8px;padding:8px 12px 8px 14px;border-bottom:1px solid rgba(238,234,226,.06)}
+  .dd{flex:none;display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 6px 0 8px;border-radius:7px;border:0;background:none;color:#c9c7c2;font:600 10.5px Inter,system-ui,sans-serif;cursor:pointer;white-space:nowrap}.dd:hover,.dd.op{background:rgba(238,234,226,.07);color:#f1f1f3}
+  .dd em{font-style:normal;color:#6f6f75}.dd i{width:5px;height:5px;border-right:1.4px solid currentColor;border-bottom:1.4px solid currentColor;transform:rotate(45deg) translate(-1px,-1px);opacity:.6}.dd.op i{transform:rotate(-135deg) translate(-1px,-1px)}
+  .dd.st{margin-left:auto}.ld+.dd.st{margin-left:6px}
+  .mn{position:absolute;top:calc(100% - 4px);left:52px;min-width:128px;padding:4px;border-radius:10px;background:#141414;box-shadow:0 0 0 1px rgba(238,234,226,.1),0 16px 32px -12px #000;display:flex;flex-direction:column;gap:1px}.mn[hidden]{display:none}.mn.rt{left:auto;right:12px}
+  .mn button{height:26px;padding:0 10px;border:0;border-radius:7px;background:none;color:#9e9ea5;font:600 11px Inter,system-ui,sans-serif;text-align:left;cursor:pointer;white-space:nowrap}.mn button:hover{background:rgba(238,234,226,.06);color:#f1f1f3}.mn button.on{color:#f1f1f3}.mn button.on:after{content:"";float:right;width:5px;height:5px;border-radius:50%;background:#9fd7b2;margin-top:6px}
   .cpy>b{font-size:9.5px;font-weight:600;letter-spacing:.2em;color:#8b8b92}
   .sw{position:relative;flex:none;width:30px;height:17px;border-radius:99px;border:1px solid rgba(238,234,226,.2);background:#151515;cursor:pointer;transition:background .2s,border-color .2s}
   .sw:after{content:"";position:absolute;left:2px;top:2px;width:11px;height:11px;border-radius:50%;background:#8b8b92;transition:transform .2s cubic-bezier(.34,1.2,.64,1),background .2s}
@@ -2105,10 +2110,6 @@
   .ro{display:flex;align-items:center;gap:5px;justify-self:end}
   .lb{height:18px;padding:0 6px;border-radius:5px;border:1px solid rgba(238,234,226,.16);background:none;color:#6f6f75;font:700 8px/1 Inter,system-ui,sans-serif;letter-spacing:.12em;cursor:pointer;opacity:0;transition:opacity .15s,color .15s,border-color .15s,background .15s}
   .r.a:hover .lb,.lb:focus-visible{opacity:1}.lb:hover{color:#f1f1f3;border-color:rgba(238,234,226,.5)}.lb.on{opacity:1;background:#e6e3dc;border-color:#e6e3dc;color:#0b0b0b;cursor:default}
-  .so{display:flex;align-items:center;gap:3px;padding:6px 12px 6px 14px;border-bottom:1px solid rgba(238,234,226,.06);overflow-x:auto;scrollbar-width:none}.so::-webkit-scrollbar{display:none}
-  .so>b{font-size:9.5px;font-weight:600;letter-spacing:.2em;color:#8b8b92;margin-right:5px}
-  .so button{flex:none;height:20px;padding:0 7px;white-space:nowrap;border-radius:6px;border:1px solid transparent;background:none;color:#6f6f75;font:600 10px Inter,system-ui,sans-serif;cursor:pointer}.so button:hover{color:#c9c7c2}.so button.on{color:#f1f1f3;border-color:rgba(238,234,226,.3)}
-  .d.pnl .so{display:none}
   .scrim{display:none}
   :host(.big) .scrim{display:block;position:fixed;inset:0;background:rgba(6,6,6,.62);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
   .d.big{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(1120px,calc(100vw - 64px));height:min(780px,calc(100vh - 80px));border-radius:18px;box-shadow:0 40px 120px rgba(0,0,0,.6)}
@@ -2152,8 +2153,9 @@
       <div class="mw"><canvas class="moon" width="440" height="440"></canvas></div>
       <div class="hd" data-a="drag"><i class="dot"></i><div class="tb"><button data-t="acc">Accounts</button><button data-t="pnl">PnL</button></div><div class="sp"></div><button class="fx" data-a="flat"><span data-k="fx">flatten</span></button><button class="x bg" data-a="big" aria-label="Big view" title="Big view">⤢</button><button class="x sd" data-a="side" aria-label="Beside the chart" title="Beside the chart">⇤</button><button class="x" data-a="x" aria-label="Close desk">×</button></div>
       <div class="top"><span class="o" data-k="open">—</span><span class="t"><small>TODAY</small><span data-k="today">—</span></span></div>
-      <div class="cpy" data-k="cpy"><b>COPY</b><button class="sw" data-a="arm" aria-label="Copy on or off"></button><div class="cm"><button data-cm="same">same</button><button data-cm="bal">by bal</button><button data-cm="room" title="Each copy sized by its account's room to the floor">by room</button></div><span class="ld" data-k="ld"></span></div>
-      <div class="so" data-k="so"><b>SORT</b><button data-so="auto">auto</button><button data-so="target">to target</button><button data-so="pnl">pnl</button><button data-so="new">newest</button><button data-so="old">oldest</button></div>
+      <div class="cpy" data-k="cpy"><b>COPY</b><button class="sw" data-a="arm" aria-label="Copy on or off"></button><button class="dd" data-dd="cm" title="Copy size"><span data-k="cmv">same</span><i></i></button><span class="ld" data-k="ld"></span><button class="dd st" data-dd="so" title="Sort"><em>sort</em><span data-k="sov">auto</span><i></i></button>
+        <div class="mn" data-mn="cm" hidden><button data-cm="same">same size</button><button data-cm="bal">by balance</button><button data-cm="room" title="Each copy sized by its account's room to the floor">by room</button></div>
+        <div class="mn rt" data-mn="so" hidden><button data-so="auto">auto</button><button data-so="target">to target</button><button data-so="pnl">pnl</button><button data-so="new">newest</button><button data-so="old">oldest</button></div></div>
       <div class="rh"><span></span><span class="v">OPEN</span><span class="v">TODAY</span><span></span></div>
       <div class="rh ra"><span></span><span class="v">BALANCE</span><span class="v">TODAY</span><span class="v">COPY</span></div>
       <div class="rows" data-k="rows"></div>
@@ -2166,11 +2168,16 @@
     R.querySelector('[data-a=flat]').onclick = () => deskFlatten();
     R.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { DK.tab = b.dataset.t; saveDK(); renderDesk(); });
     R.querySelector('[data-a=arm]').onclick = () => arm(!C.on);
-    R.querySelectorAll('[data-cm]').forEach(b => b.onclick = () => { C.mode = b.dataset.cm; saveC(); renderDesk(); });
+    // copy size and sort: one chip each, a small menu on tap
+    const mnOpen = n => { R.querySelectorAll('[data-mn]').forEach(m => { m.hidden = m.dataset.mn !== n; }); R.querySelectorAll('[data-dd]').forEach(b => b.classList.toggle('op', b.dataset.dd === n)); };
+    R.querySelectorAll('[data-dd]').forEach(b => b.onclick = e => { e.stopPropagation(); mnOpen(R.querySelector(`[data-mn=${b.dataset.dd}]`).hidden ? b.dataset.dd : null); });
+    R.addEventListener('pointerdown', e => { if (!e.composedPath().some(n => n.dataset && (n.dataset.mn || n.dataset.dd))) mnOpen(null); });
+    document.addEventListener('pointerdown', e => { if (!e.composedPath().includes(R.host)) mnOpen(null); }, true);
+    R.querySelectorAll('[data-cm]').forEach(b => b.onclick = () => { C.mode = b.dataset.cm; saveC(); mnOpen(null); renderDesk(); });
     R.querySelector('[data-a=side]').onclick = () => { DK.side = !DK.side; DK.x = DK.y = null; DK.dock = true; saveDK(); renderDesk(); layoutCols(); placeShot(); placeDesk(); };
     R.querySelector('[data-a=all]').onclick = () => { DK.all = !DK.all; saveDK(); renderDesk(); placeDesk(); };
     R.querySelector('[data-a=big]').onclick = () => deskBig(!DK.big);
-    R.querySelectorAll('[data-so]').forEach(b => b.onclick = () => { DK.sort = b.dataset.so; saveDK(); renderDesk(); });
+    R.querySelectorAll('[data-so]').forEach(b => b.onclick = () => { DK.sort = b.dataset.so; saveDK(); mnOpen(null); renderDesk(); });
     R.querySelector('.scrim').onclick = () => deskBig(false);
     host.addEventListener('keydown', e => { if (e.key === 'Escape' && DK.big) deskBig(false); });
     k('rows').onclick = e => {
@@ -2271,7 +2278,7 @@
     const tab = DK.tab === 'pnl' ? 'pnl' : 'acc', d = R.querySelector('.d'); d.classList.toggle('acc', tab === 'acc'); d.classList.toggle('pnl', tab === 'pnl');
     R.querySelectorAll('[data-t]').forEach(b => b.classList.toggle('on', b.dataset.t === tab));
     R.querySelector('[data-a=arm]').classList.toggle('on', !!C.on);
-    R.querySelectorAll('[data-cm]').forEach(b => b.classList.toggle('on', b.dataset.cm === C.mode));
+    R.querySelectorAll('[data-cm]').forEach(b => b.classList.toggle('on', b.dataset.cm === C.mode)); k('cmv').textContent = { same: 'same', bal: 'by bal', room: 'by room' }[C.mode] || 'same';
     const act = activeAcct(), pick = DK.pick && DK.pick.id !== act && Date.now() - DK.pick.at < 4000 ? DK.pick.id : null, cur = pick || act, lead = copyLeader();
     k('ld').innerHTML = C.elsewhere ? 'on in another tab' : lead ? (C.on ? 'from ' : 'lead ') + '<b>' + acctShort(lead).replace(/^Account /, '') + '</b>' : '';
     const accRow = r => {
@@ -2288,7 +2295,7 @@
     };
     const GROUPS = ['Funded', 'Instant', 'Eval'];
     const so = DK.sort || 'auto', srt = (a, b) => so === 'target' ? (a.need != null && b.need != null ? a.need - b.need : b.today - a.today) : so === 'pnl' ? b.today - a.today : so === 'new' ? b.born - a.born : so === 'old' ? a.born - b.born : 0;
-    R.querySelectorAll('[data-so]').forEach(b => b.classList.toggle('on', b.dataset.so === so));
+    R.querySelectorAll('[data-so]').forEach(b => b.classList.toggle('on', b.dataset.so === so)); k('sov').textContent = { auto: 'auto', target: 'to target', pnl: 'pnl', new: 'newest', old: 'oldest' }[so] || 'auto';
     const accHtml = () => GROUPS.map(g => { const rs = rows.filter(r => r.kind === g).sort((a, b) => (a.id === lead) - (b.id === lead) ? (b.id === lead) - (a.id === lead) : srt(a, b)); if (!rs.length) return '';
       const sub = rs.reduce((a, r) => a + r.today, 0), all = rs.filter(r => r.id !== lead).every(r => C.followers[r.id]);
       return `<div class="gh" data-g="${g}" title="${all ? 'Stop copying to all ' : 'Copy to all '}${g}"><span>${g}<i>${rs.length}</i></span><b class="${tone(sub)}">${fm(sub, { sign: true })}</b></div>` + rs.map(accRow).join(''); }).join('');
