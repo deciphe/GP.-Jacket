@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.10.6
+// @version      1.10.7
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -159,13 +159,15 @@
   function snapCash() { const o = {}; for (const id in L.bal) o[id] = L.bal[id] + marginOf(id); L.cash = o; }
   // read positions, then free balances, then positions again: a fill landing mid-read would add margin to one read and not
   // the other, so the snapshot is only taken when both position reads agree (else the last good one stays)
+  // a resting limit shows up in Vest's list as a position of size 0 (it carries the TP / SL): it is not a trade until it fills
+  const held = ps => ps.filter(p => +p.quantity !== 0);
   const posKey = ps => ps.map(p => (p.positionId || p.id) + ':' + p.quantity).sort().join('|');
   async function readCash() {
     const p0 = (await api('/v3/positions/opened')).positions || [];
     const acc = (await api('/v3/accounts?active=true&limit=500')).accounts || [];
     const p1 = (await api('/v3/positions/opened')).positions || [];
     L.bal = {}; acc.forEach(a => { L.bal[a.account_id] = +a.amount || 0; }); L.balAt = Date.now();
-    L.pos = p1; L.posAt = Date.now();
+    L.pos = held(p1); L.posAt = Date.now();
     if (posKey(p0) === posKey(p1)) snapCash();
   }
   let seriesAt = 0;
@@ -779,7 +781,7 @@
       try {
         await loadSpecs();
         const balNow = Date.now() - (L.balAt || 0) > 4000;
-        const T = [balNow ? readCash() : api('/v3/positions/opened').then(j => { L.pos = j.positions || []; L.posAt = Date.now(); }), readMarks()];
+        const T = [balNow ? readCash() : api('/v3/positions/opened').then(j => { L.pos = held(j.positions || []); L.posAt = Date.now(); }), readMarks()];
         if (!L.cap || Date.now() - (L.capAt || 0) > 30000) T.push(api('/v3/capital/accounts/active').then(j => { L.cap = j.accounts || []; L.capAt = Date.now(); }));
         if (!L.levs || Date.now() - (L.levAt || 0) > 60000) T.push(api('/v3/user-state').then(j => { const o = {}, n = {}; (j.accounts || []).forEach(a => { o[a.accountId] = {}; (a.leverages || []).forEach(l => { o[a.accountId][l.symbol] = +l.leverage; }); if (a.name) n[a.accountId] = a.name; }); L.levs = o; L.names = n; L.levAt = Date.now(); }).catch(() => { L.levAt = Date.now(); }));
         await Promise.all(T); await loadSeries();
@@ -962,7 +964,7 @@
     await act('pc' + oid, async () => { await sendExit(id, '/v3/positions/cancel-order', { orderId: oid }); PEND.rows = PEND.rows.filter(r => r.oid !== oid); return 'Cancelled'; });
     pendPull(true);
   }
-  every(1000, () => { if (SHOT.visible && SH.ot === 'lim') pendPull(false); });
+  every(1000, () => { if (SHOT.visible && (SH.ot === 'lim' || PEND.rows.length)) pendPull(false); });
   function flash(side) { const s = SP && SP.R.querySelector('.s'); if (!s) return; s.classList.remove('fl-long', 'fl-short'); void s.offsetWidth; s.classList.add('fl-' + side); setTimeout(() => s.classList.remove('fl-' + side), 900); }
   // auto break even at +1R, then the stop trails up in 0.5R steps: off unless switched on in settings
   function autoManage() {
@@ -1730,7 +1732,7 @@
           k('lpd').textContent = (d >= 0 ? '+' : '−') + pts(Math.abs(d)) + ' pts';
           ab.className = (side === 'long' ? 'L' : 'S') + ' arm' + (SHOT.busy === 'arm' ? ' busy' : ''); ab.disabled = !p.ok || !!SHOT.busy || Date.now() < SHOT.cool;
           ab.title = (side === 'long' ? 'Buy limit' : 'Sell limit'); } }
-      { const rows = SH.ot === 'lim' && !pos && PEND.key === (p.id + '|' + p.sym) ? PEND.rows : [], h = rows.map(r => `<div class="pq"><b class="${r.buy ? 'up' : 'dn'}">${r.buy ? 'BUY' : 'SELL'}</b><span>${esc(trimNum(r.q))} @ ${esc(fmtPx(r.px, p.sym))}</span><button data-oid="${esc(r.oid)}" class="${SHOT.busy === 'pc' + r.oid ? 'busy' : ''}">cancel</button></div>`).join('');
+      { const rows = !pos && PEND.key === (p.id + '|' + p.sym) ? PEND.rows : [], h = rows.map(r => `<div class="pq"><b class="${r.buy ? 'up' : 'dn'}">${r.buy ? 'BUY' : 'SELL'}</b><span>${esc(trimNum(r.q))} @ ${esc(fmtPx(r.px, p.sym))}</span><button data-oid="${esc(r.oid)}" class="${SHOT.busy === 'pc' + r.oid ? 'busy' : ''}">cancel</button></div>`).join('');
         if (k('pnd').dataset.h !== h) k('pnd').innerHTML = k('pnd').dataset.h = h; }
       if (p.qty) {
         k('slv').textContent = '−' + fm(SH.fees ? p.risk : p.slG).replace('−', '');
