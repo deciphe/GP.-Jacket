@@ -100,7 +100,6 @@ i,em{font-style:normal}
 .pair span:last-child{text-align:right}.pair i{color:var(--mute);font:500 14px var(--mono);text-align:center}
 .lk{margin-left:6px;display:inline-flex;align-items:center;gap:7px;font:600 11px/1 var(--mono);letter-spacing:.06em;color:var(--ink2);font-variant-numeric:tabular-nums}
 .lk svg{width:11px;height:11px;flex:none}
-.mir .pair,.mir .g6{opacity:.5}
 .lockb{position:absolute;right:-22px;top:-24px;width:62px;height:62px;border-radius:50%;background:var(--card);border:1px solid var(--line2);box-shadow:0 18px 40px -12px #000;display:grid;place-items:center}
 .lockb svg{position:absolute;inset:0;width:100%;height:100%}
 .lockb .rg{fill:none;stroke:var(--cr);stroke-width:2;stroke-linecap:round;stroke-dasharray:163.4;transform:rotate(-90deg);transform-origin:50% 50%;animation:sweep 12s linear infinite}
@@ -198,12 +197,11 @@ i,em{font-style:normal}
 
   <!-- Mirror -->
   <div class="c mir" tabindex="0" style="--x:45.5vw;--y:59vh;--r:-6deg;--z:10;--d:16;--t:17s;--dl:-3s"><div class="ci" style="width:260px">
-    <i class="lockb"><svg viewBox="0 0 62 62"><circle class="tk" cx="31" cy="31" r="26"/><circle class="rg" cx="31" cy="31" r="26"/></svg><svg class="lc" viewBox="0 0 16 16" fill="none"><rect x="2.5" y="7" width="11" height="7.5" rx="2" fill="currentColor"/><path class="sh" d="M5 7V5a3 3 0 0 1 6 0v2" stroke="currentColor" stroke-width="1.8"/></svg></i>
-    <div class="h"><span>Mirror</span><span class="lk"><svg viewBox="0 0 16 16" fill="none"><rect x="2.5" y="7" width="11" height="7.5" rx="2" fill="currentColor"/><path class="sh" d="M5 7V5a3 3 0 0 1 6 0v2" stroke="currentColor" stroke-width="1.8"/></svg><span id="tm">--:--:--</span></span></div>
+    <div class="h"><i class="dot"></i><span>Mirror</span><span class="sp"></span><span class="mono up">ON</span></div>
     <div class="g6"><span class="pill fill">MAIN</span><span class="pill">OPP</span></div>
     <div class="pair on"><span>NDX</span><i>⇄</i><span>SPX</span></div>
     <div class="pair"><span>BTC</span><i>⇄</i><span>ETH</span></div>
-  </div><b>Mirror<em>locked · soon</em></b></div>
+  </div><b>Mirror<em>hedge across accounts</em></b></div>
 
   <!-- Chart -->
   <div class="c" tabindex="0" style="--x:60vw;--y:26vh;--r:1deg;--z:5;--b:1.6px;--o:.85;--d:8;--t:19s;--dl:-5s"><div class="ci"><div class="chart" id="chart">
@@ -286,7 +284,7 @@ i,em{font-style:normal}
   <h1 class="word in d1">Jacket<i>.</i></h1>
   <p class="line in d2">On top of Vest.</p>
   <div class="act in d3">
-    <a class="btn p" href="https://raw.githubusercontent.com/deciphe/gp-pulse/main/gp-jacket.user.js">Install GP. Jacket<span class="k">v<span id="ver">1.13.0</span></span></a>
+    <a class="btn p" href="https://raw.githubusercontent.com/deciphe/gp-pulse/main/gp-jacket.user.js">Install GP. Jacket</a>
     <a class="btn s" href="https://www.tampermonkey.net/" target="_blank" rel="noopener">Get Tampermonkey<span class="k">↗</span></a>
     <a class="btn s" href="/gp-jacket.user.js" download="gp-jacket.user.js">Download .js<span class="k">↓</span></a>
   </div>
@@ -296,7 +294,6 @@ i,em{font-style:normal}
 (() => {
 'use strict';
 const $ = id => document.getElementById(id), RM = matchMedia('(prefers-reduced-motion:reduce)').matches;
-fetch('https://raw.githubusercontent.com/deciphe/gp-pulse/main/gp-jacket.user.js', { cache: 'no-store' }).then(r => r.text()).then(t => { const m = t.match(/@version\s+([\d.]+)/); if (m) $('ver').textContent = m[1]; }).catch(() => {});
 
 // candles behind the chart card
 (() => { const c = $('chart'); let sd = 7, y = 70; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
@@ -308,9 +305,6 @@ if (!RM) { const dr = [...$('desk').querySelectorAll('.row')], sr = [...$('swap'
 
 // the collage leans a little toward the cursor
 if (!RM) { const col = $('col'); let raf = 0; addEventListener('pointermove', e => { if (innerWidth <= 1000 || raf) return; raf = requestAnimationFrame(() => { raf = 0; col.style.setProperty('--mx', (.5 - e.clientX / innerWidth).toFixed(3)); col.style.setProperty('--my', (.5 - e.clientY / innerHeight).toFixed(3)); }); }, { passive: true }); }
-
-// Mirror's clock: it runs, it never says when
-(() => { const e = $('tm'); if (RM) return; const d = () => String(Math.floor(Math.random() * 60)).padStart(2, '0'); setInterval(() => { if (!document.hidden) e.textContent = d() + ':' + d() + ':' + d(); }, 110); })();
 
 // halftone moon on a horizon, a faint reflection under it
 function moon(x, cx, cy, R, step, hz, flip, a) {

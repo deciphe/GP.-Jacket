@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Jacket for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.13.0
+// @version      1.14.1
 // @description  A risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier, a desk to close any account, Claim all on the Portfolio page, and spend, payouts and live PnL in Vest's header.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
