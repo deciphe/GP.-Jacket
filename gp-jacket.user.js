@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Jacket for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.17.4
+// @version      1.18.0
 // @description  A risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier, GP. Mirror (lock a pair of markets and every trade on the lead is mirrored, opposite, on the pair's other market), a desk to close any account, Claim all on the Portfolio page, the GP. Dashboard (earnings, payouts, every account and trade), and spend, payouts and live PnL in Vest's header.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -1862,9 +1862,11 @@
   function virt(lp) {
     const S = lp.symbol, id = lp.positionId;
     if (!C.hmap[id]) {
-      const H = hedgeOf(S); if (!H || twin(S, H)) return null;
-      const st = statFor(S, H), ph = L.mark[H]; if (!st || !(st.k > 0) || !ph) return null;
-      C.hmap[id] = H; C.hratio[id] = st.k; C.hgam[id] = st.g; C.href[id] = ph; saveC();
+      const H = hedgeOf(S); if (!H) return null;
+      if (H === S) { const p0 = +lp.openPrice; if (!(p0 > 0)) return null; C.hmap[id] = H; C.hratio[id] = 1; C.hgam[id] = 1; C.href[id] = p0; saveC(); } // same market, the other way: same size, same prices
+      else { if (twin(S, H)) return null;
+        const st = statFor(S, H), ph = L.mark[H]; if (!st || !(st.k > 0) || !ph) return null;
+        C.hmap[id] = H; C.hratio[id] = st.k; C.hgam[id] = st.g; C.href[id] = ph; saveC(); }
     }
     const H = C.hmap[id], k = C.hratio[id], g = C.hgam[id], ps0 = +lp.openPrice, ph0 = C.href[id];
     if (!(ps0 > 0) || !(ph0 > 0) || !(k > 0)) return null;
@@ -1911,6 +1913,8 @@
     HX.deepBusy = false; try { renderDesk(); } catch (e) {}
   }
   const rhoTxt = r => r == null ? '' : r.toFixed(2).replace(/^0/, '');
+  const sameP = () => { const out = []; [curSymbol(), 'NDX-USD-PERP', 'BTC-PERP'].forEach(m => { if (m && SPEC[m] && !out.some(q => q[0] === m)) out.push([m, m]); }); return out; }; // one market, long on one account and short on another
+  const pTag = (q, rho) => q[0] === q[1] ? 'SAME' : rhoTxt(rho);
   // ---------- the desk in pair mode: a one-line summary, then only the accounts in play, in order ----------
   const nm = id => acctShort(id).replace(/^Account /, '#');
   const sideNames = () => { const pm = pairMarkets(); return { M: pm ? pm.M : 'MAIN', O: pm ? pm.O : 'OPP' }; }; // off the pair's markets there is no market to name yet
@@ -1931,7 +1935,7 @@
     const nM = f.filter(id => C.hside[id] === 'M').length + 1, nO = f.filter(id => C.hside[id] === 'O').length;
     const k1 = JSON.stringify([p, pm, nM, nO, off && curSymbol(), s && s.rho]);
     if (gs && gs.__k !== k1) { gs.__k = k1; gs.innerHTML = off ? `<span class="gw bad">chart is ${base(curSymbol())} · pair is ${base(p[0])} / ${base(p[1])}</span>` : pm ? `<span class="gl"><b>${pm.M}</b><i>${nM}</i></span><span class="gx">⇄</span><span class="gsh"><b>${pm.O}</b><i>${nO}</i></span>` : ''; }
-    if (box) { const k2 = JSON.stringify([p, s && s.rho]); if (box.__k !== k2) { box.__k = k2; box.innerHTML = p ? `<button class="crq" data-a="corr" title="Correlation"><svg viewBox="0 0 14 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 7 4 3.5 7 6l3-4 3 2.5"/></svg><b>${base(p[0])}</b><em>/</em><b>${base(p[1])}</b><i>${rhoTxt(s && s.rho)}</i></button>` : ''; } }
+    if (box) { const k2 = JSON.stringify([p, s && s.rho]); if (box.__k !== k2) { box.__k = k2; box.innerHTML = p ? `<button class="crq" data-a="corr" title="Correlation"><svg viewBox="0 0 14 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 7 4 3.5 7 6l3-4 3 2.5"/></svg><b>${base(p[0])}</b><em>/</em><b>${base(p[1])}</b><i>${pTag(p, s && s.rho)}</i></button>` : ''; } }
     renderSetup(R);
   }
   // ---------- the setup window: mode, pair, and every account's part ----------
@@ -1964,10 +1968,10 @@
     renderCorr(R);
     const su = R.querySelector('[data-k=su]'); if (!su) return; su.hidden = !HX.setup; if (!HX.setup) return;
     su.querySelector('.suc').classList.toggle('pair', !!C.hedge);
-    const p = pairNow(), list = MAINP.filter(q => SPEC[q[0]] && SPEC[q[1]]); if (p && !list.some(q => q[0] === p[0] && q[1] === p[1])) list.push(p);
+    const p = pairNow(), list = MAINP.filter(q => SPEC[q[0]] && SPEC[q[1]]).concat(sameP()); if (p && !list.some(q => q[0] === p[0] && q[1] === p[1])) list.push(p);
     const pairs = su.querySelector('[data-k=spairs]'), pk = JSON.stringify([C.hedge, p, list.map(q => { const st = statFor(q[0], q[1]); return st && st.rho; }), HX.pop, HX.deep && HX.deep.at, HX.deepBusy]);
     if (pairs.__k !== pk) { pairs.__k = pk;
-      pairs.innerHTML = !C.hedge ? '' : list.map(q => { const st = statFor(q[0], q[1]), on = p && q[0] === p[0] && q[1] === p[1]; return `<button class="pc2${on ? ' on' : ''}" data-hp="${q[0]}|${q[1]}"><span><b>${base(q[0])}</b><em>/</em><b>${base(q[1])}</b></span><i>${rhoTxt(st && st.rho)}</i></button>`; }).join('') + `<button class="pc2 mo${HX.pop ? ' on2' : ''}" data-a="hmore"><span>${HX.pop ? 'less' : 'more pairs'}</span></button>`
+      pairs.innerHTML = !C.hedge ? '' : list.map(q => { const st = statFor(q[0], q[1]), on = p && q[0] === p[0] && q[1] === p[1]; return `<button class="pc2${on ? ' on' : ''}" data-hp="${q[0]}|${q[1]}"><span><b>${base(q[0])}</b><em>/</em><b>${base(q[1])}</b></span><i>${pTag(q, st && st.rho)}</i></button>`; }).join('') + `<button class="pc2 mo${HX.pop ? ' on2' : ''}" data-a="hmore"><span>${HX.pop ? 'less' : 'more pairs'}</span></button>`
         + (HX.pop ? `<div class="deep">${HX.deep && HX.deep.rows.length ? HX.deep.rows.map(r => `<button data-hp="${r.a}|${r.b}" class="${p && p[0] === r.a && p[1] === r.b ? 'on' : ''}"><span><b>${base(r.a)}</b><em>/</em><b>${base(r.b)}</b></span><i>${rhoTxt(r.rho)}</i></button>`).join('') : `<div class="hw">${HX.deepBusy || !HX.deep ? 'reading every market' : 'nothing moves together right now'}</div>`}</div>` : ''); }
     const ld = copyLeader(), accs = (L.cap || []).filter(c => c.status === 2 && L.bal[c.id] != null);
     const GR = [['Funded', c => c.account_type === 3], ['Eval', c => c.account_type !== 3]];
