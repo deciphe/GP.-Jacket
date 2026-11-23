@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Jacket for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.17.0
+// @version      1.17.1
 // @description  A risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier, GP. Mirror (lock a pair of markets and every trade on the lead is mirrored, opposite, on the pair's other market), a desk to close any account, Claim all on the Portfolio page, the GP. Dashboard (earnings, payouts, every account and trade), and spend, payouts and live PnL in Vest's header.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -1957,7 +1957,7 @@
       return `<div class="cc${on ? ' on' : ''}">${hd}<svg viewBox="0 0 ${Wd} ${Hh}" preserveAspectRatio="none"><line x1="0" x2="${Wd}" y1="${Hh / 2}" y2="${Hh / 2}" stroke="rgba(238,234,226,.12)" stroke-dasharray="3 5" vector-effect="non-scaling-stroke"/><path d="${path(v.A)}" fill="none" stroke="#9fd7b2" stroke-width="1.4" vector-effect="non-scaling-stroke" stroke-linejoin="round"/><path d="${path(v.B)}" fill="none" stroke="#e8988c" stroke-width="1.4" vector-effect="non-scaling-stroke" stroke-linejoin="round"/><path d="${path(v.N)}" fill="none" stroke="#e6e3dc" stroke-width="2.4" vector-effect="non-scaling-stroke" stroke-linejoin="round"/></svg>
         <div class="ccl"><span><i style="background:#9fd7b2"></i>${base(q[0])}</span><span><i style="background:#e8988c"></i>${base(q[1])}</span><span><i style="background:#e6e3dc"></i>Mirrored</span><small>24H · 15M</small></div>
         <div class="cck"><div><small>Correlation</small><b>${rhoTxt(v.rho)}</b></div><div><small>Alone</small><b>±${pc(v.sa)}</b></div><div><small>Mirrored</small><b>±${pc(v.sn)}</b></div><div><small>Swing cut</small><b class="up">${Math.round(cut * 100)}%</b></div></div></div>`; };
-    const rank = list.map((q, i) => ({ a: q[0], b: q[1], rho: data[i] ? data[i].rho : null, main: 1 })).concat((HX.deep && HX.deep.rows || []).map(r => ({ a: r.a, b: r.b, rho: r.rho }))).filter(r => r.rho != null).sort((x, y) => y.rho - x.rho).slice(0, 8);
+    const rank = list.map((q, i) => ({ a: q[0], b: q[1], rho: data[i] ? data[i].rho : null, main: 1 })).concat((HX.deep && HX.deep.rows || []).map(r => ({ a: r.a, b: r.b, rho: r.rho }))).filter(r => r.rho != null).sort((x, y) => y.rho - x.rho).filter((r, i) => r.main || i < 8); // the best eight, and the main pairs wherever they land
     box.innerHTML = list.map((q, i) => card(q, data[i])).join('') + `<div class="crk"><div class="crh">Every market, best first</div>${rank.length ? rank.map(r => `<div class="crr${r.main ? ' tp' : ''}"><span><b>${base(r.a)}</b><em>/</em><b>${base(r.b)}</b></span><div><i style="width:${Math.max(0, Math.min(1, r.rho)) * 100}%"></i></div><em>${rhoTxt(r.rho)}</em></div>`).join('') : ''}${HX.deepBusy || !HX.deep ? '<div class="hw">reading every market</div>' : ''}</div>`;
   }
   function renderSetup(R) {
