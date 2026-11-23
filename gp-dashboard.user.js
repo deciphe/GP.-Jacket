@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Dashboard for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.12.0
+// @version      1.12.1
 // @description  Your whole Vest profile: every account, every trade, what you spent and what you got paid. Plus affiliate earnings. Runs in your browser.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -11,9 +11,9 @@
 // @grant        GM_addValueChangeListener
 // @grant        unsafeWindow
 // @grant        GM_xmlhttpRequest
-// @homepageURL  https://github.com/deciphe/gp-pulse
-// @updateURL    https://raw.githubusercontent.com/deciphe/gp-pulse/main/gp-dashboard.user.js
-// @downloadURL  https://raw.githubusercontent.com/deciphe/gp-pulse/main/gp-dashboard.user.js
+// @homepageURL  https://github.com/deciphe/GP.-Jacket
+// @updateURL    https://raw.githubusercontent.com/deciphe/GP.-Jacket/main/gp-dashboard.user.js
+// @downloadURL  https://raw.githubusercontent.com/deciphe/GP.-Jacket/main/gp-dashboard.user.js
 // ==/UserScript==
 
 (function () {

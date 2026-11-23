@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Jacket for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.14.1
+// @version      1.14.2
 // @description  A risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier, a desk to close any account, Claim all on the Portfolio page, and spend, payouts and live PnL in Vest's header.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -10,9 +10,9 @@
 // @grant        GM_setValue
 // @grant        GM_addValueChangeListener
 // @grant        unsafeWindow
-// @homepageURL  https://github.com/deciphe/gp-pulse
-// @updateURL    https://raw.githubusercontent.com/deciphe/gp-pulse/main/gp-jacket.user.js
-// @downloadURL  https://raw.githubusercontent.com/deciphe/gp-pulse/main/gp-jacket.user.js
+// @homepageURL  https://github.com/deciphe/GP.-Jacket
+// @updateURL    https://raw.githubusercontent.com/deciphe/GP.-Jacket/main/gp-jacket.user.js
+// @downloadURL  https://raw.githubusercontent.com/deciphe/GP.-Jacket/main/gp-jacket.user.js
 // ==/UserScript==
 
 (function () {
