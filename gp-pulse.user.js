@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.10.5
+// @version      1.10.6
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -1226,7 +1226,7 @@
   .th{display:flex;justify-content:space-between;gap:8px;font-size:10.5px;font-weight:700;color:#6f6f75;letter-spacing:.06em;white-space:nowrap}
   .th b{font-weight:600}.th b.up{color:#bfe6cb}.th b.dn{color:#efb1a7}
   .pu{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-top:-2px}
-  .pu b{font-size:44px;font-weight:600;letter-spacing:-.065em;line-height:.95;font-variant-numeric:tabular-nums;white-space:nowrap;transition:color .4s}
+  .pu b{font-size:44px;font-weight:600;letter-spacing:-.065em;line-height:.95;font-variant-numeric:tabular-nums;white-space:nowrap;transition:color .4s}.pu b.up{color:#bfe6cb}.pu b.dn{color:#efb1a7}
   .pu span{font-size:17px;font-weight:600;letter-spacing:-.04em;font-variant-numeric:tabular-nums;color:#8b8b92;white-space:nowrap}
   .pu span small{display:block;margin-top:3px;font-size:11px;font-weight:600;letter-spacing:0;color:#6f6f75;text-align:right}
   .ends{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:-4px}
