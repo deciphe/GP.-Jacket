@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Jacket for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.17.1
+// @version      1.17.2
 // @description  A risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier, GP. Mirror (lock a pair of markets and every trade on the lead is mirrored, opposite, on the pair's other market), a desk to close any account, Claim all on the Portfolio page, the GP. Dashboard (earnings, payouts, every account and trade), and spend, payouts and live PnL in Vest's header.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -3051,7 +3051,7 @@
       if (el) el.remove();
       el = document.createElement('button'); el.id = 'gpz-giga'; el.type = 'button'; el.title = 'Code GIGA at checkout';
       el.style.cssText = 'all:unset;display:inline-flex;align-items:center;gap:6px;margin-left:16px;font:600 11px/1 Manrope,Inter,system-ui,sans-serif;letter-spacing:.08em;cursor:pointer;vertical-align:middle;white-space:nowrap';
-      el.innerHTML = '<i style="width:6px;height:6px;border-radius:50%;box-sizing:border-box"></i><span>GIGA</span>';
+      el.innerHTML = '<i style="width:6px;height:6px;border-radius:50%;box-sizing:border-box"></i><span>CODE GIGA AT CHECKOUT</span>';
       el.onclick = e => { e.preventDefault(); e.stopPropagation(); DB.giga = DB.giga === false; DB.gigaSkip = 0; save(true); gigaChip(); try { renderShot(); } catch (x) {} };
       o.insertAdjacentElement('afterend', el);
     }
