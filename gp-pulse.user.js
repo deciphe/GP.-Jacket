@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.10.3
+// @version      1.10.4
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -1495,6 +1495,7 @@
     on('long', () => fire('long')); on('short', () => fire('short'));
     // market: hovering Long or Short shows that side's stop and target; the switch below only sets where they rest
     ['long', 'short'].forEach(sd => { const b = R.querySelector(`[data-a=${sd}]`);
+      b.addEventListener('pointermove', () => { if (SH.ot !== 'lim' && SHOT.hover !== sd) { SHOT.hover = sd; renderShot(); drawChart(); } });
       b.addEventListener('pointerenter', () => { if (SH.ot === 'lim' || SHOT.hover === sd) return; SHOT.hover = sd; renderShot(); drawChart(); });
       b.addEventListener('pointerleave', () => { if (SHOT.hover !== sd) return; SHOT.hover = null; renderShot(); drawChart(); }); }); on('close', closeMine); on('close2', closeMine);
     on('addback', () => addOn(false)); on('addgo', addMore);
@@ -1778,6 +1779,7 @@
   // In a trade: drag the stop, the target or a partial; × on a line removes it. If Vest already draws its own stop
   // and target lines, those are used (with the distance added to their labels) and nothing is drawn twice.
   const CHL = {}, HOLD = {}; let CHDOWN = false, DRAGKEY = null;
+  { const up = () => { CHDOWN = false; DRAGKEY = null; }; ['pointerup', 'pointercancel'].forEach(t => document.addEventListener(t, up, true)); W.addEventListener('blur', up); document.addEventListener('pointermove', e => { if (CHDOWN && !e.buttons) up(); }, true); }
   function chartApi() { try { const f = document.querySelector('iframe[id^="tradingview_"]'); const a = f && f.contentWindow && f.contentWindow.tradingViewApi; return a ? a.activeChart() : null; } catch (e) { return null; } }
   function chLine(key, price, text, color, style, o) {
     const ch = chartApi(); if (!ch) return; o = o || {};
@@ -2386,7 +2388,8 @@
   }
   function hookFrame(f) { // the chart is its own page: keys pressed there never reach Vest's page, so they are heard there too
     try { const d = f.contentDocument; if (!d || d.__gpzKeys) return; d.__gpzKeys = 1; d.addEventListener('keydown', hotkey, true);
-      d.addEventListener('pointerdown', () => { CHDOWN = true; DRAGKEY = null; if (SHOT.kpOff) SHOT.kpOff(); requestAnimationFrame(dragLive); }, true); ['pointerup', 'pointercancel'].forEach(t => d.addEventListener(t, () => { CHDOWN = false; DRAGKEY = null; }, true)); } catch (e) {}
+      d.addEventListener('pointerdown', () => { CHDOWN = true; DRAGKEY = null; if (SHOT.kpOff) SHOT.kpOff(); requestAnimationFrame(dragLive); }, true); ['pointerup', 'pointercancel'].forEach(t => d.addEventListener(t, () => { CHDOWN = false; DRAGKEY = null; }, true));
+      d.addEventListener('pointermove', e => { if (CHDOWN && !e.buttons) { CHDOWN = false; DRAGKEY = null; } }, true); } catch (e) {}
   }
   if (DK.open) setTimeout(() => deskToggle(true), 1200);
   // a cleaner Vest: no market-category rail beside the chart, no Feedback tab
