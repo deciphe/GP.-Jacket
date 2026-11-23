@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Jacket for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.17.2
+// @version      1.17.3
 // @description  A risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier, GP. Mirror (lock a pair of markets and every trade on the lead is mirrored, opposite, on the pair's other market), a desk to close any account, Claim all on the Portfolio page, the GP. Dashboard (earnings, payouts, every account and trade), and spend, payouts and live PnL in Vest's header.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -1317,7 +1317,7 @@
   // the reward dial runs on a log scale, so 0.5R and 1R get as much room as 2R to 5R
   const anchors = (A, step) => ({ to: v => { v = Math.max(A[0], Math.min(A[A.length - 1], v)); let i = 0; while (i < A.length - 2 && v > A[i + 1]) i++; return (i + (v - A[i]) / (A[i + 1] - A[i])) * 1000 / (A.length - 1); },
     from: p => { const t = Math.max(0, Math.min(1, p / 1000)) * (A.length - 1), i = Math.min(A.length - 2, Math.floor(t)), v = A[i] + (t - i) * (A[i + 1] - A[i]), k = step(v); return Math.round(v * k) / k; } }); // ticks sit evenly along the dial
-  const RLO = 0.25, RHI = 5, LOGD = { addp: anchors([5, 25, 50, 100, 200, 300], v => v < 100 ? 0.2 : 0.1), risk: anchors([0.25, 0.5, 1, 2, 3], v => v < 1 ? 20 : 10), R: { to: v => 1000 * Math.log(Math.max(RLO, Math.min(RHI, v)) / RLO) / Math.log(RHI / RLO), from: p => { const v = RLO * Math.exp(p / 1000 * Math.log(RHI / RLO)); return v < 1 ? Math.round(v * 20) / 20 : Math.round(v * 10) / 10; } } };
+  const RLO = 0.25, RHI = 5, LOGD = { addp: anchors([5, 25, 50, 100, 200, 300], v => v < 100 ? 0.2 : 0.1), risk: anchors([0.25, 0.5, 1, 2, 4, 6], v => v < 1 ? 20 : 10), R: { to: v => 1000 * Math.log(Math.max(RLO, Math.min(RHI, v)) / RLO) / Math.log(RHI / RLO), from: p => { const v = RLO * Math.exp(p / 1000 * Math.log(RHI / RLO)); return v < 1 ? Math.round(v * 20) / 20 : Math.round(v * 10) / 10; } } };
   // a slider with the benchmarks as tick marks under it (click one to snap to it)
   function slider(key, label, min, max, step, ticks, extra) {
     const lg = LOGD[key]; if (lg) { min = 0; max = 1000; step = 1; }
@@ -1419,7 +1419,7 @@
         <div class="adh" data-k="adh" hidden><span data-k="adt">—</span><button data-a="addback">back</button></div>
         <div class="pl"><div class="sl"><small>STOP<button class="sw sm k-sl" data-t="sl" title="Stop loss on or off" aria-label="Stop loss on or off"></button></small><b data-k="slv">—</b><em data-k="slp">—</em><div class="pe"><input class="n" data-n="rusd" inputmode="decimal" placeholder="$ stop" aria-label="Dollar stop"></div></div><div class="tp"><small>TARGET<button class="sw sm k-tp" data-t="tp" title="Target on or off" aria-label="Target on or off"></button></small><b data-k="tpv">—</b><em data-k="tpp">—</em><div class="pe"><button class="c pass" data-a="pass" title="Pass line">PASS</button><input class="n" data-n="usd" inputmode="decimal" placeholder="$ gain" aria-label="Dollar target"></div></div></div>
         <div class="bm" data-k="bm0">${BEAM}</div>
-        ${slider('risk', 'RISK', 0.25, 3, 0.05, [[0.25, '.25'], [0.5, '.5%'], [1, '1%'], [2, '2%'], [3, '3%']])}
+        ${slider('risk', 'RISK', 0.25, 6, 0.05, [[0.25, '.25'], [0.5, '.5%'], [1, '1%'], [2, '2%'], [4, '4%'], [6, '6%']])}
         ${slider('R', 'REWARD', RLO, RHI, 0.05, [[0.5, '.5R'], [1, '1R'], [2, '2R'], [3, '3R']])}
         ${slider('size', 'SIZE', 5, 100, 1, [[25, '25%'], [50, '50%'], [75, '75%'], [100, 'max']])}
         <div class="bal"><div class="bb"><i data-k="fb" style="width:0"></i></div><div class="bt"><span>fees <b data-k="fe">—</b><button class="sw k-fe" data-t="fees" title="Fees inside the risk" aria-label="Fees inside the risk"></button></span><span data-k="qz"></span></div></div>
