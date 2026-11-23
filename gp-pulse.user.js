@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.9.7
+// @version      1.9.8
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -939,7 +939,7 @@
       const g = p[side];
       const body = { orderType: 'limit', leverage: String(p.lev), side, symbol: p.sym, quantity: p.qtyS, price: fmtP(p.px, p.sym), timeInForce: 'GTC', takeProfits: SH.tp === false ? [] : [{ executionType: 'market', triggerPrice: fmtP(g.tp, p.sym) }], stopLosses: SH.sl === false ? [] : [{ executionType: 'market', triggerPrice: fmtP(g.sl, p.sym) }] };
       sent = true; await send(p.id, 'POST', '/v3/positions/open', body);
-      shotMsg('Armed ' + (side === 'long' ? 'buy ' : 'sell ') + p.qtyS + ' ' + shortSym(p.sym) + ' @ ' + fmtPx(p.px, p.sym), 'ok'); flash(side);
+      shotMsg('Armed', 'ok'); flash(side);
     } catch (e) { if (e.status && e.status < 500 && e.status !== 429) sent = false; shotMsg(e.message, 'bad'); }
     SHOT.cool = Date.now() + (sent ? 1500 : 600);
     SHOT.busy = false; renderShot(); setTimeout(() => pendPull(true), 400);
@@ -1246,7 +1246,7 @@
   .sdt{grid-column:1/-1;display:flex;justify-content:center;align-items:center;gap:8px;margin-top:-2px;height:16px}
   .sdt button{border:0;background:none;padding:0 4px;color:#4f4f55;font:600 10px Inter,system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;transition:color .2s}
   .sdt button:hover{color:#9e9ea5}.sdt button.on{color:#e6e3dc}.sdt i{width:1px;height:9px;background:rgba(238,234,226,.14)}.sdt b{width:3px;height:3px;border-radius:50%;background:rgba(238,234,226,.18);margin:0 6px}.sdt button[data-ot].on{color:#e3c98e}
-  .go .arm{grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:10px}.go .arm small{font-size:12px;font-weight:600;opacity:.55;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+  .go .arm{grid-column:1/-1;display:flex;align-items:center;justify-content:center}.go .arm span{font-size:15px;font-weight:800;letter-spacing:.34em;text-indent:.34em}
   .lrw{display:flex;align-items:center;gap:8px;height:30px;margin-bottom:6px}.lrw label{font-size:10.5px;font-weight:700;letter-spacing:.14em;color:#e3c98e}.lrw .n{flex:1;width:0;height:28px;font-size:13px;text-align:left;padding:0 10px;border-color:rgba(227,201,142,.3)}.lrw .n:focus{border-color:#e3c98e}
   .lrw span{font-size:11px;font-weight:600;color:#8b8b92;white-space:nowrap;font-variant-numeric:tabular-nums}
   .pnd{display:flex;flex-direction:column;gap:4px;margin-top:8px}.pnd:empty{display:none}
@@ -1400,7 +1400,7 @@
         <div class="lgs" data-k="lgs"></div>
       </div>
       <div class="pnd" data-k="pnd"></div>
-      <div class="go" data-v="go"><button class="L" data-a="long">Long<small data-kk="long"></small></button><button class="S" data-a="short">Short<small data-kk="short"></small></button><button class="L arm" data-a="arm" hidden><span data-k="armt">Arm</span><small data-k="arms"></small></button><div class="sdt" title="Which side the stop, target and lines are set for"><button data-sd="long">long</button><i></i><button data-sd="short">short</button><b></b><button data-ot="mkt">market</button><i></i><button data-ot="lim">limit</button></div></div>
+      <div class="go" data-v="go"><button class="L" data-a="long">Long<small data-kk="long"></small></button><button class="S" data-a="short">Short<small data-kk="short"></small></button><button class="L arm" data-a="arm" hidden><span>ARM</span></button><div class="sdt" title="Which side the stop, target and lines are set for"><button data-sd="long">long</button><i></i><button data-sd="short">short</button><b></b><button data-ot="mkt">market</button><i></i><button data-ot="lim">limit</button></div></div>
       <div class="go" data-v="go2" hidden><button class="X" data-a="close">Close<small data-kk="close"></small></button></div>
       <div class="go" data-v="go4" hidden><button class="L" data-a="addgo"><span data-k="addq">Add</span><small data-kk="add"></small></button><button class="X" data-a="close2">Close<small data-kk="close"></small></button></div>
       <div class="kp" data-k="kp" hidden><div class="kh"><span>KEYS</span><button class="sw" data-kt="keys" aria-label="Keyboard shortcuts on or off"></button></div>
@@ -1717,9 +1717,9 @@
       { const lm = !!p.lim && !adding, lp = R.querySelector('[data-n=lpx]'), ab = R.querySelector('[data-a=arm]');
         k('lrw').hidden = !lm; ab.hidden = !lm; R.querySelector('[data-a=long]').hidden = R.querySelector('[data-a=short]').hidden = lm;
         if (lm) { if (R.activeElement !== lp) lp.value = fmtPx(p.px, p.sym); const d = p.px - p.mark;
-          k('lpd').textContent = (d >= 0 ? '+' : '−') + pts(Math.abs(d)) + ' pts · ' + (Math.abs(d) / p.mark * 100).toFixed(2) + '%';
+          k('lpd').textContent = (d >= 0 ? '+' : '−') + pts(Math.abs(d)) + ' pts';
           ab.className = (side === 'long' ? 'L' : 'S') + ' arm' + (SHOT.busy === 'arm' ? ' busy' : ''); ab.disabled = !p.ok || !!SHOT.busy || Date.now() < SHOT.cool;
-          k('armt').textContent = 'Arm ' + (side === 'long' ? 'buy' : 'sell'); k('arms').textContent = p.qtyS ? p.qtyS + ' @ ' + fmtPx(p.px, p.sym) : ''; } }
+          ab.title = (side === 'long' ? 'Buy limit' : 'Sell limit'); } }
       { const rows = SH.ot === 'lim' && !pos && PEND.key === (p.id + '|' + p.sym) ? PEND.rows : [], h = rows.map(r => `<div class="pq"><b class="${r.buy ? 'up' : 'dn'}">${r.buy ? 'BUY' : 'SELL'}</b><span>${esc(trimNum(r.q))} @ ${esc(fmtPx(r.px, p.sym))}</span><button data-oid="${esc(r.oid)}" class="${SHOT.busy === 'pc' + r.oid ? 'busy' : ''}">cancel</button></div>`).join('');
         if (k('pnd').dataset.h !== h) k('pnd').innerHTML = k('pnd').dataset.h = h; }
       if (p.qty) {
@@ -1870,8 +1870,8 @@
     const side = SH.side || 'long', g = p[side];
     if (SH.tp !== false) chLine('tp', g.tp, (SH.tmode === 'pass' ? 'PASS  +' : 'TP  +') + fm(p.reward) + '  ·  ' + pts(p.dTP) + ' pts', MINT, 2, { move: targetFromLine });
     if (SH.sl !== false) chLine('sl', g.sl, 'SL  −' + fm(p.risk).replace('−', '') + '  ·  ' + pts(p.dSL) + ' pts', ROSE, 2, { move: sizeFromStop });
-    if (p.lim) chLine('en', p.px, (side === 'long' ? 'BUY LIMIT  ' : 'SELL LIMIT  ') + p.qtyS + '  ·  ' + p.lev + 'x  ·  ' + pts(Math.abs(p.px - p.mark)) + ' pts', 'rgba(227,201,142,0.9)', 0, { move: setLimit });
-    else chLine('en', p.px, (side === 'long' ? 'long ' : 'short ') + p.qtyS + '  ·  ' + p.lev + 'x', 'rgba(230,227,220,0.32)', 1);
+    if (p.lim) chLine('en', p.px, (side === 'long' ? 'BUY LIMIT  ' : 'SELL LIMIT  ') + p.qtyS + '  ·  ' + pts(Math.abs(p.px - p.mark)) + ' pts', 'rgba(227,201,142,0.9)', 0, { move: setLimit });
+    else chLine('en', p.px, (side === 'long' ? 'long ' : 'short ') + p.qtyS, 'rgba(230,227,220,0.32)', 1);
     const keep = ['en', ...(SH.tp !== false ? ['tp'] : []), ...(SH.sl !== false ? ['sl'] : []), ...dllKeys(p, side)];
     if (p.passNeed > 0 && SH.tmode !== 'pass' && SH.tp !== false) { chLine('pass', g.pass, 'PASS  +' + fm(p.passNeed) + '  ·  ' + pts(p.dPass) + ' pts', 'rgba(227,201,142,0.6)', 2); keep.push('pass'); }
     clearLines(keep);
