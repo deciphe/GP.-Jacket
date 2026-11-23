@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.10.2
+// @version      1.10.3
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -1492,7 +1492,11 @@
       lp.onchange = () => { const v = parseFloat(String(lp.value).replace(/[$,\s]/g, '')); if (v > 0) setLimit(v); else renderShot(); };
       lp.onkeydown = e => { e.stopPropagation(); if (e.key === 'Enter') lp.blur(); }; }
     k('pnd').onclick = e => { const b = e.target.closest('[data-oid]'); if (b) pendCancel(b.dataset.oid); };
-    on('long', () => fire('long')); on('short', () => fire('short')); on('close', closeMine); on('close2', closeMine);
+    on('long', () => fire('long')); on('short', () => fire('short'));
+    // market: hovering Long or Short shows that side's stop and target; the switch below only sets where they rest
+    ['long', 'short'].forEach(sd => { const b = R.querySelector(`[data-a=${sd}]`);
+      b.addEventListener('pointerenter', () => { if (SH.ot === 'lim' || SHOT.hover === sd) return; SHOT.hover = sd; renderShot(); drawChart(); });
+      b.addEventListener('pointerleave', () => { if (SHOT.hover !== sd) return; SHOT.hover = null; renderShot(); drawChart(); }); }); on('close', closeMine); on('close2', closeMine);
     on('addback', () => addOn(false)); on('addgo', addMore);
     R.querySelectorAll('[data-sd]').forEach(b => b.onclick = () => { const sym = curSymbol(), m = sym && L.mark[sym]; if (SH.ot === 'lim' && b.dataset.sd !== SH.side && m && LIM[sym]) LIM[sym] = +fmtP(2 * m - LIM[sym], sym); SH.side = b.dataset.sd; saveSH(); redo(); });
     on('vest', () => { SH.on = false; saveSH(); placeShot(); clearLines(); });
@@ -1716,7 +1720,7 @@
         R.querySelectorAll('[data-giga]').forEach(b => b.classList.toggle('on', (b.dataset.giga === '1') === (DB.giga !== false)));
         R.querySelectorAll('[data-pil]').forEach(b => b.classList.toggle('on', (b.dataset.pil === '1') === (DB.pill === true)));
         R.querySelectorAll('[data-am]').forEach(b => b.classList.toggle('on', !!DB[b.dataset.am])); }
-      const side = SH.side || 'long';
+      const side = (!p.lim && SHOT.hover) || SH.side || 'long';
       R.querySelectorAll('[data-sd]').forEach(b => b.classList.toggle('on', b.dataset.sd === side));
       R.querySelectorAll('[data-ot]').forEach(b => b.classList.toggle('on', b.dataset.ot === (SH.ot === 'lim' ? 'lim' : 'mkt')));
       { const lm = !!p.lim && !adding, lp = R.querySelector('[data-n=lpx]'), ab = R.querySelector('[data-a=arm]');
@@ -1872,7 +1876,7 @@
       return clearLines(keys);
     }
     if (!p.qty || !p.dSL) return clearLines();
-    const side = SH.side || 'long', g = p[side];
+    const side = (!p.lim && SHOT.hover) || SH.side || 'long', g = p[side];
     if (SH.tp !== false) chLine('tp', g.tp, (SH.tmode === 'pass' ? 'PASS  +' : 'TP  +') + fm(p.reward) + '  ·  ' + pts(p.dTP) + ' pts', MINT, 2, { move: targetFromLine });
     if (SH.sl !== false) chLine('sl', g.sl, 'SL  −' + fm(p.risk).replace('−', '') + '  ·  ' + pts(p.dSL) + ' pts', ROSE, 2, { move: sizeFromStop });
     if (p.lim) chLine('en', p.px, (side === 'long' ? 'BUY LIMIT  ' : 'SELL LIMIT  ') + p.qtyS + '  ·  ' + pts(Math.abs(p.px - p.mark)) + ' pts', 'rgba(227,201,142,0.9)', 0, { move: setLimit });
