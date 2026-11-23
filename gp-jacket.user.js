@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Jacket for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.17.3
+// @version      1.17.4
 // @description  A risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier, GP. Mirror (lock a pair of markets and every trade on the lead is mirrored, opposite, on the pair's other market), a desk to close any account, Claim all on the Portfolio page, the GP. Dashboard (earnings, payouts, every account and trade), and spend, payouts and live PnL in Vest's header.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -3022,7 +3022,8 @@
     if (ATAG.textContent !== t) ATAG.textContent = t;
     const lt = cTheme().light; ATAG.style.color = lt ? 'rgba(30,30,34,0.42)' : 'rgba(230,227,220,0.34)'; ATAG.style.background = lt ? 'rgba(255,255,255,0.35)' : 'rgba(11,11,11,0.55)'; // lines pass under it, never through it
     // inside the price pane: under TradingView's top bar and the price legend, clear of the price scale
-    ATAG.style.top = Math.round(r.top + 72) + 'px'; ATAG.style.right = Math.round(innerWidth - r.right + 72) + 'px'; ATAG.style.opacity = '1';
+    let top = r.top + 72; try { const m = document.getElementById('gpz-mode'), mr = m && m.style.display !== 'none' ? m.getBoundingClientRect() : null; if (mr && mr.height) top = Math.max(top, mr.bottom + 8); } catch (e) {} // the Copy / Mirror badge owns the corner; the tag sits under it
+    ATAG.style.top = Math.round(top) + 'px'; ATAG.style.right = Math.round(innerWidth - r.right + 72) + 'px'; ATAG.style.opacity = '1';
   }
   every(500, placeTag);
   // Vest mode: GP.'s own panels take Vest's colours too, so the page looks as if nothing were installed
