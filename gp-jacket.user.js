@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         GP. Jacket for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.14.2
-// @description  A risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier, a desk to close any account, Claim all on the Portfolio page, and spend, payouts and live PnL in Vest's header.
+// @version      1.15.0
+// @description  A risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier, GP. Mirror (lock a pair of markets and every trade on the lead is mirrored, opposite, on the pair's other market), a desk to close any account, Claim all on the Portfolio page, and spend, payouts and live PnL in Vest's header.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
 // @run-at       document-start
@@ -107,7 +107,7 @@
     W.__gpJacketTake = t => { try { if (DB.took) return; const o = JSON.parse(t); if (!o || typeof o !== 'object' || Array.isArray(o) || made(o) <= made(DB)) return; o.took = 1; GM_setValue('pulse', o); W.location.reload(); } catch (e) {} }; }
   const save = now => { clearTimeout(saveT); if (now) GM_setValue('pulse', DB); else saveT = setTimeout(() => GM_setValue('pulse', DB), 800); };
   // another Vest tab saved: take its copier choices and switches, so an older tab never writes stale ones back over yours
-  const SYNC_C = ['on', 'leader', 'pick', 'followers', 'mode', 'owned', 'opened', 'share', 'pre'];
+  const SYNC_C = ['on', 'leader', 'pick', 'followers', 'mode', 'owned', 'opened', 'share', 'pre', 'hedge', 'hv', 'hside', 'hpair', 'hmap', 'hratio', 'href', 'hgam'];
   function fromOtherTab(nv) {
     if (!nv || typeof nv !== 'object') return; clearTimeout(saveT);
     ['pill', 'giga', 'gigaSkip'].forEach(k => { if (k in nv) DB[k] = nv[k]; });
@@ -926,6 +926,8 @@
   async function fire(side) {
     if (SH.ot === 'lim' && !curPos()) { if (side !== (SH.side || 'long')) { SH.side = side; const sym = curSymbol(), m = sym && L.mark[sym]; if (m && LIM[sym]) LIM[sym] = +fmtP(2 * m - LIM[sym], sym); saveSH(); renderShot(); drawChart(); return; } return armLimit(); }
     if (SHOT.busy || Date.now() < SHOT.cool) return;
+    if (chartOff()) return shotMsg('chart is not on the pair', 'bad');
+    if (C.hedge && C.on && copyLeader() && activeAcct() !== copyLeader()) return shotMsg('switch to the LEAD account', 'bad');
     if (zoneLocked()) return shotMsg('zone locked', 'bad');
     let p = plan(); if (!p.ok) return shotMsg(p.why, 'bad');
     if (myPos(p)) return shotMsg('already in ' + shortSym(p.sym), 'bad');
@@ -946,6 +948,8 @@
   }
   async function armLimit() {
     if (SHOT.busy || Date.now() < SHOT.cool) return;
+    if (chartOff()) return shotMsg('chart is not on the pair', 'bad');
+    if (C.hedge && C.on && copyLeader() && activeAcct() !== copyLeader()) return shotMsg('switch to the LEAD account', 'bad');
     if (zoneLocked()) return shotMsg('zone locked', 'bad');
     let p = plan(); if (!p.lim) return; if (!p.ok) return shotMsg(p.why, 'bad');
     const side = SH.side === 'short' ? 'short' : 'long';
@@ -1369,7 +1373,7 @@
   @keyframes lin{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:none}}
   /* flat pass: fills in place of outlines, nothing circled, nothing glowing */
   .ib,.c,.n,.sw,.lg,.pq,.ldd,.ls,.adh button,.kr button,.lvf button,.S,.A,.X,.lk,.mst .msg{border-color:transparent!important}
-  .ib{height:26px;text-transform:capitalize}.ib:not(.on):not(.armed):not(.lock){background:rgba(238,234,226,.055)}.ib:not(.on):not(.armed):not(.lock):hover{background:rgba(238,234,226,.13)}
+  .ib[hidden]{display:none}.ib{height:26px;text-transform:capitalize}.ib:not(.on):not(.armed):not(.lock){background:rgba(238,234,226,.055)}.ib:not(.on):not(.armed):not(.lock):hover{background:rgba(238,234,226,.13)}
   .c:not(.on){background:rgba(238,234,226,.055)}.c:not(.on):hover{background:rgba(238,234,226,.13)}
   .c.grn:not(.on),.c.mint:not(.on){background:rgba(159,215,178,.1)}.c.rose:not(.on){background:rgba(232,152,140,.12)}
   .n:not(.on){background:rgba(238,234,226,.06)}.n:not(.on):focus{background:rgba(238,234,226,.13)}
@@ -1399,7 +1403,7 @@
     ['keydown', 'keyup', 'keypress'].forEach(t => host.addEventListener(t, e => e.stopPropagation()));
     const R = host.attachShadow({ mode: 'open' });
     const cuts = (attr, cls, vs) => (vs || [25, 50, 75]).map(v => `<button class="c${cls || ''}" data-${attr}="${v}">${v}%</button>`).join('');
-    R.innerHTML = `<style>${SCSS}${SLCSS}</style><div class="s">
+    R.innerHTML = `<style>${SCSS}${SLCSS}.go{position:relative}.go.pblk>button,.go.pblk .sdt{visibility:hidden}.pw{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;border-radius:12px;background:#151414;box-shadow:inset 0 0 0 1px rgba(232,152,140,.45);font-family:Inter,system-ui,sans-serif}.pw[hidden]{display:none}.pw b{font-size:11px;font-weight:800;letter-spacing:.16em;color:#efb1a7}.pw span{font-size:12px;font-weight:600;color:#8b8b92}.pw div{display:flex;gap:6px;margin-top:2px}.pw button{height:30px;padding:0 16px;border:0;border-radius:8px;background:#e6e3dc;color:#0b0b0b;font:800 12px Inter,system-ui,sans-serif;cursor:pointer}.go button em{display:block;margin-top:3px;font-style:normal;font-size:11px;font-weight:700;letter-spacing:.01em;opacity:.7}.go button em[hidden]{display:none}.go button.pd{opacity:.22;filter:grayscale(1);pointer-events:none}</style><div class="s">
       <div class="mw"><canvas class="moon" width="660" height="660"></canvas></div>
       <div class="hd" data-a="drag"><i class="dot"></i><div class="brand">GP.<span>SHOT</span></div><div class="sp"></div>
         <button class="ib" data-a="zone" title="Zone"><i></i><span data-k="zc">zone</span></button><button class="ib gr" data-a="cth" title="Settings" aria-label="Settings"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v2.6M12 18.9v2.6M4.6 4.6l1.9 1.9M17.5 17.5l1.9 1.9M2.5 12h2.6M18.9 12h2.6M4.6 19.4l1.9-1.9M17.5 6.5l1.9-1.9"/></svg><i class="cs" data-k="cts" hidden></i></button><button class="ib" data-a="copy" title="Copier"><i></i><span data-k="cp">desk</span></button><button class="ib" data-a="vest" title="Vest's ticket">Vest</button></div>
@@ -1435,7 +1439,7 @@
         <div class="lgs" data-k="lgs"></div>
       </div>
       <div class="pnd" data-k="pnd"></div>
-      <div class="go" data-v="go"><button class="L" data-a="long">Long<small data-kk="long"></small></button><button class="S" data-a="short">Short<small data-kk="short"></small></button><button class="L arm" data-a="arm" hidden><span>ARM</span></button><div class="sdt" title="Which side the stop, target and lines are set for"><button data-sd="long">long</button><i></i><button data-sd="short">short</button><b></b><button data-ot="mkt">market</button><i></i><button data-ot="lim">limit</button></div></div>
+      <div class="go" data-v="go"><button class="L" data-a="long">Long<span data-hs></span><small data-kk="long"></small><em data-hh="long" hidden></em></button><button class="S" data-a="short">Short<span data-hs></span><small data-kk="short"></small><em data-hh="short" hidden></em></button><div class="pw" data-k="pw" hidden></div><button class="L arm" data-a="arm" hidden><span>ARM</span></button><div class="sdt" title="Which side the stop, target and lines are set for"><button data-sd="long">long</button><i></i><button data-sd="short">short</button><b></b><button data-ot="mkt">market</button><i></i><button data-ot="lim">limit</button></div></div>
       <div class="go" data-v="go2" hidden><button class="X" data-a="close">Close<small data-kk="close"></small></button></div>
       <div class="go" data-v="go4" hidden><button class="L" data-a="addgo"><span data-k="addq">Add</span><small data-kk="add"></small></button><button class="X" data-a="close2">Close<small data-kk="close"></small></button></div>
       <div class="kp" data-k="kp" hidden><div class="kh"><span>KEYS</span><button class="sw" data-kt="keys" aria-label="Keyboard shortcuts on or off"></button></div>
@@ -1497,6 +1501,7 @@
       if (e.target.closest('.x')) { L0.splice(+c.dataset.i, 1); DB.loads = L0; save(); if (!L0.length) ldOpen(false); renderShot(); return; }
       ldOpen(false); SH.ldn = x.n;
       Object.assign(SH, { risk: x.risk, rmode: x.rmode === 'usd' ? 'usd' : 'pct', rusd: +x.rusd || 0, R: x.R, tmode: x.tmode, usd: x.usd, size: x.size, fees: x.fees }); saveSH(); redo(); };
+    R.addEventListener('click', e => { const b = e.target.closest('[data-pgo]'); if (b) location.assign('/trade/' + encodeURIComponent(b.dataset.pgo)); });
     const ctm = k('ctm');
     on('cth', () => { ctm.hidden = !ctm.hidden; renderShot(); });
     R.querySelectorAll('[data-look]').forEach(b => b.onclick = () => { DB.skin = b.dataset.look !== 'vest'; save(true); ctm.hidden = true; skinKey = ''; vestPanels(); applySkin(); renderShot(); drawChart(); });
@@ -1810,6 +1815,250 @@
   }
 
 
+
+  // =====================================================================================================
+  // GP. Pair: the copier in pair mode. A pair is two markets (NDX / SPX by default). The lead trades whichever of
+  // the two is on the chart; the hedge accounts take the other one, opposite side, sized by beta from Vest's 15m
+  // candles. The lead's stop becomes the hedge's target and the lead's target its stop.
+  // Lead out → hedges out (the copier does that). A hedge out on its own → the lead closes too.
+  // =====================================================================================================
+  const HX = { bars: {}, st: {}, busy: {}, deep: null, deepBusy: false, pop: false, setup: false };
+  const MAINP = [['NDX-USD-PERP', 'SPX-USD-PERP'], ['BTC-PERP', 'ETH-PERP']];
+  const TWINS = [/^(NDX|QQQ)$/, /^(SPX|SPY)$/, /^(RTY|IWM)$/, /^(GC|GLD)$/, /^(SI|SLV)$/, /^(BZ|CL)$/]; // one asset under two names: not a hedge
+  const base = s => String(s || '').split('-')[0];
+  const twin = (a, b) => a === b || TWINS.some(r => r.test(base(a)) && r.test(base(b)));
+  function parseBars(j) {
+    const a = Array.isArray(j) ? j : j && (j.data || j.klines || j.candles || j.bars);
+    if (!Array.isArray(a)) return null;
+    const out = a.map(x => Array.isArray(x) ? [+x[0], +x[4]] : x && typeof x === 'object' ? [+(x.t != null ? x.t : x.time != null ? x.time : x.openTime), +(x.c != null ? x.c : x.close)] : null).filter(x => x && x[0] > 0 && x[1] > 0);
+    if (out.length < 3) return null; out.forEach(x => { if (x[0] < 1e12) x[0] *= 1000; }); return out;
+  }
+  async function barsOf(sym) {
+    const c = HX.bars[sym]; if (c && Date.now() - c.at < 5 * 6e4) return c.m;
+    const b = parseBars(await api('/v2/klines?symbol=' + encodeURIComponent(sym) + '&interval=15m', true));
+    const m = new Map(); (b || []).forEach(([t, v]) => m.set(Math.floor(t / 9e5), v));
+    HX.bars[sym] = { at: Date.now(), m }; return m;
+  }
+  // correlation of 15m returns over the last day, and the two betas: hedge $ per lead $ (k) and hedge move per lead move (g)
+  function pairStats(ma, mb, n) {
+    const keys = [...ma.keys()].filter(k => mb.has(k)).sort((x, y) => x - y).slice(-(n + 1)); if (keys.length < 9) return null;
+    const ra = [], rb = []; for (let i = 1; i < keys.length; i++) { ra.push(Math.log(ma.get(keys[i]) / ma.get(keys[i - 1]))); rb.push(Math.log(mb.get(keys[i]) / mb.get(keys[i - 1]))); }
+    const k = ra.length, mx = ra.reduce((a, v) => a + v, 0) / k, my = rb.reduce((a, v) => a + v, 0) / k; let vx = 0, vy = 0, cv = 0;
+    for (let i = 0; i < k; i++) { vx += (ra[i] - mx) ** 2; vy += (rb[i] - my) ** 2; cv += (ra[i] - mx) * (rb[i] - my); }
+    if (!(vx > 0) || !(vy > 0)) return null;
+    return { rho: cv / Math.sqrt(vx * vy), k: cv / vy, g: cv / vx, n: k };
+  }
+  function statFor(S, H) { // cached, fetched in the background
+    const key = S + '|' + H, c = HX.st[key]; if (c && Date.now() - c.at < 10 * 6e4) return c.s;
+    if (!HX.busy[key]) { HX.busy[key] = 1; Promise.all([barsOf(S), barsOf(H)]).then(([a, b]) => { HX.st[key] = { at: Date.now(), s: pairStats(a, b, 96) }; }).catch(() => { HX.st[key] = { at: Date.now() - 9 * 6e4, s: null }; }).then(() => { delete HX.busy[key]; try { renderDesk(); } catch (e) {} kickFast(50); }); }
+    return c ? c.s : null;
+  }
+  const pairNow = () => { // the locked pair; NDX / SPX until you pick another
+    const ok = q => q && q.length === 2 && SPEC[q[0]] && SPEC[q[1]], pk = String(C.hpair || '').split('|');
+    return ok(pk) ? pk : MAINP.find(ok) || null;
+  };
+  const hedgeOf = S => { const p = pairNow(); return !p ? null : S === p[0] ? p[1] : S === p[1] ? p[0] : null; };
+  // the lead's trade as the hedge accounts should hold it: opposite side, the pair's other market, beta size, stop and target swapped
+  function virt(lp) {
+    const S = lp.symbol, id = lp.positionId;
+    if (!C.hmap[id]) {
+      const H = hedgeOf(S); if (!H || twin(S, H)) return null;
+      const st = statFor(S, H), ph = L.mark[H]; if (!st || !(st.k > 0) || !ph) return null;
+      C.hmap[id] = H; C.hratio[id] = st.k; C.hgam[id] = st.g; C.href[id] = ph; saveC();
+    }
+    const H = C.hmap[id], k = C.hratio[id], g = C.hgam[id], ps0 = +lp.openPrice, ph0 = C.href[id];
+    if (!(ps0 > 0) || !(ph0 > 0) || !(k > 0)) return null;
+    const lq = Math.abs(+lp.quantity), vq = lq * ps0 * k / ph0, map = p => fmtP(ph0 * (1 + g * (+p / ps0 - 1)), H);
+    const legs = arr => (arr || []).map(l => { if (!l || l.triggerPrice == null) return null; const o = Object.assign({}, l, { triggerPrice: map(l.triggerPrice) }); if (l.limitPrice != null && l.limitPrice !== '') o.limitPrice = map(l.limitPrice); if (+l.quantity > 0) o.quantity = String(+l.quantity * vq / lq); return o; }).filter(Boolean);
+    return Object.assign({}, lp, { symbol: H, side: /^l/i.test(lp.side) ? 'short' : 'long', quantity: String(vq), takeProfits: legs(lp.stopLosses), stopLosses: legs(lp.takeProfits) });
+  }
+  // a hedge leg that left on its own (its target, its stop, or by hand) takes the lead with it
+  async function hedgeGone(raw) {
+    let n = 0;
+    for (const pid of Object.keys(C.owned)) {
+      const o = C.owned[pid]; if (!o) continue;
+      if (L.pos.some(p => p.positionId === pid)) { if (!o.seen) { o.seen = 1; n++; } continue; }
+      if (!o.seen) continue;
+      delete C.owned[pid]; n++;
+      const lp = raw.find(p => p.positionId === o.lead), key = 'lead|' + o.lead;
+      if (lp && (BUSY[key] || 0) < Date.now()) { BUSY[key] = Date.now() + 4000; sendExit(C.leader, '/v3/positions/close', { symbol: lp.symbol, positionId: lp.positionId, orderType: 'market', leverage: trimNum(lp.leverage || maxLev(lp.symbol, C.leader) || 1) }).then(() => clog('hedge out on ' + acctLabel(o.f) + ' → closed the lead')).catch(e => clog('lead close: ' + e.message, true)); }
+    }
+    for (const id of Object.keys(C.hmap)) if (!raw.some(p => p.positionId === id) && !Object.values(C.owned).some(o => o && o.lead === id)) { delete C.hmap[id]; delete C.hratio[id]; delete C.hgam[id]; delete C.href[id]; n++; }
+    if (n) saveC();
+  }
+  // pair roles: LEAD is the account you trade. MAIN accounts copy it as it is; OPP accounts take the pair's other market, the other way.
+  const roleOf = id => id === copyLeader() ? 'M' : C.hside[id] === 'O' ? 'O' : C.hside[id] ? 'M' : null;
+  const pairFollowers = () => { const o = {}, ld = copyLeader(); for (const id in C.hside) { const c = capAcct(id); if (id !== ld && C.hside[id] && L.bal[id] != null && c && c.status === 2) o[id] = true; } return o; }; // active accounts only
+  const hedges = f => C.hside[f] === 'O';
+  function clearSel() { // a clean slate: nothing ticked, no roles, copier off, NDX / SPX
+    if (C.on) arm(false); C.followers = {}; C.hside = {}; C.pick = null; C.hpair = ''; HX.pop = false; saveC(); renderDesk(); if (SP) renderShot(); kickFast();
+  }
+  const chartOff = () => { const p = pairNow(), cur = curSymbol(); return C.hedge && p && cur && !p.includes(cur) ? p : null; }; // the chart is on neither market of the pair
+  function pairMarkets() { const cur = curSymbol(), H = cur && hedgeOf(cur); return H ? { M: base(cur), O: base(H) } : null; }
+  function hedgeMode(on) { if (C.on) arm(false); C.hedge = !!on; HX.pop = false; saveC(); renderDesk(); if (SP) renderShot(); }
+  function pickPair(a, b) { C.hpair = a + '|' + b; HX.pop = false; saveC(); renderDesk(); if (SP) renderShot(); }
+  async function deepPairs() { // every market against every other; the ones that move together, best first
+    if (HX.deepBusy || (HX.deep && Date.now() - HX.deep.at < 15 * 6e4)) return; HX.deepBusy = true; try { renderDesk(); } catch (e) {}
+    try {
+      await loadSpecs().catch(() => {});
+      const all = Object.keys(SPEC), B = {};
+      for (let i = 0; i < all.length; i += 8) await Promise.all(all.slice(i, i + 8).map(async s => { try { B[s] = await barsOf(s); } catch (e) {} }));
+      const rows = [];
+      for (let i = 0; i < all.length; i++) for (let j = i + 1; j < all.length; j++) { const a = all[i], b = all[j]; if (!B[a] || !B[b] || twin(a, b)) continue; const s = pairStats(B[a], B[b], 96); if (s && s.n >= 24 && s.rho >= 0.75) rows.push({ a, b, rho: s.rho }); }
+      const fam = m => { const b = base(m), t = TWINS.findIndex(r => r.test(b)); return t < 0 ? b : 'T' + t; }, key = r => [fam(r.a), fam(r.b)].sort().join('|'), seen = new Set(MAINP.map(q => key({ a: q[0], b: q[1] })));
+      HX.deep = { at: Date.now(), rows: rows.sort((x, y) => y.rho - x.rho).filter(r => { const k = key(r); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 8) }; // one line per pair of assets: NDX / SPX once, not again as QQQ / SPY
+    } catch (e) { HX.deep = { at: Date.now() - 14 * 6e4, rows: [] }; }
+    HX.deepBusy = false; try { renderDesk(); } catch (e) {}
+  }
+  const rhoTxt = r => r == null ? '' : r.toFixed(2).replace(/^0/, '');
+  // ---------- the desk in pair mode: a one-line summary, then only the accounts in play, in order ----------
+  const nm = id => acctShort(id).replace(/^Account /, '#');
+  function pairHtml(rows, accRow, lead) { // LEAD, then MAIN copies, then OPP, then anything else holding a trade
+    const pm = pairMarkets() || {}, inPlay = r => r.id === lead || C.hside[r.id];
+    const grp = (title, cls, rs) => rs.length ? `<div class="gh hp ${cls}"><span>${title}<i>${rs.length}</i></span><b></b></div>` + rs.map(accRow).join('') : '';
+    const Ms = rows.filter(r => r.id === lead).concat(rows.filter(r => r.id !== lead && C.hside[r.id] === 'M')), Os = rows.filter(r => r.id !== lead && C.hside[r.id] === 'O'), rest = rows.filter(r => !inPlay(r));
+    return grp('MAIN' + (pm.M ? ' ' + pm.M : ''), 'gM', Ms) + grp('OPP' + (pm.O ? ' ' + pm.O : ''), 'gO', Os) + grp('ACCOUNTS', '', rest); // every account, the ones in play first
+  }
+  function renderHx(R) {
+    R.querySelectorAll('[data-pm]').forEach(b => b.classList.toggle('on', (b.dataset.pm === '1') === !!C.hedge));
+    const d = R.querySelector('.d'); d.classList.toggle('hedge', !!C.hedge);
+    const hc = R.querySelector('[data-k=hc]'); if (hc) hc.textContent = C.hedge ? 'HEDGE' : 'COPY';
+    const ml = R.querySelector('[data-k=mdl]'); if (ml) ml.textContent = C.hedge ? 'MIRROR' : 'COPY';
+    const box = R.querySelector('[data-k=hx]'), gs = R.querySelector('[data-k=hg]');
+    if (!C.hedge) { if (box) box.innerHTML = '', box.__k = ''; if (gs) gs.innerHTML = '', gs.__k = ''; renderSetup(R); return; }
+    const p = pairNow(), pm = pairMarkets(), s = p && statFor(p[0], p[1]), f = Object.keys(pairFollowers()), off = chartOff();
+    const nM = f.filter(id => C.hside[id] === 'M').length + 1, nO = f.filter(id => C.hside[id] === 'O').length;
+    const k1 = JSON.stringify([p, pm, nM, nO, off && curSymbol()]);
+    if (gs && gs.__k !== k1) { gs.__k = k1; gs.innerHTML = off ? `<span class="gw bad">chart is ${base(curSymbol())} · pair is ${base(p[0])} / ${base(p[1])}</span>` : pm ? `<span class="gl"><small>MAIN</small><b>${pm.M}</b><i>${nM}</i></span><span class="gx">⇄</span><span class="gsh"><small>OPP</small><b>${pm.O}</b><i>${nO}</i></span>` : ''; }
+    if (box) { const k2 = JSON.stringify([p, s && s.rho]); if (box.__k !== k2) { box.__k = k2; box.innerHTML = p ? `<b>${base(p[0])}</b><em>/</em><b>${base(p[1])}</b><i>${rhoTxt(s && s.rho)}</i>` : ''; } }
+    renderSetup(R);
+  }
+  // ---------- the setup window: mode, pair, and every account's part ----------
+  function renderSetup(R) {
+    const su = R.querySelector('[data-k=su]'); if (!su) return; su.hidden = !HX.setup; if (!HX.setup) return;
+    su.querySelector('.suc').classList.toggle('pair', !!C.hedge);
+    const p = pairNow(), list = MAINP.filter(q => SPEC[q[0]] && SPEC[q[1]]); if (p && !list.some(q => q[0] === p[0] && q[1] === p[1])) list.push(p);
+    const pairs = su.querySelector('[data-k=spairs]'), pk = JSON.stringify([C.hedge, p, list.map(q => { const st = statFor(q[0], q[1]); return st && st.rho; }), HX.pop, HX.deep && HX.deep.at, HX.deepBusy]);
+    if (pairs.__k !== pk) { pairs.__k = pk;
+      pairs.innerHTML = !C.hedge ? '' : list.map(q => { const st = statFor(q[0], q[1]), on = p && q[0] === p[0] && q[1] === p[1]; return `<button class="pc2${on ? ' on' : ''}" data-hp="${q[0]}|${q[1]}"><span><b>${base(q[0])}</b><em>/</em><b>${base(q[1])}</b></span><i>${rhoTxt(st && st.rho)}</i></button>`; }).join('') + `<button class="pc2 mo${HX.pop ? ' on2' : ''}" data-a="hmore"><span>${HX.pop ? 'less' : 'more pairs'}</span></button>`
+        + (HX.pop ? `<div class="deep">${HX.deep && HX.deep.rows.length ? HX.deep.rows.map(r => `<button data-hp="${r.a}|${r.b}" class="${p && p[0] === r.a && p[1] === r.b ? 'on' : ''}"><span><b>${base(r.a)}</b><em>/</em><b>${base(r.b)}</b></span><i>${rhoTxt(r.rho)}</i></button>`).join('') : `<div class="hw">${HX.deepBusy || !HX.deep ? 'reading every market' : 'nothing moves together right now'}</div>`}</div>` : ''); }
+    const ld = copyLeader(), accs = (L.cap || []).filter(c => c.status === 2 && L.bal[c.id] != null);
+    const GR = [['Funded', c => c.account_type === 3], ['Eval', c => c.account_type !== 3]];
+    const ak = JSON.stringify([C.hedge, ld, C.hside, C.followers, accs.map(c => c.id + ':' + Math.round(balOf(c.id) || 0))]), box = su.querySelector('[data-k=sacc]');
+    if (box.__k !== ak) { box.__k = ak;
+      const row = c => { const id = c.id, rl = C.hside[id], isM = id === ld, on = C.followers[id];
+        const ctl = C.hedge ? `<button data-sm="main" data-id="${id}" class="m${isM ? ' on' : ''}">LEAD</button><button data-sm="M" data-id="${id}" class="l${!isM && rl === 'M' ? ' on' : ''}">MAIN</button><button data-sm="O" data-id="${id}" class="s${!isM && rl === 'O' ? ' on' : ''}">OPP</button>`
+          : `<button data-sm="main" data-id="${id}" class="m${isM ? ' on' : ''}">LEAD</button><button data-sm="copy" data-id="${id}" class="c${on && !isM ? ' on' : ''}">COPY</button>`;
+        return `<div class="sr${isM ? ' ism' : ''}"><div class="sn"><b>${nm(id)}</b><small>${fk(balOf(id) || 0)} · ${c.account_type === 3 ? 'Funded' : 'Eval'}</small></div><div class="sc">${ctl}</div></div>`; };
+      box.innerHTML = GR.map(([g, fn]) => { const rs = accs.filter(fn); if (!rs.length) return ''; return `<div class="sg"><span>${g}<i>${rs.length}</i></span>${C.hedge ? `<button data-sall="M" data-sg="${g}">all main</button><button data-sall="O" data-sg="${g}">all opp</button>` : `<button data-sall="copy" data-sg="${g}">all</button>`}<button data-sall="none" data-sg="${g}">none</button></div>` + rs.map(row).join(''); }).join('') || '<div class="hw">reading your accounts</div>'; }
+    const f = C.hedge ? Object.keys(pairFollowers()) : Object.keys(C.followers).filter(x => C.followers[x] && x !== ld);
+    su.querySelector('[data-k=ssum]').textContent = ld ? (C.hedge ? `${nm(ld)} LEAD · ${f.filter(x => C.hside[x] === 'M').length} main · ${f.filter(x => C.hside[x] === 'O').length} opp` : `${nm(ld)} LEAD · ${f.length} copying`) : '';
+  }
+  function setupClick(e) {
+    const t = e.target.closest('button'); if (!t) { if (e.target.classList && e.target.classList.contains('su')) { HX.setup = false; renderDesk(); } return false; }
+    const a = t.dataset.a, sm = t.dataset.sm, id = t.dataset.id, sall = t.dataset.sall;
+    if (a === 'setup') { HX.setup = true; renderDesk(); return true; }
+    if (a === 'sux' || a === 'sud') { HX.setup = false; HX.pop = false; renderDesk(); return true; }
+    if (a === 'clr') { clearSel(); return true; }
+    if (a === 'hmore') { HX.pop = !HX.pop; if (HX.pop) deepPairs(); renderDesk(); return true; }
+    if (t.dataset.hp) { const q = t.dataset.hp.split('|'); pickPair(q[0], q[1]); return true; }
+    if (t.dataset.pm != null) { hedgeMode(t.dataset.pm === '1'); renderDesk(); return true; }
+    if (sm === 'main') { delete C.hside[id]; setLead(id); }
+    else if (sm === 'M' || sm === 'O') { if (id === copyLeader()) return true; if (C.hside[id] === sm) delete C.hside[id]; else C.hside[id] = sm; }
+    else if (sm === 'copy') { if (id === copyLeader()) return true; if (C.followers[id]) delete C.followers[id]; else C.followers[id] = true; }
+    else if (sall) { const fn = t.dataset.sg === 'Funded' ? c => c.account_type === 3 : c => c.account_type !== 3, ld = copyLeader();
+      (L.cap || []).filter(c => c.status === 2 && L.bal[c.id] != null && fn(c) && c.id !== ld).forEach(c => { if (sall === 'none') { delete C.hside[c.id]; delete C.followers[c.id]; } else if (sall === 'copy') C.followers[c.id] = true; else C.hside[c.id] = sall; }); }
+    else return false;
+    saveC(); renderDesk(); if (SP) renderShot(); kickFast(); return true;
+  }
+  // the ticket says what each side does: Long BTC · +1 · opp short ETH ×2. Off the pair's markets it blanks with a way back.
+  function renderHh(R) {
+    const cur = curSymbol(), H = C.hedge && cur ? hedgeOf(cur) : null, ld = copyLeader(), f = Object.keys(pairFollowers()), k = f.filter(id => C.hside[id] === 'M').length, m = f.length - k, off = chartOff(), wrong = C.hedge && ld && activeAcct() !== ld;
+    R.querySelectorAll('[data-hh]').forEach(e => { const lg = e.dataset.hh === 'long'; e.textContent = wrong ? 'LEAD is ' + nm(ld) : H ? (k ? '+' + k + ' · ' : '') + 'opp ' + (lg ? 'short ' : 'long ') + base(H) + ' ×' + m : ''; e.hidden = !(H || wrong); });
+    R.querySelectorAll('[data-hs]').forEach(e => { e.textContent = H ? ' ' + base(cur) : ''; });
+    R.querySelectorAll('[data-a=long],[data-a=short]').forEach(b => b.classList.toggle('pd', !!wrong));
+    const go = R.querySelector('[data-v=go]'), pw = R.querySelector('[data-k=pw]'); if (go) go.classList.toggle('pblk', !!off);
+    if (pw) { pw.hidden = !off; if (off) { const k2 = off.join('|') + cur; if (pw.__k !== k2) { pw.__k = k2; pw.innerHTML = `<b>PAIR ${base(off[0])} / ${base(off[1])}</b><span>chart is ${base(cur)}</span><div>${off.map(s => `<button data-pgo="${s}">${base(s)}</button>`).join('')}</div>`; } } }
+  }
+  // ---------- GP. Mirror monitor: pops up while both sides of the mirror hold a trade ----------
+  const MON = { el: null, R: null, hide: '', k: '' };
+  function monLegs() {
+    if (!C.hedge) return null;
+    const rows = deskRows(), lead = copyLeader(), mIds = new Set([lead].concat(Object.keys(C.hside).filter(id => C.hside[id] === 'M'))), oIds = new Set(Object.keys(C.hside).filter(id => C.hside[id] === 'O' && id !== lead));
+    const M = rows.filter(r => mIds.has(r.id) && r.n), O = rows.filter(r => oIds.has(r.id) && r.n);
+    if (!M.length || !O.length) return null;
+    M.sort((a, b) => (b.id === lead) - (a.id === lead)); return { M, O, lead };
+  }
+  function monEl() {
+    if (MON.el && MON.el.isConnected) return MON.el;
+    const el = document.createElement('div'); el.id = 'gpz-mon'; const R = el.attachShadow({ mode: 'open' }); MON.el = el; MON.R = R;
+    R.innerHTML = `<style>
+:host{all:initial;position:fixed;z-index:2147483600;font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;color:#e6e3dc;font-feature-settings:"tnum"}
+.w{width:300px;border-radius:18px;background:#0b0b0b;box-shadow:0 0 0 1px rgba(238,234,226,.08),0 30px 80px rgba(0,0,0,.7);overflow:hidden;animation:in .35s cubic-bezier(.2,1,.3,1)}
+@keyframes in{from{transform:translateY(8px);opacity:0}}
+.hd{display:flex;align-items:center;gap:10px;padding:16px 14px 6px 20px;cursor:grab;user-select:none}.hd:active{cursor:grabbing}
+.hd b{font-size:14px;font-weight:700;letter-spacing:-.03em}.hd b i{font-style:normal;color:#4a4843}
+.hd .pr{margin-left:auto;font-size:11px;font-weight:600;color:#6f6f75}.hd .pr em{font-style:normal;color:#4a4843;margin-left:6px}
+.hd button{all:unset;cursor:pointer;width:22px;height:22px;display:grid;place-items:center;border-radius:50%;color:#55555b;font-size:13px}.hd button:hover{color:#e6e3dc;background:rgba(238,234,226,.06)}
+.sd{padding:12px 20px 14px}
+.sh{font-size:10.5px;font-weight:700;letter-spacing:.2em;color:#6f6f75}.sh u{text-decoration:none;color:#e6e3dc;margin-right:6px}
+.big{font-size:34px;font-weight:700;letter-spacing:-.05em;line-height:1.1;margin:4px 0 6px}
+.big.pos{color:#9fd7b2}.big.neg{color:#e8988c}.big.z{color:#e6e3dc}
+.r{display:flex;align-items:baseline;gap:8px;padding:5px 0;cursor:pointer}.r:hover .n{color:#e6e3dc}
+.r .n{font-size:12.5px;font-weight:600;color:#b9b6ae}.r .n i{font-style:normal;font-size:9.5px;font-weight:700;letter-spacing:.16em;color:#6f6f75;margin-left:6px}
+.r .p{flex:1;font-size:11px;font-weight:500;color:#55555b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.r .u{font-size:12.5px;font-weight:600}
+.r .d{font-size:10.5px;font-weight:600;color:#4a4843;margin-left:6px}
+.hz{display:flex;align-items:center;gap:12px;padding:0 20px}.hz::before,.hz::after{content:"";flex:1;height:1px;background:rgba(238,234,226,.1)}
+.net{font-size:11px;font-weight:700;letter-spacing:.2em;color:#6f6f75}.net b{letter-spacing:-.01em;font-size:13px;margin-left:8px}
+.w.min .r{display:none}.w.min .big{font-size:24px;margin:2px 0 0}
+</style><div class="w"><div class="hd" data-m="drag"><b>GP.<i>MIRROR</i></b><span class="pr" data-k="pr"></span><button data-m="min" title="Smaller">–</button><button data-m="x" title="Hide until this mirror ends">×</button></div><div class="sd M" data-k="M"></div><div class="hz"><span class="net" data-k="net"></span></div><div class="sd O" data-k="O"></div></div>`;
+    const w = R.querySelector('.w'); let drag = null;
+    R.addEventListener('pointerdown', e => { const h = e.target.closest('[data-m=drag]'); if (!h || e.target.closest('button')) return; const r = el.getBoundingClientRect(); drag = { dx: e.clientX - r.left, dy: e.clientY - r.top }; h.setPointerCapture(e.pointerId); });
+    R.addEventListener('pointermove', e => { if (!drag) return; const x = Math.max(0, Math.min(innerWidth - 60, e.clientX - drag.dx)), y = Math.max(0, Math.min(innerHeight - 40, e.clientY - drag.dy)); el.style.left = x + 'px'; el.style.top = y + 'px'; });
+    R.addEventListener('pointerup', () => { if (!drag) return; drag = null; DB.mon = Object.assign(DB.mon || {}, { x: parseInt(el.style.left), y: parseInt(el.style.top) }); save(); });
+    R.addEventListener('click', e => { const b = e.target.closest('[data-m]'), row = e.target.closest('[data-acc]');
+      if (b && b.dataset.m === 'x') { MON.hide = MON.key; el.remove(); return; }
+      if (b && b.dataset.m === 'min') { DB.mon = Object.assign(DB.mon || {}, { min: !(DB.mon && DB.mon.min) }); save(); w.classList.toggle('min', !!DB.mon.min); return; }
+      if (row) try { switchAcct(row.dataset.acc); } catch (er) {} });
+    const m = DB.mon || {}; el.style.left = (m.x != null ? Math.min(m.x, innerWidth - 120) : Math.max(16, innerWidth - 760)) + 'px'; el.style.top = (m.y != null ? Math.min(m.y, innerHeight - 60) : 110) + 'px'; w.classList.toggle('min', !!m.min);
+    document.documentElement.appendChild(el); return el;
+  }
+  function renderMon() {
+    let g = null; try { g = monLegs(); } catch (e) {}
+    const key = g ? g.M.map(r => r.id).concat('|', g.O.map(r => r.id)).join(',') : '';
+    if (!g) { MON.hide = ''; MON.key = ''; if (MON.el) MON.el.remove(); return; }
+    MON.key = key; if (MON.hide === key) return;
+    monEl(); const R = MON.R, sym = r => (r.ps[0] && base(r.ps[0].sym)) || '', side = r => r.ps[0] ? (r.ps[0].long ? 'LONG' : 'SHORT') : '';
+    const sum = rs => rs.reduce((a, r) => a + r.u, 0), uM = sum(g.M), uO = sum(g.O), p = pairNow(), st = p && statFor(p[0], p[1]);
+    const row = r => `<div class="r" data-acc="${esc(r.id)}" title="Switch to it"><span class="n">${esc(nm(r.id))}${r.id === g.lead ? '<i>LEAD</i>' : ''}</span><span class="p">${side(r).toLowerCase()} ${r.ps[0] ? r.ps[0].q : ''} ${sym(r)}</span><span class="u" style="color:${r.u >= 0 ? '#9fd7b2' : '#e8988c'}">${fm(r.u, { sign: true })}</span></div>`;
+    const side1 = (cls, title, rs, u) => `<div class="sh"><u>${title}</u>${sym(rs[0])} ${side(rs[0])}${rs.length > 1 ? ' · ' + rs.length : ''}</div><div class="big ${Math.abs(u) < 0.005 ? 'z' : u > 0 ? 'pos' : 'neg'}">${fm(u, { sign: true })}</div>` + rs.map(row).join('');
+    const h = [side1('M', 'MAIN', g.M, uM), side1('O', 'OPP', g.O, uO), `NET<b style="color:${uM + uO >= 0 ? '#9fd7b2' : '#e8988c'}">${fm(uM + uO, { sign: true })}</b>`, `${base(p ? p[0] : '')} ⇄ ${base(p ? p[1] : '')}${st && st.rho != null ? `<em>ρ ${rhoTxt(st.rho)}</em>` : ''}`];
+    if (MON.k === h.join('§')) return; MON.k = h.join('§');
+    R.querySelector('[data-k=M]').innerHTML = h[0]; R.querySelector('[data-k=O]').innerHTML = h[1]; R.querySelector('[data-k=net]').innerHTML = h[2]; R.querySelector('[data-k=pr]').innerHTML = h[3];
+  }
+  every(500, renderMon);
+  // ---------- a mark on the chart: MIRROR ON / COPY ON, so the mode is never a guess ----------
+  const MODE = { el: null, k: '' };
+  function renderMode() {
+    const f = document.querySelector('iframe[id^="tradingview_"]'), on = C.on && (C.hedge || Object.keys(C.followers || {}).some(id => C.followers[id]));
+    if (!f || !on) { if (MODE.el) MODE.el.remove(), MODE.el = null, MODE.k = ''; return; }
+    if (!MODE.el || !MODE.el.isConnected) { const el = document.createElement('div'); el.id = 'gpz-mode'; const R = el.attachShadow({ mode: 'open' });
+      R.innerHTML = `<style>:host{all:initial;position:fixed;z-index:2147483000;pointer-events:none;font-family:Manrope,Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.b{position:relative;overflow:hidden;padding:11px 16px 12px 15px;border-radius:12px;background:#0b0b0b;box-shadow:0 18px 40px rgba(0,0,0,.5);animation:in .35s cubic-bezier(.2,1.3,.4,1)}
+.b::after{content:"";position:absolute;right:-22px;top:-22px;width:70px;height:70px;border-radius:50%;background:radial-gradient(circle,rgba(230,227,220,.22) 1px,transparent 1.5px) 0 0/5px 5px;-webkit-mask:radial-gradient(circle at 35% 40%,#000,transparent 70%)}
+@keyframes in{from{transform:translateY(-6px);opacity:0}}
+.t{display:flex;align-items:center;gap:8px;font-size:17px;font-weight:800;letter-spacing:-.03em;color:#e6e3dc;line-height:1}.t i{font-style:normal;color:#5a5852}.t b{color:var(--c)}
+.d{width:7px;height:7px;border-radius:50%;background:var(--c);margin-left:2px;animation:p 1.8s ease-in-out infinite}@keyframes p{50%{opacity:.25}}
+.s{margin-top:6px;font-size:9.5px;font-weight:800;letter-spacing:.22em;color:#8a877f;text-transform:uppercase;white-space:nowrap}</style><div class="b"><div class="t"><span>GP<i>.</i><b data-k="t"></b></span><span class="d"></span></div><div class="s" data-k="s"></div></div>`;
+      document.documentElement.appendChild(el); MODE.el = el; MODE.k = ''; }
+    const R = MODE.el.shadowRoot, p = pairNow(), n = Object.keys(C.hedge ? pairFollowers() : C.followers).filter(id => C.hedge || C.followers[id]).length;
+    const t = C.hedge ? 'MIRROR' : 'COPY', sub = C.hedge ? 'on · ' + (p ? base(p[0]) + ' ⇄ ' + base(p[1]) : '') + ' · ' + n : 'on · ' + n + ' following', col = C.hedge ? ['#e8988c'] : ['#9fd7b2'];
+    const k = t + sub; if (MODE.k !== k) { MODE.k = k; R.querySelector('[data-k=t]').textContent = t; R.querySelector('[data-k=s]').textContent = sub; const st = MODE.el.style; st.setProperty('--c', col[0]); }
+    const r = f.getBoundingClientRect(), w = MODE.el.offsetWidth || 160; MODE.el.style.left = Math.round(r.right - 74 - w) + 'px'; MODE.el.style.top = Math.round(r.top + 44) + 'px'; MODE.el.style.display = r.width > 200 ? '' : 'none';
+  }
+  every(400, renderMode);
+  W.__gpzHx = { mode: () => MODE.el && MODE.el.isConnected ? MODE.el.shadowRoot.querySelector('.b').innerText.replace(/\s+/g, ' ') : null, chartOff, mon: () => MON.el && MON.el.isConnected ? MON.R.querySelector('.w').innerText : null, monLegs, pairStats, parseBars, virt, st: () => HX.st, deep: () => HX.deep, C: () => C };
+
   // ---------- chart: the plan and the open trade as lines you can grab ----------
   // Before a trade: drag the stop and the size follows (the dollars at risk stay); drag the target and the R follows.
   // In a trade: drag the stop, the target or a partial; × on a line removes it. If Vest already draws its own stop
@@ -1929,7 +2178,7 @@
   // Every pass compares what each follower should hold with what it holds, and fixes only the difference:
   // one order per follower and market at a time, never a blind retry, never touching a position it didn't open.
   // =====================================================================================================
-  const C = Object.assign({ on: false, leader: null, followers: {}, mode: 'same', owned: {}, share: {}, opened: {}, pre: {}, log: [], err: {} }, DB.copier || {});
+  const C = Object.assign({ on: false, leader: null, followers: {}, mode: 'same', owned: {}, share: {}, opened: {}, pre: {}, log: [], err: {}, hedge: false, hpick: {}, hmap: {}, hratio: {}, href: {}, hgam: {}, hside: {}, hflip: {} }, DB.copier || {}); if (C.hside && Object.values(C.hside).some(v => v !== 'M' && v !== 'O')) C.hside = {}; ['hside', 'hflip', 'hmap', 'hratio', 'href', 'hgam'].forEach(n => { if (!C[n] || typeof C[n] !== 'object') C[n] = {}; }); if (C.hv !== 2) { C.hedge = false; C.hv = 2; }
   const saveC = () => { DB.copier = C; save(); };
   const BUSY = {}, PENDING = {};
   const TAB = Math.random().toString(36).slice(2, 8);
@@ -1944,7 +2193,7 @@
     for (const f of Object.keys(C.followers)) { const c = L.cap.find(x => x.id === f); if (!C.followers[f] || !c || c.status !== 2) { delete C.followers[f]; gone++; } }
     if (gone) saveC(); return gone;
   }
-  const nFollow = () => Object.keys(C.followers).filter(f => C.followers[f] && f !== C.leader).length;
+  const nFollow = () => C.hedge ? Object.keys(pairFollowers()).length : Object.keys(C.followers).filter(f => C.followers[f] && f !== C.leader).length;
   function clog(msg, bad) { C.log.unshift({ t: Date.now(), msg, bad: !!bad }); C.log = C.log.slice(0, 40); saveC(); }
   function arm(on) {
     if (on) {
@@ -1965,20 +2214,23 @@
   }
   function roomOf(id) { const fl = floorOf(id), c = cashOf(id); if (!fl || c == null) return null; let u = 0; L.pos.filter(p => accOf(p) === id).forEach(p => { const m = L.mark[p.symbol]; if (m) u += (m - +p.openPrice) * Math.abs(+p.quantity) * (/^s/i.test(p.side || '') ? -1 : 1); }); return c + u - fl.F; }
   function sizeFor(f, lq, sym) {
-    const lb = balOf(C.leader) || 0, fb = balOf(f) || 0; if (!(lb > 0) || !(fb > 0)) return 0;
-    const rl = C.mode === 'room' ? roomOf(C.leader) : null, rf = C.mode === 'room' ? roomOf(f) : null;
-    let q = C.mode === 'room' && rl > 0 && rf != null ? lq * Math.max(0, rf) / rl : C.mode === 'bal' ? lq * fb / lb : (fb < lb * 0.995 ? lq * fb / lb * 0.97 : lq); // same size, cut to fit a smaller account
+    const md = C.hedge ? 'same' : C.mode, lb = balOf(C.leader) || 0, fb = balOf(f) || 0; if (!(lb > 0) || !(fb > 0)) return 0;
+    const rl = md === 'room' ? roomOf(C.leader) : null, rf = md === 'room' ? roomOf(f) : null;
+    let q = md === 'room' && rl > 0 && rf != null ? lq * Math.max(0, rf) / rl : md === 'bal' ? lq * fb / lb : (fb < lb * 0.995 ? lq * fb / lb * 0.97 : lq); // same size, cut to fit a smaller account
     const px = L.mark[sym], lev = maxLev(sym, f) || 1, ff = L.bal[f] != null ? L.bal[f] : fb; if (px) q = Math.min(q, ff * lev * 0.99 / px); // never more than its free margin holds
     const d = dec(sym); return Math.floor(q * Math.pow(10, d) + 1e-7) / Math.pow(10, d);
   }
   async function copierSync() {
     if (!C.on || !C.leader) return;
-    const lead = L.pos.filter(p => accOf(p) === C.leader && !C.pre[p.positionId]);
+    const all = L.pos.filter(p => accOf(p) === C.leader && !C.pre[p.positionId]), raw = C.hedge ? all.filter(p => C.hmap[p.positionId] || hedgeOf(p.symbol)) : all; if (C.hedge) await hedgeGone(raw); // pair mode copies only the pair's markets
+    const skip = new Set(), leadH = C.hedge ? raw.map(p => { const v = virt(p); if (!v) skip.add(p.positionId); return v; }).filter(Boolean) : raw;
     const exits = [], rest = [];
-    for (const f in C.followers) {
-      if (!C.followers[f] || f === C.leader || L.bal[f] == null) continue;
+    const FOL = C.hedge ? pairFollowers() : C.followers;
+    for (const f in FOL) {
+      if (!FOL[f] || f === C.leader || L.bal[f] == null) continue;
+      const lead = C.hedge && hedges(f) ? leadH : raw;
       const mine = L.pos.filter(p => accOf(p) === f), syms = new Set(lead.map(p => p.symbol));
-      mine.forEach(p => { if (C.owned[p.positionId]) syms.add(p.symbol); });
+      mine.forEach(p => { if (C.owned[p.positionId] && !skip.has(C.owned[p.positionId].lead)) syms.add(p.symbol); });
       for (const sym of syms) {
         const key = f + '|' + sym; if ((BUSY[key] || 0) > Date.now()) continue;
         const lp = lead.find(p => p.symbol === sym), fp = mine.find(p => p.symbol === sym);
@@ -2062,7 +2314,7 @@
   function renderCopy() { // the chip on the ticket: desk, or how many it copies to
     if (!SP) return; const { R, k } = SP, n = (pruneFollowers(), nFollow());
     R.querySelector('[data-a=copy]').classList.toggle('armed', !!C.on); R.querySelector('[data-a=copy]').classList.toggle('on', !!DK.open);
-    k('cp').textContent = C.on ? 'copying ' + n : 'desk';
+    k('cp').textContent = C.on ? (C.hedge ? 'mirror ' : 'copying ') + n : 'desk'; renderHh(R);
     if (DS && DK.open) renderDesk();
   }
   // ---------- GP. Desk: every account's open and today PnL, closed whole or in part with one click ----------
@@ -2191,26 +2443,22 @@
   .lb{border-color:transparent;background:rgba(238,234,226,.07)}.lb:hover{border-color:transparent;background:rgba(238,234,226,.16)}.lb.on,.lb.on:hover{background:#e6e3dc}
   .tg.copy{border-color:transparent;background:rgba(159,215,178,.14)}.tg.lkd{box-shadow:none}
   .k{border-color:transparent;background:rgba(238,234,226,.06)}.k:hover{border-color:transparent;background:rgba(238,234,226,.15)}.k.cl{border-color:transparent;background:rgba(232,152,140,.13)}.k.cl:hover{background:#e8988c}
-  .cm button{border-color:transparent;background:rgba(238,234,226,.055)}
-  .mrw{display:flex;align-items:center;gap:8px;height:32px;padding:0 12px 0 14px;border-bottom:1px solid rgba(238,234,226,.06);cursor:default}
-  .mrw b{font-size:10px;font-weight:600;letter-spacing:.24em;color:#6f6f75}.mrw svg{width:10px;height:10px;color:#6f6f75;flex:none}
-  .mrw .sw{opacity:.45;cursor:default}.mrw span{margin-left:auto;font-size:10.5px;font-weight:600;color:#6f6f75;white-space:nowrap}
-  .mrw span em{font-style:normal}.mrw span em+em{display:none;color:#c9c7c2}.mrw:hover span em{display:none}.mrw:hover span em+em{display:inline}.mrw:hover .sw{display:none}.mrw span{font-size:10px;letter-spacing:-.01em}`;
+  .cm button{border-color:transparent;background:rgba(238,234,226,.055)}`;
   function deskHost() {
     if (DS) return DS;
     const host = document.createElement('div'); host.id = 'gpz-desk'; host.style.cssText = 'position:fixed;z-index:2147483640;display:none'; // above GP. if they ever meet
     ['keydown', 'keyup', 'keypress'].forEach(t => host.addEventListener(t, e => e.stopPropagation()));
     const R = host.attachShadow({ mode: 'open' });
-    R.innerHTML = `<style>${DCSS}</style><div class="scrim"></div><div class="d">
+    R.innerHTML = `<style>${DCSS}.hd{min-width:0}.tb{flex:none}.tb button{padding:0 7px}.fx{flex:0 1 auto;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.hd .x{flex:none}.so{overflow:hidden}.so button{flex:0 1 auto;min-width:0;padding:0 5px;overflow:hidden;text-overflow:ellipsis}.pmx{flex:none;display:flex;gap:2px;padding:2px;border-radius:8px;background:#111111;border:1px solid rgba(238,234,226,.06)}.pmx button{height:20px;padding:0 9px;border:0;border-radius:6px;background:none;color:#6f6f75;font:700 9.5px Inter,system-ui,sans-serif;letter-spacing:.16em;cursor:pointer}.pmx button:hover{color:#f1f1f3}.pmx button.on{background:#e6e3dc;color:#0b0b0b}.cpy{flex-wrap:wrap;row-gap:6px}.clr{flex:none;margin-left:auto;height:20px;padding:0 8px;border-radius:6px;border:1px solid rgba(238,234,226,.1);background:none;color:#8b8b92;font:600 10px Inter,system-ui,sans-serif;cursor:pointer}.clr:hover{color:#f1f1f3;border-color:rgba(238,234,226,.3)}.d.hedge [data-dd],.d.hedge .mn{display:none}.cpy>b{font-size:9.5px;font-weight:700;letter-spacing:.2em;color:#8b8b92}.d.hedge .cpy>b{color:#bfe6cb}.cpy .hx{display:flex;align-items:baseline;gap:4px;font-size:12.5px;font-weight:700;color:#f1f1f3;white-space:nowrap}.cpy .hx em{font-style:normal;color:#55555b}.cpy .hx i{font-style:normal;font-size:10.5px;color:#9fd7b2}.sup{flex:none;margin-left:auto;height:22px;padding:0 10px;border-radius:7px;border:1px solid rgba(238,234,226,.22);background:#151515;color:#f1f1f3;font:700 10.5px Inter,system-ui,sans-serif;cursor:pointer}.sup:hover{background:#1f1f1e}.gh.hp.gL span{color:#9fd7b2}.gh.hp.gS span{color:#e8988c}.gh.hp.mn span{color:#e6e3dc}.gw{grid-column:1/4;font-size:11px;font-weight:600;color:#8b8b92}.sbig{display:block;width:100%;height:44px;margin-top:6px;border:0;border-radius:10px;background:#e6e3dc;color:#0b0b0b;font:800 13px Inter,system-ui,sans-serif;cursor:pointer}.su{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:rgba(4,4,5,.72);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}.su[hidden]{display:none}.suc{display:flex;flex-direction:column;width:min(520px,94vw);max-height:86vh;border-radius:22px;background:#0b0b0b;box-shadow:0 0 0 1px rgba(238,234,226,.08),0 50px 120px -30px #000;overflow:hidden;font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;font-feature-settings:"tnum"}.suh{display:flex;align-items:center;gap:22px;padding:24px 22px 14px 26px}.suh .pmx{background:none;border:0;padding:0;gap:22px}.suh .pmx button{height:auto;padding:0 0 6px;border-radius:0;font:700 11px Inter,system-ui,sans-serif;letter-spacing:.22em;color:#55555b;background:none;box-shadow:none}.suh .pmx button:hover{color:#b9b6ae}.suh .pmx button.on{background:none;color:#e6e3dc;box-shadow:inset 0 -1.5px 0 #e6e3dc}.suh .sp{flex:1}.suh .clr{margin:0;height:auto;padding:0;border:0;background:none;font:600 11.5px Inter,system-ui,sans-serif;color:#6f6f75}.suh .clr:hover{color:#e6e3dc}.sx{width:28px;height:28px;border:0;border-radius:50%;background:none;color:#6f6f75;font-size:17px;cursor:pointer}.sx:hover{color:#e6e3dc;background:rgba(238,234,226,.06)}.sps{display:flex;flex-direction:column;padding:6px 26px 4px}.sps:empty{display:none}.pc2{display:flex;align-items:baseline;justify-content:space-between;width:100%;padding:13px 0;border:0;border-bottom:1px solid rgba(238,234,226,.06);background:none;color:#6f6f75;font:600 22px Inter,system-ui,sans-serif;letter-spacing:-.035em;cursor:pointer;text-align:left}.pc2 em{font-style:normal;color:#3a3a3e;margin:0 6px;font-weight:500}.pc2 i{font-style:normal;font-size:13px;font-weight:600;letter-spacing:0;color:#55555b}.pc2:hover{color:#b9b6ae}.pc2.on{color:#e6e3dc}.pc2.on i{color:#9fd7b2}.pc2.on em{color:#55555b}.pc2.on span::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:#9fd7b2;margin:0 12px 0 0;vertical-align:.28em}.pc2.mo{justify-content:flex-start;padding:12px 0 4px;border:0;font:600 11px Inter,system-ui,sans-serif;letter-spacing:.2em;text-transform:uppercase;color:#55555b}.pc2.mo:hover{color:#e6e3dc}.pc2.on2{color:#b9b6ae}.deep{display:grid;grid-template-columns:1fr 1fr;column-gap:24px;max-height:200px;overflow-y:auto;scrollbar-width:none;padding:4px 0 6px}.deep::-webkit-scrollbar{display:none}.deep button{display:flex;justify-content:space-between;align-items:baseline;padding:9px 0;border:0;border-bottom:1px solid rgba(238,234,226,.05);background:none;color:#8b8b92;font:600 13.5px Inter,system-ui,sans-serif;letter-spacing:-.01em;cursor:pointer}.deep button em{font-style:normal;color:#3a3a3e;margin:0 4px}.deep button i{font-style:normal;color:#55555b;font-size:11.5px}.deep button:hover{color:#e6e3dc}.deep button.on{color:#e6e3dc}.deep button.on i{color:#9fd7b2}.deep .hw{grid-column:1/3;justify-content:center;font:600 11px Inter,system-ui,sans-serif;color:#55555b;letter-spacing:.14em;text-transform:uppercase;padding:14px 0}.sal{flex:1;min-height:0;overflow-y:auto;scrollbar-width:none;padding:14px 26px 10px}.sal::-webkit-scrollbar{display:none}.sg{display:flex;align-items:center;gap:16px;margin:16px 0 4px}.sg span{flex:1;font-size:10.5px;font-weight:700;letter-spacing:.22em;color:#6f6f75;text-transform:uppercase}.sg span i{font-style:normal;margin-left:8px;color:#3a3a3e}.sg button{height:auto;padding:0;border:0;background:none;color:#55555b;font:600 11px Inter,system-ui,sans-serif;cursor:pointer}.sg button:hover{color:#e6e3dc}.sr{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid rgba(238,234,226,.05)}.sr.ism .sn b{color:#e6e3dc}.sn{flex:1;min-width:0;display:flex;align-items:baseline;gap:10px}.sn b{font-size:15px;font-weight:600;letter-spacing:-.02em;color:#b9b6ae}.sn small{font-size:11.5px;font-weight:500;color:#55555b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sc{display:flex;gap:16px;flex:none}.sc button{height:auto;padding:0 0 3px;border:0;border-radius:0;background:none;color:#3f3f44;font:700 10.5px Inter,system-ui,sans-serif;letter-spacing:.16em;cursor:pointer;white-space:nowrap}.sc button:hover{color:#b9b6ae}.sc button.on{background:none!important;border:0!important}.sc button.m.on{color:#e6e3dc!important;box-shadow:inset 0 -1.5px 0 #e6e3dc}.sc button.l.on,.sc button.c.on{color:#9fd7b2!important;box-shadow:inset 0 -1.5px 0 #9fd7b2}.sc button.s.on{color:#e8988c!important;box-shadow:inset 0 -1.5px 0 #e8988c}.suf{display:flex;align-items:center;gap:12px;padding:16px 26px 22px;border-top:1px solid rgba(238,234,226,.06)}.suf span{flex:1;font-size:12px;font-weight:600;color:#6f6f75;letter-spacing:.02em}.done{height:42px;padding:0 28px;border:0;border-radius:12px;background:#e6e3dc;color:#0b0b0b;font:700 13px Inter,system-ui,sans-serif;cursor:pointer}.pmx.sm button{padding:0 7px;font-size:9px;letter-spacing:.12em}.rlx{display:flex;gap:12px;justify-self:end;align-items:center}.rlx button{width:auto;height:auto;padding:0 0 2px;border:0;border-radius:0;background:none;color:#3f3f44;font:700 10px Inter,system-ui,sans-serif;letter-spacing:.14em;cursor:pointer}.rlx button:hover{color:#b9b6ae}.rlx button.on{background:none;color:#9fd7b2;box-shadow:inset 0 -1.5px 0 #9fd7b2}.rlx button.o.on{background:none;color:#e8988c;box-shadow:inset 0 -1.5px 0 #e8988c}.hgs{display:none}.d.hedge.acc .hgs{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;padding:8px 12px 10px 14px;border-bottom:1px solid rgba(238,234,226,.06)}.hgs span{display:flex;align-items:baseline;gap:6px;min-width:0}.hgs .gsh{justify-content:flex-end}.hgs small{font-size:9px;font-weight:800;letter-spacing:.16em}.hgs .gl small{color:#9fd7b2}.hgs .gsh small{color:#e8988c}.hgs b{font-size:15px;font-weight:700;letter-spacing:-.03em;color:#f1f1f3}.hgs i{font-style:normal;font-size:11px;font-weight:700;color:#6f6f75}.hgs button{width:28px;height:28px;border-radius:50%;border:1px solid rgba(238,234,226,.14);background:#141414;color:#e6e3dc;font-size:13px;cursor:pointer}.hgs button:hover{background:#1f1f1e}.hs{font-style:normal;margin:0 6px 0 4px;font-size:9.5px;font-weight:700;letter-spacing:.14em;white-space:nowrap}.hs.M{color:#9fd7b2}.hs.O{color:#e8988c}.gh.hp.gM span{color:#e6e3dc}.gh.hp.gO span{color:#efb1a7}.hgs .gx{justify-self:center;color:#55555b;font-size:14px}.hgs .gl small{color:#e6e3dc}.hgs .gsh small{color:#efb1a7}.gw.bad{color:#efb1a7;font-weight:700}.sc button.l.on{background:#e6e3dc;border-color:#e6e3dc;color:#0b0b0b}.sc button.m.on{background:none;border-color:#e6e3dc;color:#e6e3dc}.d.hedge [data-dd=cm]{display:none}.d.pnl .hx{display:none}.hx{display:flex;flex-wrap:wrap;gap:4px;padding:0 12px 0 14px}.hx:not(:empty){padding:8px 12px 8px 14px;border-bottom:1px solid rgba(238,234,226,.06)}.hx button{display:flex;align-items:baseline;gap:4px;height:26px;padding:0 9px;border-radius:8px;border:1px solid rgba(238,234,226,.08);background:#121212;color:#c9c7c2;font:700 11.5px Inter,system-ui,sans-serif;letter-spacing:-.01em;cursor:pointer;align-items:center}.hx button em{font-style:normal;color:#55555b;font-weight:600}.hx button i{font-style:normal;margin-left:3px;font-size:10.5px;font-weight:700;color:#9fd7b2;font-variant-numeric:tabular-nums}.hx button:hover{border-color:rgba(238,234,226,.25)}.hx button.on{background:#e6e3dc;border-color:#e6e3dc;color:#0b0b0b}.hx button.on em{color:#8a877f}.hx button.on i{color:#2f6b45}.hw{font-size:10.5px;font-weight:600;color:#6f6f75;height:26px;display:flex;align-items:center;margin-left:4px}.hx button.mo{color:#8b8b92;font-weight:600}.d{position:relative}.hpop{position:absolute;inset:0;z-index:30;display:flex;flex-direction:column;background:rgba(11,11,11,.94);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-radius:inherit}.hpop[hidden]{display:none}.hph{display:flex;align-items:center;gap:10px;padding:14px 12px 10px 16px}.hph b{font-size:10px;font-weight:700;letter-spacing:.22em;color:#e6e3dc}.hph span{flex:1;font-size:10.5px;font-weight:600;color:#6f6f75}.hph button{width:28px;height:28px;border:0;border-radius:8px;background:none;color:#8b8b92;font-size:16px;cursor:pointer}.hph button:hover{background:#1a1a19;color:#e6e3dc}.hpl{flex:1;min-height:0;overflow-y:auto;scrollbar-width:none;padding:0 10px 12px}.hpl::-webkit-scrollbar{display:none}.hpl button{display:flex;align-items:center;justify-content:space-between;width:100%;height:40px;margin-bottom:3px;padding:0 14px;border:0;border-radius:10px;background:#131313;color:#e6e3dc;font:700 14px Inter,system-ui,sans-serif;letter-spacing:-.02em;cursor:pointer}.hpl button em{font-style:normal;color:#55555b;margin:0 5px;font-weight:600}.hpl button i{font-style:normal;font-size:13px;color:#9fd7b2;font-variant-numeric:tabular-nums}.hpl button:hover{background:#1b1b1a}.hpl button.on{background:#e6e3dc;color:#0b0b0b}.hpl button.on i{color:#2f6b45}.hpl button.on em{color:#8a877f}.hpl .hw{justify-content:center;height:60px}</style><div class="su" data-k="su" hidden><div class="suc"><div class="suh"><div class="pmx"><button data-pm="0">COPY</button><button data-pm="1">MIRROR</button></div><span class="sp"></span><button class="clr" data-a="clr">clear</button><button class="sx" data-a="sux" aria-label="Close">×</button></div><div class="sps" data-k="spairs"></div><div class="sal" data-k="sacc"></div><div class="suf"><span data-k="ssum"></span><button class="done" data-a="sud">Done</button></div></div></div><div class="scrim"></div><div class="d">
       <div class="mw"><canvas class="moon" width="440" height="440"></canvas></div>
       <div class="hd" data-a="drag"><i class="dot"></i><div class="tb"><button data-t="acc">Accounts</button><button data-t="pnl">PnL</button></div><div class="sp"></div><button class="fx" data-a="flat"><span data-k="fx">flatten</span></button><button class="x bg" data-a="big" aria-label="Big view" title="Big view"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 1.5h3v3M4.5 10.5h-3v-3M10.5 1.5 7 5M1.5 10.5 5 7"/></svg></button><button class="x sd" data-a="side" aria-label="Beside the chart" title="Beside the chart"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 2v8M10.5 6H4.5M7 3.5 4.5 6 7 8.5"/></svg></button><button class="x" data-a="x" aria-label="Close desk"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7"/></svg></button></div>
       <div class="top"><span class="o" data-k="open">—</span><span class="t"><small>TODAY</small><span data-k="today">—</span></span></div>
-      <div class="cpy" data-k="cpy"><b>COPY</b><button class="sw" data-a="arm" aria-label="Copy on or off"></button><button class="dd" data-dd="cm" title="Copy size"><span data-k="cmv">same</span><i></i></button><span class="ld" data-k="ld"></span><button class="dd st" data-dd="so" title="Sort"><em>sort</em><span data-k="sov">auto</span><i></i></button>
+      <div class="cpy" data-k="cpy"><div class="pmx sm"><button data-pm="0">COPY</button><button data-pm="1">MIRROR</button></div><b data-k="mdl" hidden></b><button class="sw" data-a="arm" aria-label="Copy on or off"></button><button class="dd" data-dd="cm" title="Copy size"><span data-k="cmv">same</span><i></i></button><span class="hx" data-k="hx"></span><span class="ld" data-k="ld"></span><button class="sup" data-a="setup" title="Copy or pair, and every account's part">setup</button><button class="dd st" data-dd="so" title="Sort"><em>sort</em><span data-k="sov">auto</span><i></i></button>
         <div class="mn" data-mn="cm" hidden><button data-cm="same">same size</button><button data-cm="bal">by balance</button><button data-cm="room" title="Each copy sized by its account's room to the floor">by room</button></div>
         <div class="mn rt" data-mn="so" hidden><button data-so="auto">auto</button><button data-so="target">to target</button><button data-so="pnl">pnl</button><button data-so="new">newest</button><button data-so="old">oldest</button></div></div>
-      <div class="mrw"><b>MIRROR</b><svg viewBox="0 0 16 16" fill="none"><rect x="2.5" y="7" width="11" height="7.5" rx="2" fill="currentColor"/><path d="M5 7V5a3 3 0 0 1 6 0v2" stroke="currentColor" stroke-width="1.8"/></svg><i class="sw" aria-hidden="true"></i><span><em>Locked</em><em>Vest announcement coming soon</em></span></div>
+      <div class="hgs" data-k="hg"></div>
       <div class="rh"><span></span><span class="v">OPEN</span><span class="v">TODAY</span><span></span></div>
-      <div class="rh ra"><span></span><span class="v">BALANCE</span><span class="v">TODAY</span><span class="v">COPY</span></div>
+      <div class="rh ra"><span></span><span class="v">BALANCE</span><span class="v">TODAY</span><span class="v" data-k="hc">COPY</span></div>
       <div class="rows" data-k="rows"></div>
       <div class="ft"><span class="m" data-k="m"></span><button data-a="all" data-k="all"></button></div>
     </div>`;
@@ -2221,6 +2469,8 @@
     R.querySelector('[data-a=flat]').onclick = () => deskFlatten();
     R.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { DK.tab = b.dataset.t; saveDK(); renderDesk(); });
     R.querySelector('[data-a=arm]').onclick = () => arm(!C.on);
+    R.addEventListener('click', e => { if (setupClick(e)) e.stopPropagation(); }, true);
+    R.addEventListener('keydown', e => { if (e.key === 'Escape' && HX.setup) { HX.setup = false; renderDesk(); } });
     // copy size and sort: one chip each, a small menu on tap
     const mnOpen = n => { R.querySelectorAll('[data-mn]').forEach(m => { m.hidden = m.dataset.mn !== n; }); R.querySelectorAll('[data-dd]').forEach(b => b.classList.toggle('op', b.dataset.dd === n)); };
     R.querySelectorAll('[data-dd]').forEach(b => b.onclick = e => { e.stopPropagation(); mnOpen(R.querySelector(`[data-mn=${b.dataset.dd}]`).hidden ? b.dataset.dd : null); });
@@ -2331,7 +2581,8 @@
     const tab = DK.tab === 'pnl' ? 'pnl' : 'acc', d = R.querySelector('.d'); d.classList.toggle('acc', tab === 'acc'); d.classList.toggle('pnl', tab === 'pnl');
     R.querySelectorAll('[data-t]').forEach(b => b.classList.toggle('on', b.dataset.t === tab));
     R.querySelector('[data-a=arm]').classList.toggle('on', !!C.on);
-    R.querySelectorAll('[data-cm]').forEach(b => b.classList.toggle('on', b.dataset.cm === C.mode)); k('cmv').textContent = { same: 'same', bal: 'by bal', room: 'by room' }[C.mode] || 'same';
+    R.querySelectorAll('[data-cm]').forEach(b => b.classList.toggle('on', b.dataset.cm === C.mode));
+    renderHx(R); k('cmv').textContent = { same: 'same', bal: 'by bal', room: 'by room' }[C.mode] || 'same';
     const act = activeAcct(), pick = DK.pick && DK.pick.id !== act && Date.now() - DK.pick.at < 4000 ? DK.pick.id : null, cur = pick || act, lead = copyLeader();
     k('ld').innerHTML = C.elsewhere ? 'on in another tab' : lead ? (C.on ? 'from ' : 'lead ') + '<b>' + acctShort(lead).replace(/^Account /, '') + '</b>' : '';
     const accRow = r => {
@@ -2340,10 +2591,10 @@
       const chip = r.ps.map(p => `<span class="pc${p.long ? '' : ' sh'}">${p.long ? 'LONG' : 'SHORT'} ${trimNum(+fmtQ(p.q, p.sym))} ${shortSym(p.sym)}</span>`).join('') + (r.n ? `<span class="pu ${tone(r.u)}">${fm(r.u, { sign: true })}</span>` : '');
       const rb = r.room != null ? `<div class="rb${r.room / r.roomMax < 0.25 ? ' low' : ''}" title="${r.roomW} room: what the account can lose before its floor"><span>${r.roomW}</span><div class="bar"><i style="width:${Math.max(0, Math.min(100, r.room / r.roomMax * 100)).toFixed(1)}%"></i></div>${r.wide ? `<b class="wd" title="Bigger than the plan's daily loss: claimed profit">${fm(Math.max(0, r.room))}</b>` : ''}</div>` : '';
       const lk = lockedAcct(r.id), lkTag = lk ? `<i class="tg lkd" title="Zone lock: no trading on this account until Vest's 8pm reset">${LOCKSVG}LOCKED</i>` : '';
-      return `<div class="r a${r.id === cur ? ' cur' : ''}${r.id === pick ? ' go' : ''}${r.kind !== 'Eval' ? ' fd' : ''}${isL ? ' lead' : ''}${lk ? ' lkd' : ''}" data-id="${r.id}"><div class="nm"><b>${acctShort(r.id).replace(/^Account /, '')}</b><em>${r.kind}${r.need != null ? ' · ' + (r.need > 0 ? fk(r.need) + ' to go' : 'target hit') : ''}</em>${lkTag}${lk ? '' : mark}</div>
+      return `<div class="r a${r.id === cur ? ' cur' : ''}${r.id === pick ? ' go' : ''}${r.kind !== 'Eval' ? ' fd' : ''}${isL ? ' lead' : ''}${on ? ' fol' : ''}${lk ? ' lkd' : ''}" data-id="${r.id}"><div class="nm"><b>${acctShort(r.id).replace(/^Account /, '')}</b>${C.hedge && roleOf(r.id) && !r.n && pairMarkets() ? `<i class="hs ${roleOf(r.id)}">${roleOf(r.id) === 'M' ? 'MAIN ' : 'OPP '}${pairMarkets()[roleOf(r.id)]}</i>` : ''}<em>${r.kind}${r.need != null ? ' · ' + (r.need > 0 ? fk(r.need) + ' to go' : 'target hit') : ''}</em>${lkTag}${lk ? '' : mark}</div>
         <div class="v vb b">${fk(r.bal)}</div>
         <div class="v vt ${tone(r.today)}">${fm(r.today, { sign: true })}</div>
-        <span class="ro"><button class="lb${isL ? ' on' : ''}" data-ld="${r.id}" title="${isL ? 'Lead account' : 'Make it the lead'}">LEAD</button>${isL ? '<span class="fo nil"></span>' : `<button class="fo${on ? ' on' : ''}" data-fo="${r.id}" title="${on ? 'Stop copying to it' : 'Copy to it'}"></button>`}</span>
+        <span class="ro"><button class="lb${isL ? ' on' : ''}" data-ld="${r.id}" title="${isL ? 'Lead account' : 'Make it the lead'}">LEAD</button>${C.hedge ? (isL ? '<span class="fo nil"></span>' : `<span class="rlx"><button data-sm="M" data-id="${r.id}" class="${C.hside[r.id] === 'M' ? 'on' : ''}" title="MAIN: copies the lead">MAIN</button><button data-sm="O" data-id="${r.id}" class="o${C.hside[r.id] === 'O' ? ' on' : ''}" title="OPP: the other market, the other way">OPP</button></span>`) : isL ? '<span class="fo nil"></span>' : `<button class="fo${on ? ' on' : ''}" data-fo="${r.id}" title="${on ? 'Stop copying to it' : 'Copy to it'}"></button>`}</span>
         ${chip || rb ? `<div class="ex">${chip ? `<div class="pcs">${chip}</div>` : ''}${rb}</div>` : ''}</div>`;
     };
     const GROUPS = ['Funded', 'Instant', 'Eval'];
@@ -2352,7 +2603,7 @@
     const accHtml = () => GROUPS.map(g => { const rs = rows.filter(r => r.kind === g).sort((a, b) => (a.id === lead) - (b.id === lead) ? (b.id === lead) - (a.id === lead) : srt(a, b)); if (!rs.length) return '';
       const sub = rs.reduce((a, r) => a + r.today, 0), all = rs.filter(r => r.id !== lead).every(r => C.followers[r.id]);
       return `<div class="gh" data-g="${g}" title="${all ? 'Stop copying to all ' : 'Copy to all '}${g}"><span>${g}<i>${rs.length}</i></span><b class="${tone(sub)}">${fm(sub, { sign: true })}</b></div>` + rs.map(accRow).join(''); }).join('');
-    const html = tab === 'acc' ? accHtml() : shown.map(r => {
+    const html = tab === 'acc' ? (C.hedge ? pairHtml(rows, accRow, lead) : accHtml()) : shown.map(r => {
       const b = DK.busy[r.id] || DK.busy.all, dis = !r.n || b ? ' disabled' : '';
       const btn = (p, lbl, cls) => `<button class="k${cls || ''}${DK.busy[r.id] === p ? ' busy' : ''}" data-cut="${p}" title="${p >= 100 ? 'Close' : 'Cut ' + p + '%'}"${dis}>${lbl}</button>`;
       return `<div class="r${r.kind !== 'Eval' ? ' fd' : ''}" data-id="${r.id}"><div class="nm"><b>${acctShort(r.id).replace(/^Account /, '')}</b>${r.role ? `<i class="tg ${r.role}">${r.role === 'lead' ? 'LEAD' : 'COPY'}</i>` : `<em>${r.kind}</em>`}${lockedAcct(r.id) ? `<i class="tg lkd" title="Zone lock until Vest's 8pm reset">${LOCKSVG}LOCKED</i>` : ''}${spark(r.id, r.today)}</div>
@@ -2753,7 +3004,7 @@
   every(700, vestPanels);
   function toggleSkin() { DB.skin = DB.skin === false; save(true); skinKey = ''; applySkin(); if (P) render(); }
   every(1000, applySkin);
-  // code GIGA: a small switch in Vest's footer, right after Online. It sits in the row, so it never covers anything.
+    // code GIGA: a small switch in Vest's footer, right after Online. It sits in the row, so it never covers anything.
   const gigaChip = () => {
     let el = document.getElementById('gpz-giga');
     if (!el || !el.isConnected) {
@@ -2772,7 +3023,7 @@
     el.dataset.on = on ? '1' : '0';
   };
   every(1000, gigaChip);
-  // a row that would clip (a narrow column, a long account name) tightens in steps until everything fits
+// a row that would clip (a narrow column, a long account name) tightens in steps until everything fits
   function fitRow(el, pr) { if (!el || !el.offsetWidth) return; pr = pr || el; const over = () => [el, pr].some(x => x.scrollWidth > x.clientWidth + 1); el.classList.remove('t1', 't2'); if (!over()) return; el.classList.add('t1'); if (!over()) return; el.classList.add('t2'); }
   every(500, () => { if (SP && SHOT.visible) { fitRow(SP.R.querySelector('.hd')); fitRow(SP.R.querySelector('.mk'), SP.R.querySelector('.mk>span')); } if (DS && DK.open) fitRow(DS.R.querySelector('.hd')); });
 
