@@ -42,14 +42,6 @@ i,em{font-style:normal}
 .btn.s{border:1px solid var(--line2);color:var(--ink2);background:rgba(11,11,11,.9);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 .btn.s:hover{border-color:rgba(238,234,226,.36);color:var(--cr)}
 
-/* ---------- the mark: a vest, and the jacket that goes over it ---------- */
-.mark{display:block;height:clamp(110px,24vh,240px);width:auto;align-self:flex-start;margin:0 0 clamp(20px,3.4vh,40px) -6px;overflow:visible}
-.mark .jk{animation:don 1.5s var(--ease) both .55s}
-.mark .jl{transform-origin:174px 26px;animation:donr 1.7s var(--ease) both .55s}
-.mark .jr{transform-origin:174px 26px;animation:donr 1.7s var(--ease) both .55s}
-@keyframes don{from{opacity:0;transform:translateY(-34px)}}
-@keyframes donr{from{transform:rotate(-9deg)}}
-
 /* ---------- collage ---------- */
 .col{position:fixed;inset:0;z-index:2;transition:opacity .7s var(--ease),transform .9s var(--ease),filter .7s}
 .shade{position:fixed;inset:0;z-index:3;pointer-events:none;background:radial-gradient(120% 90% at 0% 55%,rgba(11,11,11,.94) 0,rgba(11,11,11,.7) 30%,rgba(11,11,11,0) 50%),linear-gradient(0deg,rgba(11,11,11,.85),rgba(11,11,11,0) 16%,rgba(11,11,11,0) 86%,rgba(11,11,11,.8));transition:opacity .7s}
@@ -137,8 +129,7 @@ i,em{font-style:normal}
   html,body{height:auto;min-height:100%;overflow:auto;overflow-x:hidden}
   body{display:flex;flex-direction:column}.hero{order:1}.col{order:2}
   #art{position:absolute;height:100vh}
-  .hero{height:auto;padding-top:clamp(36px,9vw,70px)}
-  .mark{height:clamp(120px,36vw,200px)}
+  .hero{height:auto;padding-top:clamp(56px,14vw,110px)}
   .word{font-size:min(27vw,220px)}
   .line{font-size:min(8.6vw,52px);margin-top:min(7vw,50px)}
   .shade{display:none}
@@ -151,7 +142,6 @@ i,em{font-style:normal}
   .col{zoom:.5}
 }
 @media (max-width:1460px) and (min-width:1001px){.btn{height:52px;padding:0 18px;gap:14px;font-size:15px}.act{gap:8px}.c.mir{--x:50vw!important;--z:14!important}.c.cpy{--x:71vw!important;--y:74vh!important}}
-@media (max-height:620px) and (min-width:1001px){.mark{height:84px;margin-bottom:14px}}
 @media (max-height:700px) and (min-width:1001px){.word{font-size:min(14.2vw,30vh)}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.in{opacity:1;transform:none}}
 </style>
@@ -280,33 +270,8 @@ i,em{font-style:normal}
 
 
 <main class="hero">
-  <svg class="mark in d1" viewBox="14 4 212 244" aria-label="A vest with a jacket over it" role="img">
-    <defs>
-      <linearGradient id="vg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9a978f"/><stop offset="1" stop-color="#3b3a37"/></linearGradient>
-      <pattern id="d1" width="6" height="6" patternUnits="userSpaceOnUse"><circle cx="3" cy="3" r="1.55" fill="#e6e3dc"/></pattern>
-      <pattern id="d2" width="6" height="6" patternUnits="userSpaceOnUse"><circle cx="3" cy="3" r="1" fill="#e6e3dc" fill-opacity=".7"/></pattern>
-    </defs>
-    <path d="M92 32 120 98 148 32 168 46 172 198 146 222 120 198 94 222 68 198 72 46Z" fill="url(#vg)"/>
-    <path d="M120 98V198" stroke="#0b0b0b" stroke-width="2"/>
-    <circle cx="126" cy="122" r="3" fill="#0b0b0b"/><circle cx="126" cy="146" r="3" fill="#0b0b0b"/><circle cx="126" cy="170" r="3" fill="#0b0b0b"/>
-    <g class="jk">
-      <path d="M94 20Q120 8 146 20L142 30Q120 21 98 30Z" fill="#e6e3dc"/>
-      <g class="jr">
-        <path d="M172 34 196 46 214 96 222 214 196 220 190 104Z" fill="#0b0b0b"/><path d="M172 34 196 46 214 96 222 214 196 220 190 104Z" fill="url(#d2)" stroke="#e6e3dc" stroke-opacity=".5" stroke-width="1.2" stroke-linejoin="round"/>
-        <path d="M146 20 174 34 190 104 186 236 152 242 144 142Z" fill="#0b0b0b"/><path d="M146 20 174 34 190 104 186 236 152 242 144 142Z" fill="url(#d1)" stroke="#e6e3dc" stroke-width="1.4" stroke-linejoin="round"/>
-        <path d="M146 20 176 72 164 80 174 90 144 142Z" fill="#e6e3dc" stroke="#0b0b0b" stroke-width="2.4" stroke-linejoin="round"/>
-        <path d="M160 190h20" stroke="#e6e3dc" stroke-width="1.6" stroke-linecap="round"/>
-      </g>
-      <g transform="matrix(-1 0 0 1 240 0)"><g class="jl">
-        <path d="M172 34 196 46 214 96 222 214 196 220 190 104Z" fill="#0b0b0b"/><path d="M172 34 196 46 214 96 222 214 196 220 190 104Z" fill="url(#d2)" stroke="#e6e3dc" stroke-opacity=".5" stroke-width="1.2" stroke-linejoin="round"/>
-        <path d="M146 20 174 34 190 104 186 236 152 242 144 142Z" fill="#0b0b0b"/><path d="M146 20 174 34 190 104 186 236 152 242 144 142Z" fill="url(#d1)" stroke="#e6e3dc" stroke-width="1.4" stroke-linejoin="round"/>
-        <path d="M146 20 176 72 164 80 174 90 144 142Z" fill="#e6e3dc" stroke="#0b0b0b" stroke-width="2.4" stroke-linejoin="round"/>
-        <path d="M160 190h20" stroke="#e6e3dc" stroke-width="1.6" stroke-linecap="round"/>
-      </g></g>
-    </g>
-  </svg>
-  <h1 class="word in d2">Jacket<i>.</i></h1>
-  <p class="line in d3">On top of Vest.<br><span>One click. Every account.</span></p>
+  <h1 class="word in d1">Jacket<i>.</i></h1>
+  <p class="line in d2">On top of Vest.<br><span>One click. Every account.</span></p>
   <div class="act in d3">
     <a class="btn p" href="https://raw.githubusercontent.com/deciphe/gp-pulse/main/gp-jacket.user.js">Install GP. Jacket<span class="k">v<span id="ver">1.11.0</span></span></a>
     <a class="btn s" href="https://www.tampermonkey.net/" target="_blank" rel="noopener">Get Tampermonkey<span class="k">↗</span></a>
