@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.9.8
+// @version      1.10.0
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -1121,6 +1121,7 @@
   .ib.armed{color:#0b0b0b;background:#9fd7b2;border-color:#9fd7b2}.ib.armed i{opacity:1;animation:br 4s ease-in-out infinite;background:#0b0b0b}
   .s>.menu{position:absolute}
   .hd .brand span{display:none}.hd{gap:5px}
+  .hd.t1{gap:3px}.hd.t1 .ib{padding:0 5px;gap:4px;font-size:10.5px}.hd.t1 .ib>i{display:none}.hd.t1 .ib.gr{width:24px}.hd.t2 .brand{display:none}.hd.t2 .ib{padding:0 4px;font-size:10px}
   .mr{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center}.mr label{font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#6f6f75}
   .menu{position:absolute;left:10px;right:10px;top:46px;z-index:5;padding:14px;border-radius:16px;background:#101010;border:1px solid rgba(238,234,226,.12);box-shadow:0 30px 60px -20px rgba(0,0,0,.9);display:flex;flex-direction:column;gap:10px;opacity:0;transform:translateY(-6px);pointer-events:none;transition:opacity .25s,transform .35s cubic-bezier(.16,1,.3,1);max-height:calc(100% - 60px);overflow:auto;scrollbar-width:none}
   .menu.open{opacity:1;transform:none;pointer-events:auto}
@@ -1197,6 +1198,7 @@
   .bt{display:flex;justify-content:space-between;gap:8px;font-size:11px;font-weight:600;color:#8b8b92;font-variant-numeric:tabular-nums;white-space:nowrap}
   .sw.sm{width:24px;height:14px;vertical-align:-2px;margin-left:7px}.sw.sm:after{width:8px;height:8px;top:2px;left:2px}.sw.sm.on:after{transform:translateX(10px)}
   .s.nosl .sr[data-sr=risk]>b{color:#4f4f55}.s.nosl .pl .sl b{color:#4f4f55}
+  .mk>span.sw .an{animation:gpzsw 1.4s ease-out}@keyframes gpzsw{0%{background:#e6e3dc;color:#0b0b0b}100%{background:transparent}}.mk .an{font-style:normal;color:#f1f1f3;padding:1px 4px;margin:0 -4px;border-radius:5px}
   .lvb{border:0;background:none;padding:0 2px;margin:0 -2px;border-radius:5px;color:#f1f1f3;font:inherit;font-weight:700;cursor:pointer;border-bottom:1px dashed rgba(238,234,226,.35)}
   .lvb:hover{background:rgba(238,234,226,.08)}.lvb.set{color:#e6e3dc;border-bottom-color:rgba(238,234,226,.5)}
   .lvp{position:absolute;right:14px;top:84px;z-index:30;width:230px;padding:12px 14px 10px;border-radius:12px;background:#111111;border:1px solid rgba(238,234,226,.14);box-shadow:0 22px 50px -16px rgba(0,0,0,.9);animation:lin .2s ease-out}
@@ -1570,7 +1572,7 @@
       col.setAttribute('data-gpz-col', ''); }
     if (!SPL) {
       SPL = document.createElement('div'); SPL.id = 'gpz-split'; SPL.title = 'Drag to widen · double-click for Vest\'s own';
-      SPL.style.cssText = 'position:fixed;z-index:2147483630;width:10px;cursor:col-resize;display:none';
+      SPL.style.cssText = 'position:fixed;z-index:2147483640;width:10px;cursor:col-resize;display:none';
       SPL.innerHTML = '<i style="position:absolute;left:4px;top:0;bottom:0;width:2px;border-radius:2px;background:#e6e3dc;opacity:0;transition:opacity .2s"></i>';
       const ln = SPL.firstChild; SPL.onmouseenter = () => { ln.style.opacity = '.35'; }; SPL.onmouseleave = () => { if (!SPL.drag) ln.style.opacity = '0'; };
       SPL.addEventListener('pointerdown', e => {
@@ -1583,8 +1585,9 @@
       SPL.addEventListener('dblclick', () => { DB.colF = null; save(); layoutCols(); placeShot(); placeDesk(); });
       document.documentElement.appendChild(SPL);
     }
-    const cr = col.getBoundingClientRect(), gap = Math.max(0, cr.left - (col.previousElementSibling ? col.previousElementSibling.getBoundingClientRect().right : cr.left));
-    Object.assign(SPL.style, { display: '', left: Math.round(cr.left - gap / 2 - 5) + 'px', top: Math.round(cr.top) + 'px', height: Math.round(cr.height) + 'px' });
+    // the seam sits on the ticket's own left edge, clear of Vest's book button in the gap beside it
+    const cr = col.getBoundingClientRect();
+    Object.assign(SPL.style, { display: '', left: Math.round(cr.left - 3) + 'px', top: Math.round(cr.top) + 'px', height: Math.round(cr.height) + 'px' });
   }
   W.__gpzCols = () => { const c = document.querySelector('[data-gpz-col]'); return c ? { col: Math.round(c.getBoundingClientRect().width), row: Math.round(splitTotal(c)) } : null; };
   // one of Vest's own windows is up (checkout, settings, a confirm): GP. steps out of its way and comes back docked when it closes
@@ -1656,7 +1659,8 @@
     k('px').textContent = p.sym && L.mark[p.sym] ? shortSym(p.sym) + '  ' + fmtPx(L.mark[p.sym], p.sym) : '—'; k('px').classList.toggle('old', stale);
     { const ca = p.id && capAcct(p.id), fund = !!ca && ca.account_type === 3 && p.bal > 0; R.querySelectorAll('[data-tk=risk]').forEach(b => { if (b.dataset.l == null) b.dataset.l = b.textContent; b.textContent = fund ? '$' + trimNum(Math.round(p.bal * +b.dataset.v / 100)) : b.dataset.l; }); }
     { const age = (Date.now() - (L.markAt || 0)) / 1000, f = k('fr'); f.className = 'fr ' + (age < 1.6 ? 'ok' : age < 4 ? 'mid' : 'bad'); f.title = 'price ' + (age < 60 ? age.toFixed(1) + 's' : 'over a minute') + ' old'; }
-    k('ac').innerHTML = p.id && p.bal ? `${esc(acctShort(p.id).replace(/^Account /, '#'))} · <button class="lvb${p.lev && p.levMax && p.lev < p.levMax ? ' set' : ''}" data-a="lev" title="Leverage">${p.lev || '—'}x</button> · ${p.bal >= 1e3 ? '$' + trimNum(Math.round(p.bal / 10) / 100) + 'K' : fm(p.bal, { short: true }).replace(/\.00$/, '')}` : '';
+    if (p.id && SHOT.acc && p.id !== SHOT.acc) { const a = k('ac'); a.classList.remove('sw'); void a.offsetWidth; a.classList.add('sw'); } if (p.id) SHOT.acc = p.id;
+    k('ac').innerHTML = p.id && p.bal ? `<em class="an">${esc(acctShort(p.id).replace(/^Account /, '#'))}</em> · <button class="lvb${p.lev && p.levMax && p.lev < p.levMax ? ' set' : ''}" data-a="lev" title="Leverage">${p.lev || '—'}x</button> · ${p.bal >= 1e3 ? '$' + trimNum(Math.round(p.bal / 10) / 100) + 'K' : fm(p.bal, { short: true }).replace(/\.00$/, '')}` : '';
     if (!pos) SHOT.adding = false; const adding = !!pos && !!SHOT.adding;
     R.querySelector('[data-v=plan]').hidden = !!pos && !adding; R.querySelector('[data-v=pos]').hidden = !pos || adding;
     R.querySelector('[data-v=go]').hidden = !!pos || locked; if (pos && k('pnd').dataset.h) k('pnd').innerHTML = k('pnd').dataset.h = ''; R.querySelector('[data-v=go2]').hidden = !pos || adding; R.querySelector('[data-v=go3]').hidden = !locked; R.querySelector('[data-v=go4]').hidden = !adding;
@@ -2059,6 +2063,7 @@
   .d.side .r{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"nm ac" "vo vt";height:auto;row-gap:5px;padding:10px 10px 10px 14px}
   .d.side .nm{grid-area:nm}.d.side .ac{grid-area:ac}.d.side .vo{grid-area:vo;text-align:left}.d.side .vt{grid-area:vt}
   .d.side .vo:before,.d.side .vt:before{font-size:8.5px;font-weight:700;letter-spacing:.16em;color:#5f5f66;margin-right:6px}.d.side .vo:before{content:"OPEN"}.d.side .vt:before{content:"TODAY"}
+  .hd.t1{gap:3px}.hd.t1 .tb button{padding:0 5px}.hd.t1 .fx{padding:0 7px;margin-right:3px}.hd.t2 .x{width:20px;min-width:20px}.hd.t2 .tb button{padding:0 4px;font-size:10px}.hd.t2 .fx{padding:0 5px}
   .tb{display:flex;gap:2px;padding:2px;border-radius:8px;background:#111111;border:1px solid rgba(238,234,226,.06)}.fx{flex:none}.d.side .tb button{padding:0 7px}.d.side .ld{display:none}.d.side .hd{gap:4px;padding-right:8px}.d.side .fx{margin-right:6px;padding:0 9px}
   .tb button{height:22px;padding:0 9px;border:0;border-radius:6px;background:none;color:#8b8b92;font:600 10.5px Inter,system-ui,sans-serif;letter-spacing:.02em;cursor:pointer}.tb button:hover{color:#f1f1f3}
   .tb button.on{background:#e6e3dc;color:#0b0b0b}
@@ -2073,7 +2078,7 @@
   .r.a{grid-template-columns:minmax(0,1fr) 66px 62px auto;cursor:pointer;height:auto;min-height:32px;padding-block:6px}
   .r.a .ex{grid-column:1/-1;display:flex;flex-direction:column;gap:4px;min-width:0}
   .pcs{display:flex;gap:5px;flex-wrap:wrap;align-items:center}.pc{font-size:10px;font-weight:700;letter-spacing:.04em;padding:2px 6px;border-radius:5px;background:rgba(159,215,178,.1);color:#bfe6cb;white-space:nowrap}.pc.sh{background:rgba(232,152,140,.1);color:#efb1a7}.pcs .pu{font-size:11px;font-weight:700}
-  .rb{display:flex;align-items:center;gap:7px;font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#55555b}.rb .bar{flex:1;height:3px;border-radius:9px;background:rgba(238,234,226,.07);overflow:hidden}.rb .bar i{display:block;height:100%;border-radius:9px;background:rgba(159,215,178,.55)}
+  .rb{display:flex;align-items:center;gap:7px;font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#55555b}.rb .bar{flex:1;height:3px;border-radius:9px;background:rgba(238,234,226,.07);overflow:hidden}.rb .bar i{display:block;height:100%;border-radius:9px;background:rgba(159,215,178,.55)}.rb b.wd{color:#e3c98e}
   .rb b{font-weight:600;letter-spacing:0;color:#8b8b92;font-size:10.5px;font-variant-numeric:tabular-nums}.rb.low .bar i{background:#e8988c}.rb.low b{color:#efb1a7}
   .r:not(.a) .ac{opacity:.0;transition:opacity .15s}.r:not(.a):hover .ac,.r:not(.a) .ac:focus-within,.r:not(.a) .ac .busy{opacity:1}.d.busyall .r .ac{opacity:1}
   .dl{display:block;margin-left:6px;flex:none}.dl path{fill:none;stroke-width:1.4;stroke-linejoin:round;stroke-linecap:round}
@@ -2082,10 +2087,11 @@
   .tg.lkd{display:inline-flex;align-items:center;gap:4px;font-style:normal;font-size:8px;font-weight:700;letter-spacing:.12em;padding:2px 6px 2px 5px;border-radius:5px;margin-left:6px;color:#efb1a7;background:rgba(232,152,140,.1);box-shadow:inset 0 0 0 1px rgba(232,152,140,.28)}
   .r.lkd{background:repeating-linear-gradient(135deg,rgba(232,152,140,.035) 0 6px,transparent 6px 12px)}.r.lkd .v,.r.lkd .nm b,.r.lkd .nm em{opacity:.45}.r.lkd .fo{opacity:.35}
   .tg.lead{font-style:normal;font-size:8px;font-weight:700;letter-spacing:.12em;padding:1px 5px;border-radius:4px;background:#e6e3dc;color:#0b0b0b;margin-left:6px}
-  .r.a.lead{box-shadow:inset 2px 0 0 #e6e3dc}.fo.nil{border:0;cursor:default}
+  .r.a .v{transition:opacity .2s}.r.a:not(.cur):not(:hover) .v{opacity:.55}.r.a:not(.cur):not(:hover) .nm b{color:#9e9ea5}.fo.nil{border:0;cursor:default}
   .cr{font-style:normal;font-size:9.5px;font-weight:700;margin-left:6px}.cr.ok{color:#9fd7b2}.cr.bad{color:#efb1a7}
   .r.fd{background:linear-gradient(90deg,rgba(159,215,178,.075),rgba(159,215,178,.02) 55%,rgba(159,215,178,0))}.r.fd:hover{background:linear-gradient(90deg,rgba(159,215,178,.11),rgba(159,215,178,.03) 55%,rgba(159,215,178,0))}
-  .r.a.cur{background:rgba(238,234,226,.045)}.r.a.cur .nm b:before{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;background:#e6e3dc;margin-right:6px;vertical-align:2px}
+  .r.a.cur{background:rgba(238,234,226,.075);box-shadow:inset 2px 0 0 #e6e3dc}.r.a.cur .nm b{color:#f6f4ef}.r.a.go .nm b:before{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;background:#e6e3dc;margin-right:6px;vertical-align:2px;animation:gpzgo .7s ease-in-out infinite alternate}@keyframes gpzgo{to{opacity:.15}}
+  .r.a.cur.r.a.cur .nm b:before{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;background:#e6e3dc;margin-right:6px;vertical-align:2px}
   .r.a .v.b{color:#c9c7c2}
   .fo{justify-self:end;width:18px;height:18px;border-radius:5px;border:1px solid rgba(238,234,226,.22);background:none;cursor:pointer;display:grid;place-items:center;padding:0;color:#0b0b0b;font:700 11px/1 Inter,system-ui,sans-serif}
   .fo.on{background:#9fd7b2;border-color:#9fd7b2}.fo.on:after{content:"✓"}.fo:hover{border-color:rgba(238,234,226,.5)}
@@ -2105,7 +2111,7 @@
   .d.big .gh{grid-column:1/-1;border:0;padding:10px 4px 2px}
   .d.big .r.a{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"nm ro" "vb vt" "ex ex";row-gap:4px;padding:10px 10px 10px 12px;border-radius:11px;background:rgba(238,234,226,.025);box-shadow:inset 0 0 0 1px rgba(238,234,226,.06)}
   .d.big .r.a .nm{grid-area:nm}.d.big .r.a .ro{grid-area:ro}.d.big .r.a .vb{grid-area:vb;text-align:left}.d.big .r.a .vt{grid-area:vt}.d.big .r.a .ex{grid-area:ex}
-  .d.big .r.a.lead{box-shadow:inset 0 0 0 1px rgba(230,227,220,.55)}.d.big .r.a.cur{background:rgba(238,234,226,.06)}.d.big .lb{opacity:1}
+  .d.big .r.a.cur{background:rgba(238,234,226,.08);box-shadow:inset 0 0 0 1px rgba(230,227,220,.55)}.d.big .lb{opacity:1}
   .fo.lead{width:auto;padding:0 5px;border:0;background:#e6e3dc;font-size:8px;letter-spacing:.12em;cursor:default}
   .r .er{display:block;font-style:normal;font-size:9.5px;color:#efb1a7;overflow:hidden;text-overflow:ellipsis}
   .d.side .r.a{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"nm ro" "vb vt" "ex ex";height:auto;row-gap:4px;padding:9px 10px 9px 14px}.d.side .r.a .ex{grid-area:ex}
@@ -2165,7 +2171,7 @@
       const gh = e.target.closest('.gh'); if (gh) { const lead = copyLeader(), ids = deskRows().filter(r => r.kind === gh.dataset.g && r.id !== lead).map(r => r.id), all = ids.every(id => C.followers[id]); ids.forEach(id => { if (all) delete C.followers[id]; else C.followers[id] = true; }); saveC(); renderDesk(); if (SP) renderShot(); kickFast(); return; }
       const ld = e.target.closest('[data-ld]'); if (ld) return setLead(ld.dataset.ld);
       const f = e.target.closest('[data-fo]'); if (f) { const id = f.dataset.fo; if (id === copyLeader()) return; C.followers[id] = !C.followers[id]; if (!C.followers[id]) delete C.followers[id]; saveC(); renderDesk(); if (SP) renderShot(); kickFast(); return; }
-      const r = e.target.closest('.r.a'); if (r && !r.classList.contains('cur')) switchAcct(r.dataset.id);
+      const r = e.target.closest('.r.a'); if (r && !r.classList.contains('cur')) { DK.pick = { id: r.dataset.id, at: Date.now() }; renderDesk(); switchAcct(r.dataset.id); }
     };
     const hd = R.querySelector('[data-a=drag]');
     hd.addEventListener('pointerdown', e => {
@@ -2226,9 +2232,9 @@
       let base = +c.daily_reset_equity;
       if (!(c.daily_reset_at >= d0 - 3 * 36e5) || !isFinite(base)) { const b = DB.dayBase[key]; if (b[c.id] == null) { b[c.id] = eq; save(); } base = b[c.id]; }
       const role = C.leader === c.id && (C.on || Object.keys(C.followers).some(f => C.followers[f])) ? 'lead' : C.followers[c.id] ? 'copy' : '';
-      const fl = floorOf(c.id), room = fl ? eq - fl.F : null, roomMax = fl ? Math.max(room, base - fl.F, 1) : null;
+      const fl = floorOf(c.id), room = fl ? eq - fl.F : null, roomMax = fl ? Math.max(room, base - fl.F, 1) : null, bl = +c.daily_reset_base_limit, wide = !!fl && fl.which === 'DLL' && bl > 0 && (+c.daily_reset_equity - +c.daily_loss_floor) > bl + 0.5;
       const tg = +c.target_equity, need = c.account_type === 2 && tg > 0 ? Math.max(0, tg - eq) : null, born = Date.parse(c.created_at || '') || (+c.attempt_index || 0);
-      out.push({ id: c.id, role, need, born, bal: cash, eq, u, today: eq - base + paidToday(c.id, d0), n: ps.length, room, roomMax, roomW: fl ? fl.which : '', ps: ps.map(p => ({ long: !/^s/i.test(p.side || ''), q: Math.abs(+p.quantity), sym: p.symbol })),
+      out.push({ id: c.id, role, need, born, bal: cash, eq, u, today: eq - base + paidToday(c.id, d0), n: ps.length, room, roomMax, wide, roomW: fl ? fl.which : '', ps: ps.map(p => ({ long: !/^s/i.test(p.side || ''), q: Math.abs(+p.quantity), sym: p.symbol })),
         kind: c.account_type === 3 ? (/instant/i.test(c.plan_product_type || '') ? 'Instant' : 'Funded') : 'Eval' });
     });
     const rk = r => r.role === 'lead' ? 0 : 1;
@@ -2254,20 +2260,20 @@
     R.querySelector('.d').classList.toggle('live', live.length > 0); R.querySelector('.d').classList.toggle('busyall', !!DK.busy.all); R.querySelector('[data-a=side]').textContent = DK.side ? '⇥' : '⇤';
     const o = k('open'); o.textContent = live.length ? fm(U, { sign: true }) : 'flat'; o.className = 'o ' + (live.length ? tone(U) : 'dim flat');
     const t = k('today'); t.textContent = fm(T, { sign: true }); t.className = tone(T);
-    const fx = R.querySelector('[data-a=flat]'); fx.disabled = !!DK.busy.all; fx.classList.toggle('busy', !!DK.busy.all); k('fx').textContent = npos ? 'flatten all · ' + npos : 'flatten all'; fx.title = 'Cancels every pending order and closes every position, on every account';
+    const fx = R.querySelector('[data-a=flat]'); fx.disabled = !!DK.busy.all; fx.classList.toggle('busy', !!DK.busy.all); k('fx').textContent = npos ? 'flatten · ' + npos : 'flatten'; fx.title = 'Cancels every pending order and closes every position, on every account';
     const tab = DK.tab === 'pnl' ? 'pnl' : 'acc', d = R.querySelector('.d'); d.classList.toggle('acc', tab === 'acc'); d.classList.toggle('pnl', tab === 'pnl');
     R.querySelectorAll('[data-t]').forEach(b => b.classList.toggle('on', b.dataset.t === tab));
     R.querySelector('[data-a=arm]').classList.toggle('on', !!C.on);
     R.querySelectorAll('[data-cm]').forEach(b => b.classList.toggle('on', b.dataset.cm === C.mode));
-    const cur = activeAcct(), lead = copyLeader();
+    const act = activeAcct(), pick = DK.pick && DK.pick.id !== act && Date.now() - DK.pick.at < 4000 ? DK.pick.id : null, cur = pick || act, lead = copyLeader();
     k('ld').innerHTML = C.elsewhere ? 'on in another tab' : lead ? (C.on ? 'from ' : 'lead ') + '<b>' + acctShort(lead).replace(/^Account /, '') + '</b>' : '';
     const accRow = r => {
       const isL = r.id === lead, on = !!C.followers[r.id], e = on && C.err[r.id], cr = on && C.res && C.res[r.id], crOk = cr && Date.now() - cr.t < 6e5;
       const mark = e ? `<i class="cr bad" title="${esc(e)}">✕</i>` : crOk && cr.ok ? `<i class="cr ok" title="last copy landed">✓ ${cr.ms}ms</i>` : '';
       const chip = r.ps.map(p => `<span class="pc${p.long ? '' : ' sh'}">${p.long ? 'LONG' : 'SHORT'} ${trimNum(+fmtQ(p.q, p.sym))} ${shortSym(p.sym)}</span>`).join('') + (r.n ? `<span class="pu ${tone(r.u)}">${fm(r.u, { sign: true })}</span>` : '');
-      const rb = r.room != null ? `<div class="rb${r.room / r.roomMax < 0.25 ? ' low' : ''}" title="${r.roomW} room: what the account can lose before its floor"><span>${r.roomW}</span><div class="bar"><i style="width:${Math.max(0, Math.min(100, r.room / r.roomMax * 100)).toFixed(1)}%"></i></div><b>${fm(Math.max(0, r.room))}</b></div>` : '';
+      const rb = r.room != null ? `<div class="rb${r.room / r.roomMax < 0.25 ? ' low' : ''}" title="${r.roomW} room: what the account can lose before its floor"><span>${r.roomW}</span><div class="bar"><i style="width:${Math.max(0, Math.min(100, r.room / r.roomMax * 100)).toFixed(1)}%"></i></div>${r.wide ? `<b class="wd" title="Bigger than the plan's daily loss: claimed profit">${fm(Math.max(0, r.room))}</b>` : ''}</div>` : '';
       const lk = lockedAcct(r.id), lkTag = lk ? `<i class="tg lkd" title="Zone lock: no trading on this account until Vest's 8pm reset">${LOCKSVG}LOCKED</i>` : '';
-      return `<div class="r a${r.id === cur ? ' cur' : ''}${r.kind !== 'Eval' ? ' fd' : ''}${isL ? ' lead' : ''}${lk ? ' lkd' : ''}" data-id="${r.id}"><div class="nm"><b>${acctShort(r.id).replace(/^Account /, '')}</b><em>${r.kind}${r.need != null ? ' · ' + (r.need > 0 ? fk(r.need) + ' to go' : 'target hit') : ''}</em>${lkTag}${lk ? '' : mark}</div>
+      return `<div class="r a${r.id === cur ? ' cur' : ''}${r.id === pick ? ' go' : ''}${r.kind !== 'Eval' ? ' fd' : ''}${isL ? ' lead' : ''}${lk ? ' lkd' : ''}" data-id="${r.id}"><div class="nm"><b>${acctShort(r.id).replace(/^Account /, '')}</b><em>${r.kind}${r.need != null ? ' · ' + (r.need > 0 ? fk(r.need) + ' to go' : 'target hit') : ''}</em>${lkTag}${lk ? '' : mark}</div>
         <div class="v vb b">${fk(r.bal)}</div>
         <div class="v vt ${tone(r.today)}">${fm(r.today, { sign: true })}</div>
         <span class="ro"><button class="lb${isL ? ' on' : ''}" data-ld="${r.id}" title="${isL ? 'Lead account' : 'Make it the lead'}">LEAD</button>${isL ? '<span class="fo nil"></span>' : `<button class="fo${on ? ' on' : ''}" data-fo="${r.id}" title="${on ? 'Stop copying to it' : 'Copy to it'}"></button>`}</span>
@@ -2617,6 +2623,9 @@
     el.dataset.on = on ? '1' : '0';
   };
   every(1000, gigaChip);
+  // a row that would clip (a narrow column, a long account name) tightens in steps until everything fits
+  function fitRow(el) { if (!el || !el.offsetWidth) return; el.classList.remove('t1', 't2'); if (el.scrollWidth <= el.clientWidth + 1) return; el.classList.add('t1'); if (el.scrollWidth <= el.clientWidth + 1) return; el.classList.add('t2'); }
+  every(500, () => { if (SP && SHOT.visible) fitRow(SP.R.querySelector('.hd')); if (DS && DK.open) fitRow(DS.R.querySelector('.hd')); });
 
   // ---------- start ----------
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && OPEN) closePanel(); });
