@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>GP. Jacket for Vest</title>
-<meta name="description" content="GP. Jacket for Vest. Goes over Vest. One click, every account.">
+<title>GP. Jacket on top of Vest</title>
+<meta name="description" content="GP. Jacket on top of Vest. One click, every account.">
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#0b0b0b">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -25,20 +25,7 @@ a{color:inherit;text-decoration:none}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 i,em{font-style:normal}
 ::selection{background:var(--cr);color:var(--bg)}
-#moon{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;opacity:.42;transition:opacity .9s var(--ease)}
-body.list #moon{opacity:1}
-
-/* ---------- bars ---------- */
-.bar{position:fixed;left:var(--pad);right:var(--pad);display:flex;justify-content:space-between;align-items:center;z-index:6;font:600 11px/1 var(--sans);letter-spacing:.22em;text-transform:uppercase;color:var(--faint);pointer-events:none}
-.bar>*{pointer-events:auto}
-.bar.t{top:clamp(22px,3.2vw,50px)}.bar.b{bottom:clamp(22px,3.2vw,50px)}
-.bar .mk{font:700 22px/1 var(--disp);letter-spacing:-.05em;text-transform:none;color:var(--cr)}
-.bar .mk i{color:var(--faint)}
-.bar .mk small{margin-left:12px;font:600 11px/1 var(--sans);letter-spacing:.22em;text-transform:uppercase;color:var(--faint)}
-.seg{display:flex;padding:3px;border-radius:10px;border:1px solid var(--line2);background:rgba(11,11,11,.6);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
-.seg button{height:30px;padding:0 16px;border-radius:7px;font:600 11px/1 var(--sans);letter-spacing:.2em;text-transform:uppercase;color:var(--mute);transition:background .2s,color .2s}
-.seg button:hover{color:var(--cr)}
-.seg button.on{background:var(--cr);color:var(--bg)}
+#art{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;opacity:.42}
 
 /* ---------- the words and the buttons ---------- */
 .hero{position:relative;z-index:5;height:100%;padding:0 var(--pad);display:flex;flex-direction:column;justify-content:center;pointer-events:none}
@@ -55,9 +42,16 @@ body.list #moon{opacity:1}
 .btn.s{border:1px solid var(--line2);color:var(--ink2);background:rgba(11,11,11,.9);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 .btn.s:hover{border-color:rgba(238,234,226,.36);color:var(--cr)}
 
+/* ---------- the mark: a vest, and the jacket that goes over it ---------- */
+.mark{display:block;height:clamp(110px,24vh,240px);width:auto;align-self:flex-start;margin:0 0 clamp(20px,3.4vh,40px) -6px;overflow:visible}
+.mark .jk{animation:don 1.5s var(--ease) both .55s}
+.mark .jl{transform-origin:174px 26px;animation:donr 1.7s var(--ease) both .55s}
+.mark .jr{transform-origin:174px 26px;animation:donr 1.7s var(--ease) both .55s}
+@keyframes don{from{opacity:0;transform:translateY(-34px)}}
+@keyframes donr{from{transform:rotate(-9deg)}}
+
 /* ---------- collage ---------- */
 .col{position:fixed;inset:0;z-index:2;transition:opacity .7s var(--ease),transform .9s var(--ease),filter .7s}
-body.list .col{opacity:0;transform:scale(1.04);filter:blur(14px);pointer-events:none}
 .shade{position:fixed;inset:0;z-index:3;pointer-events:none;background:radial-gradient(120% 90% at 0% 55%,rgba(11,11,11,.94) 0,rgba(11,11,11,.7) 30%,rgba(11,11,11,0) 50%),linear-gradient(0deg,rgba(11,11,11,.85),rgba(11,11,11,0) 16%,rgba(11,11,11,0) 86%,rgba(11,11,11,.8));transition:opacity .7s}
 .c{position:absolute;left:var(--x);top:var(--y);z-index:var(--z,1);transform:rotate(var(--r,0deg)) scale(var(--s,1));translate:calc(var(--mx,0)*var(--d,10)*1px) calc(var(--my,0)*var(--d,10)*1px);filter:blur(var(--b,0px));opacity:var(--o,1);transition:filter .45s var(--ease),opacity .45s,transform .6s var(--ease),translate .9s var(--ease);cursor:default}
 .c:hover,.c:focus-visible{filter:blur(0);opacity:1;transform:rotate(0deg) scale(calc(var(--s,1)*1.05));z-index:40;outline:0}
@@ -111,6 +105,17 @@ body.list .col{opacity:0;transform:scale(1.04);filter:blur(14px);pointer-events:
 .pair{display:grid;grid-template-columns:1fr 26px 1fr;align-items:center;gap:8px;height:50px;padding:0 14px;border-radius:11px;border:1px solid var(--line2);margin-top:8px;font:700 19px var(--disp);letter-spacing:-.03em}
 .pair.on{border-color:var(--cr);background:rgba(238,234,226,.06)}
 .pair span:last-child{text-align:right}.pair i{color:var(--mute);font:500 14px var(--mono);text-align:center}
+.lk{margin-left:6px;display:inline-flex;align-items:center;gap:7px;font:600 11px/1 var(--mono);letter-spacing:.06em;color:var(--ink2);font-variant-numeric:tabular-nums}
+.lk svg{width:11px;height:11px;flex:none}
+.mir .pair,.mir .g6{opacity:.5}
+.lockb{position:absolute;right:-22px;top:-24px;width:62px;height:62px;border-radius:50%;background:var(--card);border:1px solid var(--line2);box-shadow:0 18px 40px -12px #000;display:grid;place-items:center}
+.lockb svg{position:absolute;inset:0;width:100%;height:100%}
+.lockb .rg{fill:none;stroke:var(--cr);stroke-width:2;stroke-linecap:round;stroke-dasharray:163.4;transform:rotate(-90deg);transform-origin:50% 50%;animation:sweep 12s linear infinite}
+.lockb .tk{fill:none;stroke:rgba(238,234,226,.22);stroke-width:2;stroke-dasharray:1 12.62}
+.lockb .lc{position:relative;width:20px;height:20px}
+.lockb .sh{transform-origin:50% 100%;animation:jig 6s var(--ease) infinite}
+@keyframes sweep{from{stroke-dashoffset:0}to{stroke-dashoffset:163.4}}
+@keyframes jig{0%,86%,100%{transform:none}89%{transform:translateY(-1.5px) rotate(-7deg)}92%{transform:translateY(-1.5px) rotate(6deg)}95%{transform:none}}
 .tagp{margin-left:auto;padding:4px 7px;border-radius:5px;border:1px solid var(--line2);font:600 9px/1 var(--sans);letter-spacing:.18em;color:var(--mute)}
 .key{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:34px;padding:0 9px;border-radius:8px;border:1px solid var(--line2);border-bottom-width:3px;font:600 12px var(--mono);color:var(--cr)}
 .kr{display:flex;align-items:center;gap:6px;margin-top:8px}.kr span{margin-left:10px;font:500 12px var(--sans);color:var(--mute)}
@@ -122,17 +127,6 @@ body.list .col{opacity:0;transform:scale(1.04);filter:blur(14px);pointer-events:
 .pulse b{font:700 16px var(--disp);letter-spacing:-.04em}.pulse s{width:1px;height:16px;background:var(--line2)}
 .pulse small{font:500 11px var(--sans);color:var(--mute);margin-left:-5px}
 
-/* ---------- list ---------- */
-.lst{position:fixed;z-index:4;right:var(--pad);top:50%;width:min(44vw,720px);transform:translateY(-46%);display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(8,auto);grid-auto-flow:column;column-gap:clamp(24px,3vw,56px);opacity:0;pointer-events:none;transition:opacity .6s var(--ease)}
-body.list .lst{opacity:1;pointer-events:auto}
-body.list .shade{opacity:.55}
-.lst li{list-style:none;display:grid;grid-template-columns:30px 1fr;align-items:baseline;padding:clamp(9px,1.25vh,15px) 0;border-top:1px solid var(--line);opacity:0;transform:translateY(10px);transition:opacity .5s var(--ease),transform .7s var(--ease)}
-body.list .lst li{opacity:1;transform:none;transition-delay:calc(var(--i)*28ms)}
-.lst .n{font:500 11px var(--mono);color:var(--faint)}
-.lst h3{font:600 clamp(17px,1.45vw,23px)/1.05 var(--disp);letter-spacing:-.035em}
-.lst h3 em{margin-left:8px;padding:3px 6px;border-radius:5px;border:1px solid var(--line2);font:600 8.5px/1 var(--sans);letter-spacing:.18em;color:var(--mute);vertical-align:middle;text-transform:uppercase}
-.lst p{grid-column:2;margin-top:4px;font:500 13px/1.35 var(--sans);color:var(--mute)}
-
 .in{opacity:0;transform:translateY(22px);animation:up 1.2s var(--ease) forwards}
 .d1{animation-delay:.05s}.d2{animation-delay:.18s}.d3{animation-delay:.3s}
 .col{animation:cin 1.8s var(--ease) both .2s}
@@ -141,32 +135,29 @@ body.list .lst li{opacity:1;transform:none;transition-delay:calc(var(--i)*28ms)}
 
 @media (max-width:1000px){
   html,body{height:auto;min-height:100%;overflow:auto;overflow-x:hidden}
-  body{display:flex;flex-direction:column}.hero{order:1}.col{order:2}.bar.b{order:4}
-  .bar{position:absolute}.bar.b{position:static;margin:40px var(--pad) 28px}
-  .bar .mk small{display:none}
-  .hero{height:auto;padding-top:clamp(120px,24vw,190px)}
+  body{display:flex;flex-direction:column}.hero{order:1}.col{order:2}
+  #art{position:absolute;height:100vh}
+  .hero{height:auto;padding-top:clamp(36px,9vw,70px)}
+  .mark{height:clamp(120px,36vw,200px)}
   .word{font-size:min(27vw,220px)}
   .line{font-size:min(8.6vw,52px);margin-top:min(7vw,50px)}
   .shade{display:none}
-  .col{position:relative;inset:auto;margin-top:56px;padding:0 6px;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:22px 14px;zoom:.62;overflow:hidden;padding-bottom:40px}
+  .col{position:relative;inset:auto;margin-top:56px;padding:0 6px 60px;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:22px 14px;zoom:.62;overflow:hidden;padding-bottom:40px}
   .c{position:relative;left:auto;top:auto;translate:none;--s:1;filter:blur(calc(var(--b,0px)*.45));opacity:1}
   .c>b{display:none}
-  body.list .col{display:none}
-  .lst{position:relative;right:auto;top:auto;transform:none;width:auto;margin:48px var(--pad) 0;display:none;grid-template-columns:1fr;grid-template-rows:none;grid-auto-flow:row;order:3}
-  body.list .lst{display:grid}
 }
 @media (max-width:600px){
   .act{display:grid;grid-template-columns:1fr}.btn{justify-content:space-between}
-  .bar.b span:nth-child(2){display:none}
   .col{zoom:.5}
 }
-@media (max-width:1460px) and (min-width:1001px){.btn{height:52px;padding:0 18px;gap:14px;font-size:15px}.act{gap:8px}.c.mir{--x:50vw!important}.c.cpy{--x:71vw!important;--y:74vh!important}}
-@media (max-height:700px) and (min-width:1001px){.word{font-size:min(14.2vw,30vh)}.lst p{display:none}}
+@media (max-width:1460px) and (min-width:1001px){.btn{height:52px;padding:0 18px;gap:14px;font-size:15px}.act{gap:8px}.c.mir{--x:50vw!important;--z:14!important}.c.cpy{--x:71vw!important;--y:74vh!important}}
+@media (max-height:620px) and (min-width:1001px){.mark{height:84px;margin-bottom:14px}}
+@media (max-height:700px) and (min-width:1001px){.word{font-size:min(14.2vw,30vh)}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.in{opacity:1;transform:none}}
 </style>
 </head>
 <body>
-<canvas id="moon"></canvas>
+<canvas id="art"></canvas>
 
 <div class="col" id="col">
 
@@ -210,11 +201,12 @@ body.list .lst li{opacity:1;transform:none;transition-delay:calc(var(--i)*28ms)}
 
   <!-- Mirror -->
   <div class="c mir" tabindex="0" style="--x:45.5vw;--y:59vh;--r:-6deg;--z:10;--d:16;--t:17s;--dl:-3s"><div class="ci" style="width:260px">
-    <div class="h"><span>Mirror</span><span class="tagp">PRIVATE BUILD</span></div>
+    <i class="lockb"><svg viewBox="0 0 62 62"><circle class="tk" cx="31" cy="31" r="26"/><circle class="rg" cx="31" cy="31" r="26"/></svg><svg class="lc" viewBox="0 0 16 16" fill="none"><rect x="2.5" y="7" width="11" height="7.5" rx="2" fill="currentColor"/><path class="sh" d="M5 7V5a3 3 0 0 1 6 0v2" stroke="currentColor" stroke-width="1.8"/></svg></i>
+    <div class="h"><span>Mirror</span><span class="lk"><svg viewBox="0 0 16 16" fill="none"><rect x="2.5" y="7" width="11" height="7.5" rx="2" fill="currentColor"/><path class="sh" d="M5 7V5a3 3 0 0 1 6 0v2" stroke="currentColor" stroke-width="1.8"/></svg><span id="tm">--:--:--</span></span></div>
     <div class="g6"><span class="pill fill">MAIN</span><span class="pill">OPP</span></div>
     <div class="pair on"><span>NDX</span><i>⇄</i><span>SPX</span></div>
     <div class="pair"><span>BTC</span><i>⇄</i><span>ETH</span></div>
-  </div><b>Mirror<em>opposite side across accounts</em></b></div>
+  </div><b>Mirror<em>locked · soon</em></b></div>
 
   <!-- Chart -->
   <div class="c" tabindex="0" style="--x:60vw;--y:26vh;--r:1deg;--z:5;--b:1.6px;--o:.85;--d:8;--t:19s;--dl:-5s"><div class="ci"><div class="chart" id="chart">
@@ -286,12 +278,35 @@ body.list .lst li{opacity:1;transform:none;transition-delay:calc(var(--i)*28ms)}
 </div>
 <div class="shade"></div>
 
-<div class="bar t"><span class="mk">GP<i>.</i><small>for Vest</small></span>
-  <div class="seg" role="tablist" aria-label="View"><button id="vc" class="on" role="tab">Collage</button><button id="vl" role="tab">List</button></div></div>
 
 <main class="hero">
-  <h1 class="word in d1">Jacket<i>.</i></h1>
-  <p class="line in d2">Goes over Vest.<br><span>One click. Every account.</span></p>
+  <svg class="mark in d1" viewBox="14 4 212 244" aria-label="A vest with a jacket over it" role="img">
+    <defs>
+      <linearGradient id="vg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9a978f"/><stop offset="1" stop-color="#3b3a37"/></linearGradient>
+      <pattern id="d1" width="6" height="6" patternUnits="userSpaceOnUse"><circle cx="3" cy="3" r="1.55" fill="#e6e3dc"/></pattern>
+      <pattern id="d2" width="6" height="6" patternUnits="userSpaceOnUse"><circle cx="3" cy="3" r="1" fill="#e6e3dc" fill-opacity=".7"/></pattern>
+    </defs>
+    <path d="M92 32 120 98 148 32 168 46 172 198 146 222 120 198 94 222 68 198 72 46Z" fill="url(#vg)"/>
+    <path d="M120 98V198" stroke="#0b0b0b" stroke-width="2"/>
+    <circle cx="126" cy="122" r="3" fill="#0b0b0b"/><circle cx="126" cy="146" r="3" fill="#0b0b0b"/><circle cx="126" cy="170" r="3" fill="#0b0b0b"/>
+    <g class="jk">
+      <path d="M94 20Q120 8 146 20L142 30Q120 21 98 30Z" fill="#e6e3dc"/>
+      <g class="jr">
+        <path d="M172 34 196 46 214 96 222 214 196 220 190 104Z" fill="#0b0b0b"/><path d="M172 34 196 46 214 96 222 214 196 220 190 104Z" fill="url(#d2)" stroke="#e6e3dc" stroke-opacity=".5" stroke-width="1.2" stroke-linejoin="round"/>
+        <path d="M146 20 174 34 190 104 186 236 152 242 144 142Z" fill="#0b0b0b"/><path d="M146 20 174 34 190 104 186 236 152 242 144 142Z" fill="url(#d1)" stroke="#e6e3dc" stroke-width="1.4" stroke-linejoin="round"/>
+        <path d="M146 20 176 72 164 80 174 90 144 142Z" fill="#e6e3dc" stroke="#0b0b0b" stroke-width="2.4" stroke-linejoin="round"/>
+        <path d="M160 190h20" stroke="#e6e3dc" stroke-width="1.6" stroke-linecap="round"/>
+      </g>
+      <g transform="matrix(-1 0 0 1 240 0)"><g class="jl">
+        <path d="M172 34 196 46 214 96 222 214 196 220 190 104Z" fill="#0b0b0b"/><path d="M172 34 196 46 214 96 222 214 196 220 190 104Z" fill="url(#d2)" stroke="#e6e3dc" stroke-opacity=".5" stroke-width="1.2" stroke-linejoin="round"/>
+        <path d="M146 20 174 34 190 104 186 236 152 242 144 142Z" fill="#0b0b0b"/><path d="M146 20 174 34 190 104 186 236 152 242 144 142Z" fill="url(#d1)" stroke="#e6e3dc" stroke-width="1.4" stroke-linejoin="round"/>
+        <path d="M146 20 176 72 164 80 174 90 144 142Z" fill="#e6e3dc" stroke="#0b0b0b" stroke-width="2.4" stroke-linejoin="round"/>
+        <path d="M160 190h20" stroke="#e6e3dc" stroke-width="1.6" stroke-linecap="round"/>
+      </g></g>
+    </g>
+  </svg>
+  <h1 class="word in d2">Jacket<i>.</i></h1>
+  <p class="line in d3">On top of Vest.<br><span>One click. Every account.</span></p>
   <div class="act in d3">
     <a class="btn p" href="https://raw.githubusercontent.com/deciphe/gp-pulse/main/gp-jacket.user.js">Install GP. Jacket<span class="k">v<span id="ver">1.11.0</span></span></a>
     <a class="btn s" href="https://www.tampermonkey.net/" target="_blank" rel="noopener">Get Tampermonkey<span class="k">↗</span></a>
@@ -299,37 +314,11 @@ body.list .lst li{opacity:1;transform:none;transition-delay:calc(var(--i)*28ms)}
   </div>
 </main>
 
-<ol class="lst" id="lst">
-  <li style="--i:0"><span class="n">01</span><h3>Swap</h3><p>Jump between accounts from the desk.</p></li>
-  <li style="--i:1"><span class="n">02</span><h3>Desk</h3><p>Every account on screen. Balance, open, today.</p></li>
-  <li style="--i:2"><span class="n">03</span><h3>Copy</h3><p>One switch. Followers take the trade.</p></li>
-  <li style="--i:3"><span class="n">04</span><h3>Mirror<em>Private build</em></h3><p>Hedge across accounts. NDX / SPX, BTC / ETH.</p></li>
-  <li style="--i:4"><span class="n">05</span><h3>Trim</h3><p>10, 20, 25, 50 or all of it. One click.</p></li>
-  <li style="--i:5"><span class="n">06</span><h3>Add</h3><p>One click adds to the trade you are in.</p></li>
-  <li style="--i:6"><span class="n">07</span><h3>Risk</h3><p>Set the dollars. Size follows.</p></li>
-  <li style="--i:7"><span class="n">08</span><h3>Limits</h3><p>Drag the entry on the chart. Arm.</p></li>
-  <li style="--i:8"><span class="n">09</span><h3>Floor</h3><p>Your daily loss floor, drawn on the chart.</p></li>
-  <li style="--i:9"><span class="n">10</span><h3>Flatten</h3><p>Everything closed on every account. One click.</p></li>
-  <li style="--i:10"><span class="n">11</span><h3>Zone</h3><p>A session, a lock, a certificate.</p></li>
-  <li style="--i:11"><span class="n">12</span><h3>Pulse</h3><p>Spend, payouts and live PnL in the header.</p></li>
-  <li style="--i:12"><span class="n">13</span><h3>Keys</h3><p>Shortcuts you set yourself.</p></li>
-  <li style="--i:13"><span class="n">14</span><h3>Colour</h3><p>Five chart sets, dark and light.</p></li>
-  <li style="--i:14"><span class="n">15</span><h3>Loadouts</h3><p>Save a setup, call it back.</p></li>
-  <li style="--i:15"><span class="n">16</span><h3>Tag</h3><p>Program, target and drawdown on the chart.</p></li>
-</ol>
-
-<div class="bar b"><span>gigaprop.xyz</span><span>Free · updates itself</span><span>Code GIGA</span></div>
-
 <script>
 (() => {
 'use strict';
 const $ = id => document.getElementById(id), RM = matchMedia('(prefers-reduced-motion:reduce)').matches;
 fetch('https://raw.githubusercontent.com/deciphe/gp-pulse/main/gp-jacket.user.js', { cache: 'no-store' }).then(r => r.text()).then(t => { const m = t.match(/@version\s+([\d.]+)/); if (m) $('ver').textContent = m[1]; }).catch(() => {});
-
-// view: collage or list, remembered per browser
-function view(v, save) { document.body.classList.toggle('list', v === 'list'); $('vc').classList.toggle('on', v !== 'list'); $('vl').classList.toggle('on', v === 'list'); if (save) try { localStorage.setItem('gpj-view', v); } catch (e) {} }
-$('vc').onclick = () => view('collage', 1); $('vl').onclick = () => view('list', 1);
-try { if (localStorage.getItem('gpj-view') === 'list') view('list'); } catch (e) {}
 
 // candles behind the chart card
 (() => { const c = $('chart'); let sd = 7, y = 70; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
@@ -337,6 +326,9 @@ try { if (localStorage.getItem('gpj-view') === 'list') view('list'); } catch (e)
 
 // the collage leans a little toward the cursor
 if (!RM) { const col = $('col'); let raf = 0; addEventListener('pointermove', e => { if (innerWidth <= 1000 || raf) return; raf = requestAnimationFrame(() => { raf = 0; col.style.setProperty('--mx', (.5 - e.clientX / innerWidth).toFixed(3)); col.style.setProperty('--my', (.5 - e.clientY / innerHeight).toFixed(3)); }); }, { passive: true }); }
+
+// Mirror's clock: it runs, it never says when
+(() => { const e = $('tm'); if (RM) return; const d = () => String(Math.floor(Math.random() * 60)).padStart(2, '0'); setInterval(() => { if (!document.hidden) e.textContent = d() + ':' + d() + ':' + d(); }, 110); })();
 
 // halftone moon on a horizon, a faint reflection under it
 function moon(x, cx, cy, R, step, hz, flip, a) {
@@ -352,7 +344,7 @@ function moon(x, cx, cy, R, step, hz, flip, a) {
   }
 }
 function draw() {
-  const W = innerWidth, Ht = innerHeight, d = Math.min(2, devicePixelRatio || 1), c = $('moon'); c.width = W * d; c.height = Ht * d;
+  const W = innerWidth, Ht = innerHeight, d = Math.min(2, devicePixelRatio || 1), c = $('art'); c.width = W * d; c.height = Ht * d;
   const m = c.getContext('2d'); m.setTransform(d, 0, 0, d, 0, 0);
   const wide = W > 1000, R = wide ? Math.min(W * .25, Ht * .42) : W * .5, hz = wide ? Ht * .8 : Ht * .98, cx = wide ? W * .3 : W * .7, cy = hz - R * .42, st = Math.max(6, R / 52);
   moon(m, cx, cy, R, st, hz, false, wide ? .3 : .16); moon(m, cx, cy, R, st, hz, true, .3);
