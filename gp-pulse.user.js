@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Entry for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.10.0
+// @version      1.10.1
 // @description  Spend, payouts and live PnL breathing in Vest's header, Zone sessions with a certificate, a risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier and a desk to close any account.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -1198,6 +1198,7 @@
   .bt{display:flex;justify-content:space-between;gap:8px;font-size:11px;font-weight:600;color:#8b8b92;font-variant-numeric:tabular-nums;white-space:nowrap}
   .sw.sm{width:24px;height:14px;vertical-align:-2px;margin-left:7px}.sw.sm:after{width:8px;height:8px;top:2px;left:2px}.sw.sm.on:after{transform:translateX(10px)}
   .s.nosl .sr[data-sr=risk]>b{color:#4f4f55}.s.nosl .pl .sl b{color:#4f4f55}
+  .mk .bl{font-style:normal}.mk.t1 b{font-size:16px}.mk.t2 .bl{display:none}
   .mk>span.sw .an{animation:gpzsw 1.4s ease-out}@keyframes gpzsw{0%{background:#e6e3dc;color:#0b0b0b}100%{background:transparent}}.mk .an{font-style:normal;color:#f1f1f3;padding:1px 4px;margin:0 -4px;border-radius:5px}
   .lvb{border:0;background:none;padding:0 2px;margin:0 -2px;border-radius:5px;color:#f1f1f3;font:inherit;font-weight:700;cursor:pointer;border-bottom:1px dashed rgba(238,234,226,.35)}
   .lvb:hover{background:rgba(238,234,226,.08)}.lvb.set{color:#e6e3dc;border-bottom-color:rgba(238,234,226,.5)}
@@ -1659,8 +1660,10 @@
     k('px').textContent = p.sym && L.mark[p.sym] ? shortSym(p.sym) + '  ' + fmtPx(L.mark[p.sym], p.sym) : '—'; k('px').classList.toggle('old', stale);
     { const ca = p.id && capAcct(p.id), fund = !!ca && ca.account_type === 3 && p.bal > 0; R.querySelectorAll('[data-tk=risk]').forEach(b => { if (b.dataset.l == null) b.dataset.l = b.textContent; b.textContent = fund ? '$' + trimNum(Math.round(p.bal * +b.dataset.v / 100)) : b.dataset.l; }); }
     { const age = (Date.now() - (L.markAt || 0)) / 1000, f = k('fr'); f.className = 'fr ' + (age < 1.6 ? 'ok' : age < 4 ? 'mid' : 'bad'); f.title = 'price ' + (age < 60 ? age.toFixed(1) + 's' : 'over a minute') + ' old'; }
-    if (p.id && SHOT.acc && p.id !== SHOT.acc) { const a = k('ac'); a.classList.remove('sw'); void a.offsetWidth; a.classList.add('sw'); } if (p.id) SHOT.acc = p.id;
-    k('ac').innerHTML = p.id && p.bal ? `<em class="an">${esc(acctShort(p.id).replace(/^Account /, '#'))}</em> · <button class="lvb${p.lev && p.levMax && p.lev < p.levMax ? ' set' : ''}" data-a="lev" title="Leverage">${p.lev || '—'}x</button> · ${p.bal >= 1e3 ? '$' + trimNum(Math.round(p.bal / 10) / 100) + 'K' : fm(p.bal, { short: true }).replace(/\.00$/, '')}` : '';
+    const swNow = !!(p.id && SHOT.acc && p.id !== SHOT.acc); if (p.id) SHOT.acc = p.id;
+    const acH = p.id && p.bal ? `<em class="an">${esc(acctShort(p.id).replace(/^Account /, '#'))}</em> · <button class="lvb${p.lev && p.levMax && p.lev < p.levMax ? ' set' : ''}" data-a="lev" title="Leverage">${p.lev || '—'}x</button><i class="bl"> · ${p.bal >= 1e3 ? '$' + trimNum(Math.round(p.bal / 10) / 100) + 'K' : fm(p.bal, { short: true }).replace(/\.00$/, '')}</i>` : '';
+    { const a = k('ac'); if (a.__h !== acH) { a.__h = acH; a.innerHTML = acH; } // rebuilt only when it changes, so the flash plays once
+      if (swNow) { a.classList.remove('sw'); void a.offsetWidth; a.classList.add('sw'); clearTimeout(SHOT.swT); SHOT.swT = setTimeout(() => a.classList.remove('sw'), 1500); } }
     if (!pos) SHOT.adding = false; const adding = !!pos && !!SHOT.adding;
     R.querySelector('[data-v=plan]').hidden = !!pos && !adding; R.querySelector('[data-v=pos]').hidden = !pos || adding;
     R.querySelector('[data-v=go]').hidden = !!pos || locked; if (pos && k('pnd').dataset.h) k('pnd').innerHTML = k('pnd').dataset.h = ''; R.querySelector('[data-v=go2]').hidden = !pos || adding; R.querySelector('[data-v=go3]').hidden = !locked; R.querySelector('[data-v=go4]').hidden = !adding;
@@ -2624,8 +2627,8 @@
   };
   every(1000, gigaChip);
   // a row that would clip (a narrow column, a long account name) tightens in steps until everything fits
-  function fitRow(el) { if (!el || !el.offsetWidth) return; el.classList.remove('t1', 't2'); if (el.scrollWidth <= el.clientWidth + 1) return; el.classList.add('t1'); if (el.scrollWidth <= el.clientWidth + 1) return; el.classList.add('t2'); }
-  every(500, () => { if (SP && SHOT.visible) fitRow(SP.R.querySelector('.hd')); if (DS && DK.open) fitRow(DS.R.querySelector('.hd')); });
+  function fitRow(el, pr) { if (!el || !el.offsetWidth) return; pr = pr || el; const over = () => [el, pr].some(x => x.scrollWidth > x.clientWidth + 1); el.classList.remove('t1', 't2'); if (!over()) return; el.classList.add('t1'); if (!over()) return; el.classList.add('t2'); }
+  every(500, () => { if (SP && SHOT.visible) { fitRow(SP.R.querySelector('.hd')); fitRow(SP.R.querySelector('.mk'), SP.R.querySelector('.mk>span')); } if (DS && DK.open) fitRow(DS.R.querySelector('.hd')); });
 
   // ---------- start ----------
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && OPEN) closePanel(); });
