@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GP. Jacket for Vest
 // @namespace    https://github.com/deciphe/gp-pulse
-// @version      1.20.2
+// @version      1.20.3
 // @description  A risk-locked one-click order ticket, the trade managed from the ticket and the chart, a Vest-to-Vest copier, GP. Mirror (lock a pair of markets and every trade on the lead is mirrored, opposite, on the pair's other market), a desk to close any account, Claim all on the Portfolio page, the GP. Dashboard (earnings, payouts, every account and trade), and spend, payouts and live PnL in Vest's header.
 // @author       GP.
 // @match        https://next.vestmarkets.com/*
@@ -2643,7 +2643,7 @@
     const GROUPS = ['Funded', 'Instant', 'Eval'];
     const so = DK.sort || 'auto', srt = (a, b) => so === 'target' ? (a.need != null && b.need != null ? a.need - b.need : b.today - a.today) : so === 'pnl' ? b.today - a.today : so === 'new' ? b.born - a.born : so === 'old' ? a.born - b.born : 0;
     R.querySelectorAll('[data-so]').forEach(b => b.classList.toggle('on', b.dataset.so === so)); k('sov').textContent = { auto: 'auto', target: 'to target', pnl: 'pnl', new: 'newest', old: 'oldest' }[so] || 'auto';
-    const accHtml = () => GROUPS.map(g => { const rs = rows.filter(r => r.kind === g).sort((a, b) => (a.id === lead) - (b.id === lead) ? (b.id === lead) - (a.id === lead) : srt(a, b)); if (!rs.length) return '';
+    const accHtml = () => GROUPS.map(g => { const rs = rows.filter(r => r.kind === g).sort((a, b) => (a.id === lead) - (b.id === lead) ? (b.id === lead) - (a.id === lead) : (b.n > 0) - (a.n > 0) || srt(a, b)); if (!rs.length) return ''; // the lead, then accounts in a trade, then the chosen sort
       const sub = rs.reduce((a, r) => a + r.today, 0), all = rs.filter(r => r.id !== lead).every(r => C.followers[r.id]);
       return `<div class="gh" data-g="${g}" title="${all ? 'Stop copying to all ' : 'Copy to all '}${g}"><span>${g}<i>${rs.length}</i></span><b class="${tone(sub)}">${fm(sub, { sign: true })}</b></div>` + rs.map(accRow).join(''); }).join('');
     const html = tab === 'acc' ? (C.hedge ? pairHtml(rows, accRow, lead) : accHtml()) : shown.map(r => {
