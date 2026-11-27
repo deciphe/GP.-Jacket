@@ -24,3 +24,9 @@ Tampermonkey checks this repo and updates the script on its own. To pull an upda
 The Dashboard is inside GP. Jacket now. Press **DASHBOARD** at the bottom of Vest, beside Online and GIGA: your affiliate earnings and payouts, and your whole profile (every account, every trade, what you spent and what you got paid).
 
 If you still have the separate "GP. Dashboard for Vest" script installed, remove it: Jacket has it built in.
+
+## GP. Jacket for MyFundedPerps (early build)
+
+The same ticket and desk on top of MyFundedPerps: [install](https://raw.githubusercontent.com/deciphe/GP.-Jacket/main/gp-jacket-mfp.user.js).
+It trades through MFP's developer API with your own key (Settings, API Keys, Read And Trade), kept in Tampermonkey on your computer.
+Risk-locked long and short with stop and target attached, limit entries, trims, adds, break-even, one-click flat on every account, and a desk of every account with its loss room.
